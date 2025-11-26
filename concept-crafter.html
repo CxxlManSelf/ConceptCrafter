@@ -337,6 +337,7 @@
         <button id="addLinkBtn">🔗 添加超連結</button>
         <span style="margin: 0 10px;">|</span>
         <button id="clearBtn">清空畫布</button>
+        <button id="helpBtn">❓ 說明</button>
     </div>
 
     <!-- 主要容器 -->
@@ -396,6 +397,61 @@
 
     <!-- 隱藏的檔案輸入 -->
     <input type="file" id="fileInput" accept=".html" style="display: none;">
+
+    <!-- 說明模態對話框 -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <h3>Concept Crafter 使用說明</h3>
+            <div style="line-height: 1.8; color: #34495e;">
+                <h4>📌 基本功能</h4>
+                <ul>
+                    <li><strong>新增節點</strong>：點擊「新增節點」按鈕後，在畫布上點擊位置即可建立節點</li>
+                    <li><strong>新增連接</strong>：點擊「新增連接」後，先點擊起始節點，再點擊目標節點即可建立連接</li>
+                    <li><strong>新增 Frame</strong>：點擊「新增 Frame」後，在畫布上點擊位置即可建立 Frame 分組</li>
+                    <li><strong>選擇工具</strong>：用於選擇、移動和編輯元素</li>
+                </ul>
+
+                <h4>🎨 編輯元素</h4>
+                <ul>
+                    <li><strong>編輯節點文字</strong>：雙擊節點即可進入編輯模式，修改文字內容</li>
+                    <li><strong>移動元素</strong>：選擇模式下，拖動節點或 Frame 即可移動</li>
+                    <li><strong>調整大小</strong>：在節點或 Frame 右下角拖動調整手柄可改變大小</li>
+                    <li><strong>添加超連結</strong>：雙擊節點進入編輯模式，選擇文字後點擊「添加超連結」按鈕</li>
+                </ul>
+
+                <h4>🗺️ Map 管理</h4>
+                <ul>
+                    <li><strong>新增 Map</strong>：點擊左邊「新增 Map」按鈕建立新的概念地圖</li>
+                    <li><strong>儲存 Map</strong>：點擊「儲存 Map」按鈕將當前地圖儲存為 HTML 檔案</li>
+                    <li><strong>載入 Map</strong>：點擊左邊列表中的 Map 即可切換，或使用「從單一檔案載入」上傳 HTML 檔案</li>
+                    <li><strong>修改標記</strong>：Map 名稱後的 * 表示有未儲存的變更</li>
+                </ul>
+
+                <h4>🎛️ 視圖控制</h4>
+                <ul>
+                    <li><strong>縮放</strong>：使用滑鼠滾輪縮放，或點擊右下角的 🔍+ 和 🔍- 按鈕</li>
+                    <li><strong>平移</strong>：按住空白鍵再拖動滑鼠，或使用滑鼠中鍵平移</li>
+                    <li><strong>重置視圖</strong>：點擊「重置視圖」按鈕回到原始位置</li>
+                </ul>
+
+                <h4>💾 檔案系統</h4>
+                <ul>
+                    <li><strong>選擇專案資料夾</strong>：可在 Chrome/Edge/Opera 瀏覽器中選擇本地資料夾，直接管理 Map 檔案</li>
+                    <li><strong>從資料夾重新整理</strong>：重新掃描專案資料夾中的 Map 檔案</li>
+                </ul>
+
+                <h4>✨ 提示</h4>
+                <ul>
+                    <li>每個元素都可在右邊屬性面板中進行詳細設定（顏色、大小、標籤等）</li>
+                    <li>連接線可以設定標籤和是否顯示箭頭</li>
+                    <li>Frame 可用於組織和分組相關的節點</li>
+                </ul>
+            </div>
+            <div class="modal-actions">
+                <button class="primary" onclick="closeHelpModal()">關閉</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // 全域變數
@@ -557,6 +613,9 @@
             document.getElementById('addLinkBtn').addEventListener('click', addLinkToSelectedText);
             document.getElementById('clearBtn').addEventListener('click', clearCanvas);
 
+            // 說明按鈕
+            document.getElementById('helpBtn').addEventListener('click', showHelpModal);
+
             // Zoom 和 Pan 按鈕
             document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
             document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
@@ -673,6 +732,12 @@
 
             nodes.push(node);
             renderNode(node);
+            
+            // 標記為已修改
+            if (currentMapName && maps[currentMapName]) {
+                maps[currentMapName].modified = true;
+                updateMapList();
+            }
             return node;
         }
 
@@ -813,6 +878,12 @@
 
             connections.push(connection);
             renderConnection(connection);
+            
+            // 標記為已修改
+            if (currentMapName && maps[currentMapName]) {
+                maps[currentMapName].modified = true;
+                updateMapList();
+            }
             return connection;
         }
 
@@ -989,6 +1060,12 @@
 
             frames.push(frame);
             renderFrame(frame);
+            
+            // 標記為已修改
+            if (currentMapName && maps[currentMapName]) {
+                maps[currentMapName].modified = true;
+                updateMapList();
+            }
             return frame;
         }
 
@@ -1143,6 +1220,10 @@
             element.text = document.getElementById('nodeText').value;
             element.color = document.getElementById('nodeColor').value;
             redrawCanvas();
+            if (currentMapName && maps[currentMapName]) {
+                maps[currentMapName].modified = true;
+                updateMapList();
+            }
         }
         window.updateNodeProperties = updateNodeProperties;
 
@@ -1219,6 +1300,10 @@
             element.label = document.getElementById('connLabel').value;
             element.hasArrow = document.getElementById('connHasArrow').checked;
             redrawCanvas();
+            if (currentMapName && maps[currentMapName]) {
+                maps[currentMapName].modified = true;
+                updateMapList();
+            }
         }
         window.updateConnectionProperties = updateConnectionProperties;
 
@@ -1230,6 +1315,10 @@
             element.width = parseInt(document.getElementById('frameWidth').value);
             element.height = parseInt(document.getElementById('frameHeight').value);
             redrawCanvas();
+            if (currentMapName && maps[currentMapName]) {
+                maps[currentMapName].modified = true;
+                updateMapList();
+            }
         }
         window.updateFrameProperties = updateFrameProperties;
 
@@ -1240,6 +1329,10 @@
             connections = connections.filter(c => c.from !== element.id && c.to !== element.id);
             selectedElement = null;
             redrawCanvas();
+            if (currentMapName && maps[currentMapName]) {
+                maps[currentMapName].modified = true;
+                updateMapList();
+            }
         }
         window.deleteNode = deleteNode;
 
@@ -1249,6 +1342,10 @@
             connections = connections.filter(c => c.id !== element.id);
             selectedElement = null;
             redrawCanvas();
+            if (currentMapName && maps[currentMapName]) {
+                maps[currentMapName].modified = true;
+                updateMapList();
+            }
         }
         window.deleteConnection = deleteConnection;
 
@@ -1258,6 +1355,10 @@
             frames = frames.filter(f => f.id !== element.id);
             selectedElement = null;
             redrawCanvas();
+            if (currentMapName && maps[currentMapName]) {
+                maps[currentMapName].modified = true;
+                updateMapList();
+            }
         }
         window.deleteFrame = deleteFrame;
 
@@ -1272,17 +1373,6 @@
             nodes.forEach(renderNode);
 
             updatePropertiesPanel();
-
-            // 標記當前 map 為已修改
-            markCurrentMapAsModified();
-        }
-
-        // 標記當前 map 為已修改
-        function markCurrentMapAsModified() {
-            if (currentMapName && maps[currentMapName]) {
-                maps[currentMapName].modified = true;
-                updateMapList();
-            }
         }
 
         // 處理滑鼠按下
@@ -1403,6 +1493,12 @@
                 endPan();
             }
 
+            // 如果有進行過拖動或調整大小，標記為已修改
+            if ((isDragging || isResizing) && currentMapName && maps[currentMapName]) {
+                maps[currentMapName].modified = true;
+                updateMapList();
+            }
+
             isDragging = false;
             isResizing = false;
             draggedNode = null;
@@ -1421,6 +1517,17 @@
                 redrawCanvas();
             }
         }
+
+        // 顯示說明
+        function showHelpModal() {
+            document.getElementById('helpModal').classList.add('active');
+        }
+
+        // 關閉說明
+        function closeHelpModal() {
+            document.getElementById('helpModal').classList.remove('active');
+        }
+        window.closeHelpModal = closeHelpModal;
 
         // 檔案系統 API 功能
         async function selectProjectFolder() {
@@ -1545,6 +1652,8 @@
                 // 更新 maps 中的 fileHandle
                 if (maps[mapName]) {
                     maps[mapName].fileHandle = fileHandle;
+                    maps[mapName].modified = false;
+                    updateMapList();
                 }
 
                 alert(`Map「${mapName}」已儲存`);
@@ -1591,7 +1700,12 @@
             Object.keys(maps).forEach(mapName => {
                 const li = document.createElement('li');
                 li.className = 'project-item';
-                li.textContent = mapName;
+                
+                // 顯示 map 名稱和修改標記
+                const displayText = mapName + (maps[mapName].modified ? ' *' : '');
+                li.textContent = displayText;
+                li.title = mapName; // 添加完整名稱的 tooltip
+                
                 li.addEventListener('click', () => loadMap(mapName));
                 if (mapName === currentMapName) {
                     li.style.backgroundColor = '#3498db';
@@ -1659,6 +1773,10 @@
                     await writable.write(htmlContent);
                     await writable.close();
 
+                    // 清除修改標記
+                    maps[mapName].modified = false;
+                    updateMapList();
+
                     alert(`Map「${mapName}」已儲存`);
                 } catch (err) {
                     console.error('儲存檔案時發生錯誤：', err);
@@ -1679,6 +1797,14 @@
                 alert('Map 名稱已存在');
                 return;
             }
+
+            // 建立新 map 並加入列表
+            maps[trimmedName] = {
+                nodes: [],
+                connections: [],
+                frames: [],
+                modified: true  // 新增的 map 標記為已修改
+            };
 
             // 清空畫布
             nodes = [];
