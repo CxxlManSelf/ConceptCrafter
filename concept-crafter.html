@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept Crafter - 概念地圖工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 工具列 */
+        .toolbar {
+            background: #2c3e50;
+            color: white;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .toolbar button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .toolbar button:hover {
+            background: #2980b9;
+        }
+
+        .toolbar button.active {
+            background: #e74c3c;
+        }
+
+        .toolbar input {
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        /* 主要容器 */
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* 側邊欄 */
+        .sidebar {
+            width: 250px;
+            background: #ecf0f1;
+            padding: 15px;
+            overflow-y: auto;
+            border-right: 1px solid #bdc3c7;
+        }
+
+        .sidebar h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .sidebar .project-list {
+            list-style: none;
+        }
+
+        .sidebar .project-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #bdc3c7;
+        }
+
+        .sidebar .project-item:hover {
+            background: #d5dbdb;
+        }
+
+        /* 畫布區域 */
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        /* 屬性面板 */
+        .properties-panel {
+            width: 300px;
+            background: #ecf0f1;
+            padding: 15px;
+            overflow-y: auto;
+            border-left: 1px solid #bdc3c7;
+        }
+
+        .properties-panel h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .property-group {
+            margin-bottom: 15px;
+        }
+
+        .property-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #34495e;
+            font-weight: bold;
+        }
+
+        .property-group input,
+        .property-group textarea,
+        .property-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+        }
+
+        .property-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .property-group button {
+            width: 100%;
+            padding: 8px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .property-group button:hover {
+            background: #2980b9;
+        }
+
+        .property-group button.delete {
+            background: #e74c3c;
+        }
+
+        .property-group button.delete:hover {
+            background: #c0392b;
+        }
+
+        /* SVG 樣式 */
+        .node {
+            cursor: default;
+        }
+
+        .node-rect {
+            fill: #3498db;
+            stroke: #2c3e50;
+            stroke-width: 2;
+            cursor: move;
+        }
+
+        .node-text {
+            fill: white;
+            font-size: 14px;
+            text-anchor: middle;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .node-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            box-sizing: border-box;
+            color: white;
+            font-size: 14px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            text-align: center;
+            line-height: 1.3;
+            user-select: none;
+            cursor: default;
+            pointer-events: auto;
+        }
+
+        .node-content.editable {
+            user-select: text;
+            cursor: text;
+            outline: 2px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .node-content a {
+            color: inherit;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .node-content a:hover {
+            text-decoration: underline;
+            opacity: 0.8;
+        }
+
+        .connection {
+            stroke: #2c3e50;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .connection-label {
+            font-size: 12px;
+            fill: #e74c3c;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        .frame {
+            fill: rgba(52, 152, 219, 0.1);
+            stroke: #3498db;
+            stroke-width: 2;
+            stroke-dasharray: 5,5;
+        }
+
+        .frame-label {
+            font-size: 16px;
+            font-weight: bold;
+            fill: #3498db;
+            text-anchor: start;
+        }
+
+        .frame {
+            cursor: move;
+        }
+
+        .resize-handle {
+            fill: white;
+            stroke: #2c3e50;
+            stroke-width: 2;
+            cursor: nwse-resize;
+        }
+
+        /* 模態對話框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            min-width: 400px;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 15px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-actions button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .modal-actions button.primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .modal-actions button.secondary {
+            background: #95a5a6;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- 工具列 -->
+    <div class="toolbar">
+        <input type="text" id="currentMapName" placeholder="Map 名稱" style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; width: 200px;">
+        <button id="saveMapBtn">💾 儲存 Map</button>
+        <span style="margin: 0 10px;">|</span>
+        <button id="addNodeBtn" class="tool-btn">新增節點</button>
+        <button id="addConnectionBtn" class="tool-btn">新增連接</button>
+        <button id="addFrameBtn" class="tool-btn">新增 Frame</button>
+        <button id="selectBtn" class="tool-btn active">選擇</button>
+        <span style="margin: 0 10px;">|</span>
+        <button id="addLinkBtn">🔗 添加超連結</button>
+        <span style="margin: 0 10px;">|</span>
+        <button id="clearBtn">清空畫布</button>
+    </div>
+
+    <!-- 主要容器 -->
+    <div class="container">
+        <!-- 左側專案列表 -->
+        <div class="sidebar">
+            <h3>專案資料夾</h3>
+            <div style="margin-bottom: 15px;">
+                <button id="selectProjectFolderBtn" style="width: 100%; padding: 8px; background: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 8px;">📁 選擇專案資料夾</button>
+                <div id="projectFolderPath" style="font-size: 15px; font-weight: bold; color: #2c3e50; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 6px; word-break: break-all; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    未選擇資料夾
+                </div>
+            </div>
+            <h3>Map 列表</h3>
+            <ul id="mapList" class="project-list">
+                <!-- Map 檔案會動態載入 -->
+            </ul>
+            <button id="newMapBtn" style="width: 100%; margin-top: 10px; padding: 8px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer;">新增 Map</button>
+            <button id="loadMapFromFolderBtn" style="width: 100%; margin-top: 5px; padding: 8px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">從資料夾重新整理</button>
+            <button id="loadMapBtn" style="width: 100%; margin-top: 5px; padding: 8px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">從單一檔案載入</button>
+            <div id="apiSupportWarning" style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 4px; font-size: 11px; color: #856404; display: none;">
+                ⚠️ 您的瀏覽器不支援檔案系統 API，請使用 Chrome、Edge 或 Opera 瀏覽器
+            </div>
+        </div>
+
+        <!-- 中間畫布 -->
+        <div class="canvas-area">
+            <svg id="canvas">
+                <defs>
+                    <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#2c3e50" />
+                    </marker>
+                </defs>
+                <g id="viewport">
+                    <g id="framesGroup"></g>
+                    <g id="connectionsGroup"></g>
+                    <g id="nodesGroup"></g>
+                </g>
+            </svg>
+            <div style="position: absolute; bottom: 10px; right: 10px; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 4px; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="margin-bottom: 5px;">縮放: <span id="zoomLevel">100%</span></div>
+                <button id="zoomInBtn" style="padding: 4px 8px; margin-right: 4px;">🔍+</button>
+                <button id="zoomOutBtn" style="padding: 4px 8px; margin-right: 4px;">🔍-</button>
+                <button id="resetViewBtn" style="padding: 4px 8px;">重置視圖</button>
+            </div>
+        </div>
+
+        <!-- 右側屬性面板 -->
+        <div class="properties-panel">
+            <h3>屬性</h3>
+            <div id="propertiesContent">
+                <p style="color: #7f8c8d;">請選擇一個元素來編輯屬性</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 隱藏的檔案輸入 -->
+    <input type="file" id="fileInput" accept=".html" style="display: none;">
+
+    <script>
+        // 全域變數
+        let currentTool = 'select';
+        let currentProjectName = '';
+        let currentMapName = '';
+        let maps = {}; // { mapName: { nodes, connections, frames } }
+        let nodes = [];
+        let connections = [];
+        let frames = [];
+        let selectedElement = null;
+        let draggedNode = null;
+        let draggedFrame = null;
+        let connectionStart = null;
+        let isDragging = false;
+        let isResizing = false;
+        let resizingElement = null;
+        let resizingType = null; // 'node' or 'frame'
+        let dragOffset = { x: 0, y: 0 };
+        let projectFolderHandle = null; // 專案資料夾的 handle
+        let fileSystemSupported = false; // 是否支援檔案系統 API
+
+        // Zoom 和 Pan 相關變數
+        let zoomLevel = 1;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        let spaceKeyPressed = false;
+
+        // SVG 元素
+        const svg = document.getElementById('canvas');
+        const viewport = document.getElementById('viewport');
+        const nodesGroup = document.getElementById('nodesGroup');
+        const connectionsGroup = document.getElementById('connectionsGroup');
+        const framesGroup = document.getElementById('framesGroup');
+
+        // 初始化
+        function init() {
+            checkFileSystemSupport();
+            loadMapsFromStorage();
+            setupEventListeners();
+            updateCanvasSize();
+            window.addEventListener('resize', updateCanvasSize);
+        }
+
+        // 檢查檔案系統 API 支援
+        function checkFileSystemSupport() {
+            fileSystemSupported = 'showDirectoryPicker' in window;
+            if (!fileSystemSupported) {
+                document.getElementById('apiSupportWarning').style.display = 'block';
+                document.getElementById('selectProjectFolderBtn').disabled = true;
+                document.getElementById('selectProjectFolderBtn').style.opacity = '0.5';
+                document.getElementById('selectProjectFolderBtn').style.cursor = 'not-allowed';
+            }
+        }
+
+        // 更新畫布大小
+        function updateCanvasSize() {
+            const canvasArea = document.querySelector('.canvas-area');
+            svg.setAttribute('width', canvasArea.clientWidth);
+            svg.setAttribute('height', canvasArea.clientHeight);
+        }
+
+        // 更新 viewport transform
+        function updateViewportTransform() {
+            viewport.setAttribute('transform', `translate(${panX}, ${panY}) scale(${zoomLevel})`);
+            document.getElementById('zoomLevel').textContent = Math.round(zoomLevel * 100) + '%';
+        }
+
+        // Zoom In
+        function zoomIn() {
+            zoomLevel = Math.min(zoomLevel * 1.2, 5); // 最大 500%
+            updateViewportTransform();
+        }
+
+        // Zoom Out
+        function zoomOut() {
+            zoomLevel = Math.max(zoomLevel / 1.2, 0.1); // 最小 10%
+            updateViewportTransform();
+        }
+
+        // 重置視圖
+        function resetView() {
+            zoomLevel = 1;
+            panX = 0;
+            panY = 0;
+            updateViewportTransform();
+        }
+
+        // 處理滾輪縮放
+        function handleWheel(e) {
+            e.preventDefault();
+
+            const rect = svg.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // 計算縮放前的滑鼠在 viewport 座標系中的位置
+            const beforeX = (mouseX - panX) / zoomLevel;
+            const beforeY = (mouseY - panY) / zoomLevel;
+
+            // 更新縮放
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            zoomLevel = Math.max(0.1, Math.min(5, zoomLevel * delta));
+
+            // 計算縮放後的滑鼠位置，調整 pan 使滑鼠位置保持不變
+            panX = mouseX - beforeX * zoomLevel;
+            panY = mouseY - beforeY * zoomLevel;
+
+            updateViewportTransform();
+        }
+
+        // 開始平移
+        function startPan(e) {
+            if (spaceKeyPressed || e.button === 1) { // 空白鍵或滑鼠中鍵
+                isPanning = true;
+                panStartX = e.clientX - panX;
+                panStartY = e.clientY - panY;
+                svg.style.cursor = 'grabbing';
+                e.preventDefault();
+            }
+        }
+
+        // 平移中
+        function doPan(e) {
+            if (isPanning) {
+                panX = e.clientX - panStartX;
+                panY = e.clientY - panStartY;
+                updateViewportTransform();
+            }
+        }
+
+        // 結束平移
+        function endPan() {
+            if (isPanning) {
+                isPanning = false;
+                svg.style.cursor = spaceKeyPressed ? 'grab' : 'default';
+            }
+        }
+
+        // 設定事件監聽
+        function setupEventListeners() {
+            // 專案資料夾管理
+            document.getElementById('selectProjectFolderBtn').addEventListener('click', selectProjectFolder);
+            document.getElementById('loadMapFromFolderBtn').addEventListener('click', loadMapsFromFolder);
+
+            // 工具按鈕
+            document.getElementById('saveMapBtn').addEventListener('click', saveCurrentMap);
+            document.getElementById('newMapBtn').addEventListener('click', createNewMap);
+            document.getElementById('loadMapBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+            document.getElementById('fileInput').addEventListener('change', loadMapFromFile);
+
+            document.getElementById('addNodeBtn').addEventListener('click', () => setTool('addNode'));
+            document.getElementById('addConnectionBtn').addEventListener('click', () => setTool('addConnection'));
+            document.getElementById('addFrameBtn').addEventListener('click', () => setTool('addFrame'));
+            document.getElementById('selectBtn').addEventListener('click', () => setTool('select'));
+            document.getElementById('addLinkBtn').addEventListener('click', addLinkToSelectedText);
+            document.getElementById('clearBtn').addEventListener('click', clearCanvas);
+
+            // Zoom 和 Pan 按鈕
+            document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
+            document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
+            document.getElementById('resetViewBtn').addEventListener('click', resetView);
+
+            // SVG 事件
+            svg.addEventListener('click', handleCanvasClick);
+            svg.addEventListener('mousedown', handleMouseDown);
+            svg.addEventListener('mousemove', handleMouseMove);
+            svg.addEventListener('mouseup', handleMouseUp);
+            svg.addEventListener('wheel', handleWheel, { passive: false });
+
+            // 鍵盤事件（空白鍵平移）
+            document.addEventListener('keydown', (e) => {
+                // 檢查焦點是否在輸入元素中
+                const activeElement = document.activeElement;
+                const isInputElement = activeElement && (
+                    activeElement.tagName === 'INPUT' ||
+                    activeElement.tagName === 'TEXTAREA' ||
+                    activeElement.isContentEditable
+                );
+
+                // 只有在非輸入元素時才啟用空白鍵平移
+                if (e.code === 'Space' && !spaceKeyPressed && !isInputElement) {
+                    spaceKeyPressed = true;
+                    svg.style.cursor = 'grab';
+                    e.preventDefault();
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                if (e.code === 'Space') {
+                    spaceKeyPressed = false;
+                    svg.style.cursor = 'default';
+                }
+            });
+
+            // 平移事件（在 mousedown/move/up 中整合）
+        }
+
+        // 設定工具
+        function setTool(tool) {
+            // 如果從 addConnection 切換到其他工具，清除高亮
+            if (currentTool === 'addConnection' && connectionStart) {
+                highlightNode(connectionStart, false);
+                connectionStart = null;
+            }
+
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+
+            if (tool === 'select') document.getElementById('selectBtn').classList.add('active');
+            else if (tool === 'addNode') document.getElementById('addNodeBtn').classList.add('active');
+            else if (tool === 'addConnection') document.getElementById('addConnectionBtn').classList.add('active');
+            else if (tool === 'addFrame') document.getElementById('addFrameBtn').classList.add('active');
+        }
+
+        // 處理畫布點擊
+        function handleCanvasClick(e) {
+            // 點擊空白處時，禁用所有文字編輯模式
+            if (e.target === svg || !e.target.closest('.node-content')) {
+                disableAllTextEditing();
+            }
+
+            if (e.target !== svg) return;
+
+            const point = getMousePosition(e);
+
+            if (currentTool === 'addNode') {
+                createNode(point.x, point.y);
+            } else if (currentTool === 'addFrame') {
+                createFrame(point.x, point.y);
+            } else if (currentTool === 'addConnection' && connectionStart) {
+                // 點擊空白處取消連接
+                highlightElement(connectionStart.element, connectionStart.type, false);
+                connectionStart = null;
+            }
+        }
+
+        // 取得滑鼠位置（考慮 zoom 和 pan）
+        function getMousePosition(e) {
+            const rect = svg.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // 轉換到 viewport 座標系
+            return {
+                x: (x - panX) / zoomLevel,
+                y: (y - panY) / zoomLevel
+            };
+        }
+
+        // 將十六進制顏色轉換為 RGB
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        // 建立節點
+        function createNode(x, y, data = {}) {
+            const node = {
+                id: 'node_' + Date.now(),
+                x: x,
+                y: y,
+                width: 120,
+                height: 60,
+                text: data.text || '新節點',
+                color: data.color || '#3498db'
+            };
+
+            nodes.push(node);
+            renderNode(node);
+            return node;
+        }
+
+        // 渲染節點
+        function renderNode(node) {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('class', 'node');
+            g.setAttribute('data-id', node.id);
+            g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('class', 'node-rect');
+            rect.setAttribute('width', node.width);
+            rect.setAttribute('height', node.height);
+            rect.setAttribute('rx', '5');
+            rect.style.fill = node.color;
+
+            // 使用 foreignObject 來支持文字換行和選擇
+            const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+            foreignObject.setAttribute('width', node.width);
+            foreignObject.setAttribute('height', node.height);
+            foreignObject.setAttribute('x', 0);
+            foreignObject.setAttribute('y', 0);
+
+            const div = document.createElement('div');
+            div.setAttribute('class', 'node-content');
+            div.innerHTML = node.text;
+
+            foreignObject.appendChild(div);
+
+            // 添加調整大小的手柄（右下角）
+            const resizeHandle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            resizeHandle.setAttribute('class', 'resize-handle');
+            resizeHandle.setAttribute('width', '10');
+            resizeHandle.setAttribute('height', '10');
+            resizeHandle.setAttribute('x', node.width - 10);
+            resizeHandle.setAttribute('y', node.height - 10);
+
+            g.appendChild(rect);
+            g.appendChild(foreignObject);
+            g.appendChild(resizeHandle);
+            nodesGroup.appendChild(g);
+
+            // 添加事件 - 綁定到整個組
+            g.addEventListener('click', (e) => {
+                // 如果不是文字選擇操作，則選擇節點
+                if (window.getSelection().toString().length === 0) {
+                    e.stopPropagation();
+                    handleNodeClick(node);
+                }
+            });
+
+            // 添加雙擊事件 - 啟用文字編輯模式
+            g.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                enableTextEditing(node);
+            });
+        }
+
+        // 啟用文字編輯模式
+        function enableTextEditing(node) {
+            // 先移除所有節點的編輯模式
+            document.querySelectorAll('.node-content.editable').forEach(el => {
+                el.classList.remove('editable');
+            });
+
+            // 為當前節點啟用編輯模式
+            const nodeElement = document.querySelector(`[data-id="${node.id}"] .node-content`);
+            if (nodeElement) {
+                nodeElement.classList.add('editable');
+            }
+        }
+
+        // 禁用所有文字編輯模式
+        function disableAllTextEditing() {
+            document.querySelectorAll('.node-content.editable').forEach(el => {
+                el.classList.remove('editable');
+            });
+        }
+
+        // 高亮元素（用於顯示連接起始元素）
+        function highlightElement(element, type, highlight = true) {
+            if (type === 'node') {
+                const nodeElement = document.querySelector(`[data-id="${element.id}"] .node-rect`);
+                if (nodeElement) {
+                    if (highlight) {
+                        nodeElement.style.stroke = '#e74c3c';
+                        nodeElement.style.strokeWidth = '4';
+                    } else {
+                        nodeElement.style.stroke = '#2c3e50';
+                        nodeElement.style.strokeWidth = '2';
+                    }
+                }
+            } else if (type === 'frame') {
+                const frameElement = document.querySelector(`[data-id="${element.id}"] .frame`);
+                if (frameElement) {
+                    if (highlight) {
+                        frameElement.style.stroke = '#e74c3c';
+                        frameElement.style.strokeWidth = '4';
+                    } else {
+                        frameElement.style.stroke = '#3498db';
+                        frameElement.style.strokeWidth = '2';
+                    }
+                }
+            }
+        }
+
+        // 處理節點點擊
+        function handleNodeClick(node) {
+            if (currentTool === 'select') {
+                selectElement(node, 'node');
+            } else if (currentTool === 'addConnection') {
+                if (!connectionStart) {
+                    connectionStart = { element: node, type: 'node' };
+                    highlightElement(node, 'node', true);
+                } else {
+                    if (connectionStart.element.id !== node.id) {
+                        createConnection(connectionStart.element, node, connectionStart.type, 'node');
+                        highlightElement(connectionStart.element, connectionStart.type, false);
+                        connectionStart = null;
+                        setTool('select');
+                    }
+                }
+            }
+        }
+
+        // 建立連接
+        function createConnection(fromElement, toElement, fromType, toType, data = {}) {
+            const connection = {
+                id: 'conn_' + Date.now(),
+                from: fromElement.id,
+                to: toElement.id,
+                fromType: fromType,  // 'node' or 'frame'
+                toType: toType,      // 'node' or 'frame'
+                label: data.label || '',
+                hasArrow: data.hasArrow !== undefined ? data.hasArrow : true
+            };
+
+            connections.push(connection);
+            renderConnection(connection);
+            return connection;
+        }
+
+        // 計算射線與矩形邊緣的交點
+        function getRectEdgeIntersection(centerX, centerY, targetX, targetY, rectX, rectY, rectWidth, rectHeight) {
+            const dx = targetX - centerX;
+            const dy = targetY - centerY;
+
+            // 如果目標點就是中心點，返回中心點
+            if (dx === 0 && dy === 0) {
+                return { x: centerX, y: centerY };
+            }
+
+            // 計算與四條邊的交點
+            const halfWidth = rectWidth / 2;
+            const halfHeight = rectHeight / 2;
+
+            // 正規化方向向量
+            const absDx = Math.abs(dx);
+            const absDy = Math.abs(dy);
+
+            let edgeX, edgeY;
+
+            // 判斷與哪條邊相交（使用斜率比較）
+            if (absDx / halfWidth > absDy / halfHeight) {
+                // 與左邊或右邊相交
+                if (dx > 0) {
+                    // 右邊
+                    edgeX = centerX + halfWidth;
+                    edgeY = centerY + (dy / dx) * halfWidth;
+                } else {
+                    // 左邊
+                    edgeX = centerX - halfWidth;
+                    edgeY = centerY - (dy / dx) * halfWidth;
+                }
+            } else {
+                // 與上邊或下邊相交
+                if (dy > 0) {
+                    // 下邊
+                    edgeX = centerX + (dx / dy) * halfHeight;
+                    edgeY = centerY + halfHeight;
+                } else {
+                    // 上邊
+                    edgeX = centerX - (dx / dy) * halfHeight;
+                    edgeY = centerY - halfHeight;
+                }
+            }
+
+            return { x: edgeX, y: edgeY };
+        }
+
+        // 計算連接線與矩形節點邊緣的交點
+        function getNodeEdgePoint(fromNode, toNode) {
+            const fromCenterX = fromNode.x + fromNode.width / 2;
+            const fromCenterY = fromNode.y + fromNode.height / 2;
+            const toCenterX = toNode.x + toNode.width / 2;
+            const toCenterY = toNode.y + toNode.height / 2;
+
+            // 計算起點（從 fromNode 邊緣開始）
+            const fromEdge = getRectEdgeIntersection(
+                fromCenterX, fromCenterY,
+                toCenterX, toCenterY,
+                fromNode.x, fromNode.y,
+                fromNode.width, fromNode.height
+            );
+
+            // 計算終點（到 toNode 邊緣結束）
+            const toEdge = getRectEdgeIntersection(
+                toCenterX, toCenterY,
+                fromCenterX, fromCenterY,
+                toNode.x, toNode.y,
+                toNode.width, toNode.height
+            );
+
+            return {
+                fromEdgeX: fromEdge.x,
+                fromEdgeY: fromEdge.y,
+                toEdgeX: toEdge.x,
+                toEdgeY: toEdge.y
+            };
+        }
+
+        // 渲染連接
+        function renderConnection(connection) {
+            // 找到對應的元素（node 或 frame）
+            const fromElement = (connection.fromType === 'node' || !connection.fromType)
+                ? nodes.find(n => n.id === connection.from)
+                : frames.find(f => f.id === connection.from);
+
+            const toElement = (connection.toType === 'node' || !connection.toType)
+                ? nodes.find(n => n.id === connection.to)
+                : frames.find(f => f.id === connection.to);
+
+            if (!fromElement || !toElement) return;
+
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('data-id', connection.id);
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            line.setAttribute('class', 'connection');
+
+            // 計算連接線的起點和終點（在元素邊緣）
+            const { fromEdgeX, fromEdgeY, toEdgeX, toEdgeY } = getElementEdgePoint(
+                fromElement, toElement, connection.fromType, connection.toType
+            );
+
+            const path = `M ${fromEdgeX} ${fromEdgeY} L ${toEdgeX} ${toEdgeY}`;
+            line.setAttribute('d', path);
+
+            // 根據 hasArrow 屬性決定是否顯示箭頭
+            if (connection.hasArrow) {
+                line.setAttribute('marker-end', 'url(#arrowhead)');
+            }
+
+            g.appendChild(line);
+
+            if (connection.label) {
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('class', 'connection-label');
+                text.setAttribute('x', (fromEdgeX + toEdgeX) / 2);
+                text.setAttribute('y', (fromEdgeY + toEdgeY) / 2 - 5);
+                text.textContent = connection.label;
+                g.appendChild(text);
+            }
+
+            connectionsGroup.appendChild(g);
+
+            g.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentTool === 'select') {
+                    selectElement(connection, 'connection');
+                }
+            });
+        }
+
+        // 計算元素邊緣點（支援 node 和 frame）
+        function getElementEdgePoint(fromElement, toElement, fromType, toType) {
+            // 計算中心點
+            const fromCenterX = fromElement.x + fromElement.width / 2;
+            const fromCenterY = fromElement.y + fromElement.height / 2;
+            const toCenterX = toElement.x + toElement.width / 2;
+            const toCenterY = toElement.y + toElement.height / 2;
+
+            // 計算邊緣交點
+            const fromEdge = getRectEdgeIntersection(
+                fromCenterX, fromCenterY, toCenterX, toCenterY,
+                fromElement.x, fromElement.y, fromElement.width, fromElement.height
+            );
+
+            const toEdge = getRectEdgeIntersection(
+                toCenterX, toCenterY, fromCenterX, fromCenterY,
+                toElement.x, toElement.y, toElement.width, toElement.height
+            );
+
+            return {
+                fromEdgeX: fromEdge.x,
+                fromEdgeY: fromEdge.y,
+                toEdgeX: toEdge.x,
+                toEdgeY: toEdge.y
+            };
+        }
+
+        // 建立 Frame
+        function createFrame(x, y, data = {}) {
+            const frame = {
+                id: 'frame_' + Date.now(),
+                x: x,
+                y: y,
+                width: data.width || 300,
+                height: data.height || 200,
+                label: data.label || '新 Frame',
+                color: data.color || '#3498db'
+            };
+
+            frames.push(frame);
+            renderFrame(frame);
+            return frame;
+        }
+
+        // 渲染 Frame
+        function renderFrame(frame) {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('data-id', frame.id);
+            g.setAttribute('class', 'frame-group');
+
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('class', 'frame');
+            rect.setAttribute('x', frame.x);
+            rect.setAttribute('y', frame.y);
+            rect.setAttribute('width', frame.width);
+            rect.setAttribute('height', frame.height);
+            rect.setAttribute('rx', '10');
+
+            // 設置顏色
+            const color = frame.color || '#3498db';
+            rect.style.stroke = color;
+            // 設置半透明的填充顏色
+            const rgb = hexToRgb(color);
+            if (rgb) {
+                rect.style.fill = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`;
+            }
+
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('class', 'frame-label');
+            text.setAttribute('x', frame.x + 10);
+            text.setAttribute('y', frame.y + 25);
+            text.textContent = frame.label;
+            text.style.fill = color;
+
+            // 添加調整大小的手柄（右下角）
+            const resizeHandle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            resizeHandle.setAttribute('class', 'resize-handle');
+            resizeHandle.setAttribute('width', '10');
+            resizeHandle.setAttribute('height', '10');
+            resizeHandle.setAttribute('x', frame.x + frame.width - 10);
+            resizeHandle.setAttribute('y', frame.y + frame.height - 10);
+
+            g.appendChild(rect);
+            g.appendChild(text);
+            g.appendChild(resizeHandle);
+            framesGroup.appendChild(g);
+
+            // 添加事件
+            g.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleFrameClick(frame);
+            });
+        }
+
+        // 處理 Frame 點擊
+        function handleFrameClick(frame) {
+            if (currentTool === 'select') {
+                selectElement(frame, 'frame');
+            } else if (currentTool === 'addConnection') {
+                if (!connectionStart) {
+                    connectionStart = { element: frame, type: 'frame' };
+                    highlightElement(frame, 'frame', true);
+                } else {
+                    // 不允許連接到自己
+                    if (connectionStart.element.id !== frame.id) {
+                        createConnection(connectionStart.element, frame, connectionStart.type, 'frame');
+                        highlightElement(connectionStart.element, connectionStart.type, false);
+                        connectionStart = null;
+                        setTool('select');
+                    }
+                }
+            }
+        }
+
+        // 選擇元素
+        function selectElement(element, type) {
+            selectedElement = { element, type };
+            updatePropertiesPanel();
+        }
+
+        // 更新屬性面板
+        function updatePropertiesPanel() {
+            const panel = document.getElementById('propertiesContent');
+
+            if (!selectedElement) {
+                panel.innerHTML = '<p style="color: #7f8c8d;">請選擇一個元素來編輯屬性</p>';
+                return;
+            }
+
+            const { element, type } = selectedElement;
+
+            if (type === 'node') {
+                panel.innerHTML = `
+                    <div class="property-group">
+                        <label>文字</label>
+                        <textarea id="nodeText" rows="4">${element.text}</textarea>
+                    </div>
+                    <div class="property-group">
+                        <label>顏色</label>
+                        <input type="color" id="nodeColor" value="${element.color}">
+                    </div>
+                    <div class="property-group">
+                        <button onclick="updateNodeProperties()">更新</button>
+                        <button class="delete" onclick="deleteNode()">刪除節點</button>
+                    </div>
+                `;
+            } else if (type === 'connection') {
+                panel.innerHTML = `
+                    <div class="property-group">
+                        <label>標籤</label>
+                        <input type="text" id="connLabel" value="${element.label}">
+                    </div>
+                    <div class="property-group">
+                        <label>
+                            <input type="checkbox" id="connHasArrow" ${element.hasArrow ? 'checked' : ''}>
+                            顯示箭頭
+                        </label>
+                    </div>
+                    <div class="property-group">
+                        <button onclick="updateConnectionProperties()">更新</button>
+                        <button class="delete" onclick="deleteConnection()">刪除連接</button>
+                    </div>
+                `;
+            } else if (type === 'frame') {
+                panel.innerHTML = `
+                    <div class="property-group">
+                        <label>標籤</label>
+                        <input type="text" id="frameLabel" value="${element.label}">
+                    </div>
+                    <div class="property-group">
+                        <label>顏色</label>
+                        <input type="color" id="frameColor" value="${element.color || '#3498db'}">
+                    </div>
+                    <div class="property-group">
+                        <label>寬度</label>
+                        <input type="number" id="frameWidth" value="${element.width}">
+                    </div>
+                    <div class="property-group">
+                        <label>高度</label>
+                        <input type="number" id="frameHeight" value="${element.height}">
+                    </div>
+                    <div class="property-group">
+                        <button onclick="updateFrameProperties()">更新</button>
+                        <button class="delete" onclick="deleteFrame()">刪除 Frame</button>
+                    </div>
+                `;
+            }
+        }
+
+        // 更新節點屬性
+        function updateNodeProperties() {
+            const { element } = selectedElement;
+            element.text = document.getElementById('nodeText').value;
+            element.color = document.getElementById('nodeColor').value;
+            redrawCanvas();
+        }
+        window.updateNodeProperties = updateNodeProperties;
+
+        // 為選中的文字添加超連結
+        function addLinkToSelectedText() {
+            const selection = window.getSelection();
+
+            // 檢查是否有選中文字
+            if (!selection || selection.toString().length === 0) {
+                alert('請先雙擊節點進入編輯模式，然後選擇文字');
+                return;
+            }
+
+            // 檢查選擇是否在節點內容中
+            const range = selection.getRangeAt(0);
+            const container = range.commonAncestorContainer;
+            const nodeContent = container.nodeType === 3
+                ? container.parentElement
+                : container;
+
+            if (!nodeContent.classList.contains('node-content')) {
+                alert('請在節點文字中選擇文字');
+                return;
+            }
+
+            // 檢查節點是否處於編輯模式
+            if (!nodeContent.classList.contains('editable')) {
+                alert('請先雙擊節點進入編輯模式');
+                return;
+            }
+
+            // 獲取當前選中的節點
+            const nodeElement = nodeContent.closest('.node');
+            if (!nodeElement) {
+                alert('找不到對應的節點');
+                return;
+            }
+
+            const nodeId = nodeElement.getAttribute('data-id');
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) {
+                alert('找不到對應的節點數據');
+                return;
+            }
+
+            // 詢問用戶輸入 URL
+            const url = prompt('請輸入超連結網址：', 'https://');
+            if (!url || url.trim() === '' || url === 'https://') {
+                return;
+            }
+
+            // 創建超連結
+            const a = document.createElement('a');
+            a.href = url.trim();
+            a.target = '_blank';
+            a.style.color = 'inherit';
+            a.style.textDecoration = 'underline';
+
+            // 將選中的內容放入超連結中
+            range.surroundContents(a);
+
+            // 更新節點的文字內容（包含 HTML）
+            node.text = nodeContent.innerHTML;
+
+            // 清除選擇
+            selection.removeAllRanges();
+
+            alert('超連結已添加');
+        }
+
+        // 更新連接屬性
+        function updateConnectionProperties() {
+            const { element } = selectedElement;
+            element.label = document.getElementById('connLabel').value;
+            element.hasArrow = document.getElementById('connHasArrow').checked;
+            redrawCanvas();
+        }
+        window.updateConnectionProperties = updateConnectionProperties;
+
+        // 更新 Frame 屬性
+        function updateFrameProperties() {
+            const { element } = selectedElement;
+            element.label = document.getElementById('frameLabel').value;
+            element.color = document.getElementById('frameColor').value;
+            element.width = parseInt(document.getElementById('frameWidth').value);
+            element.height = parseInt(document.getElementById('frameHeight').value);
+            redrawCanvas();
+        }
+        window.updateFrameProperties = updateFrameProperties;
+
+        // 刪除節點
+        function deleteNode() {
+            const { element } = selectedElement;
+            nodes = nodes.filter(n => n.id !== element.id);
+            connections = connections.filter(c => c.from !== element.id && c.to !== element.id);
+            selectedElement = null;
+            redrawCanvas();
+        }
+        window.deleteNode = deleteNode;
+
+        // 刪除連接
+        function deleteConnection() {
+            const { element } = selectedElement;
+            connections = connections.filter(c => c.id !== element.id);
+            selectedElement = null;
+            redrawCanvas();
+        }
+        window.deleteConnection = deleteConnection;
+
+        // 刪除 Frame
+        function deleteFrame() {
+            const { element } = selectedElement;
+            frames = frames.filter(f => f.id !== element.id);
+            selectedElement = null;
+            redrawCanvas();
+        }
+        window.deleteFrame = deleteFrame;
+
+        // 重繪畫布
+        function redrawCanvas() {
+            nodesGroup.innerHTML = '';
+            connectionsGroup.innerHTML = '';
+            framesGroup.innerHTML = '';
+
+            frames.forEach(renderFrame);
+            connections.forEach(renderConnection);
+            nodes.forEach(renderNode);
+
+            updatePropertiesPanel();
+
+            // 標記當前 map 為已修改
+            markCurrentMapAsModified();
+        }
+
+        // 標記當前 map 為已修改
+        function markCurrentMapAsModified() {
+            if (currentMapName && maps[currentMapName]) {
+                maps[currentMapName].modified = true;
+                updateMapList();
+            }
+        }
+
+        // 處理滑鼠按下
+        function handleMouseDown(e) {
+            // 優先處理平移
+            if (spaceKeyPressed || e.button === 1) {
+                startPan(e);
+                return;
+            }
+
+            if (currentTool !== 'select') return;
+
+            // 如果點擊的是處於編輯模式的文字內容區域，不啟動拖動（允許文字選擇）
+            const nodeContent = e.target.classList.contains('node-content')
+                ? e.target
+                : e.target.closest('.node-content');
+            if (nodeContent && nodeContent.classList.contains('editable')) {
+                return;
+            }
+
+            const point = getMousePosition(e);
+
+            // 檢查是否點擊調整大小手柄
+            if (e.target.classList.contains('resize-handle')) {
+                const parent = e.target.parentElement;
+                const id = parent.getAttribute('data-id');
+
+                // 判斷是節點還是 frame
+                if (parent.classList.contains('node')) {
+                    resizingElement = nodes.find(n => n.id === id);
+                    resizingType = 'node';
+                } else if (parent.classList.contains('frame-group')) {
+                    resizingElement = frames.find(f => f.id === id);
+                    resizingType = 'frame';
+                }
+
+                if (resizingElement) {
+                    isResizing = true;
+                    e.stopPropagation();
+                }
+                return;
+            }
+
+            // 檢查是否點擊節點（但不是 foreignObject，允許在 rect 上拖動）
+            const nodeTarget = e.target.closest('.node');
+            if (nodeTarget && e.target.tagName !== 'foreignObject') {
+                const nodeId = nodeTarget.getAttribute('data-id');
+                draggedNode = nodes.find(n => n.id === nodeId);
+                if (draggedNode) {
+                    isDragging = true;
+                    dragOffset.x = point.x - draggedNode.x;
+                    dragOffset.y = point.y - draggedNode.y;
+                }
+                return;
+            }
+
+            // 檢查是否點擊 frame（允許在 rect 上拖動，但不是標籤）
+            const frameTarget = e.target.closest('.frame-group');
+            if (frameTarget && e.target.classList.contains('frame')) {
+                const frameId = frameTarget.getAttribute('data-id');
+                draggedFrame = frames.find(f => f.id === frameId);
+                if (draggedFrame) {
+                    isDragging = true;
+                    dragOffset.x = point.x - draggedFrame.x;
+                    dragOffset.y = point.y - draggedFrame.y;
+                }
+            }
+        }
+
+        // 處理滑鼠移動
+        function handleMouseMove(e) {
+            // 優先處理平移
+            if (isPanning) {
+                doPan(e);
+                return;
+            }
+
+            const point = getMousePosition(e);
+
+            // 處理調整大小
+            if (isResizing && resizingElement) {
+                if (resizingType === 'node') {
+                    const minWidth = 60;
+                    const minHeight = 40;
+                    resizingElement.width = Math.max(minWidth, point.x - resizingElement.x);
+                    resizingElement.height = Math.max(minHeight, point.y - resizingElement.y);
+                } else if (resizingType === 'frame') {
+                    const minWidth = 100;
+                    const minHeight = 80;
+                    resizingElement.width = Math.max(minWidth, point.x - resizingElement.x);
+                    resizingElement.height = Math.max(minHeight, point.y - resizingElement.y);
+                }
+                redrawCanvas();
+                return;
+            }
+
+            // 處理節點拖動
+            if (isDragging && draggedNode) {
+                draggedNode.x = point.x - dragOffset.x;
+                draggedNode.y = point.y - dragOffset.y;
+                redrawCanvas();
+                return;
+            }
+
+            // 處理 Frame 拖動
+            if (isDragging && draggedFrame) {
+                draggedFrame.x = point.x - dragOffset.x;
+                draggedFrame.y = point.y - dragOffset.y;
+                redrawCanvas();
+                return;
+            }
+        }
+
+        // 處理滑鼠放開
+        function handleMouseUp(e) {
+            // 結束平移
+            if (isPanning) {
+                endPan();
+            }
+
+            isDragging = false;
+            isResizing = false;
+            draggedNode = null;
+            draggedFrame = null;
+            resizingElement = null;
+            resizingType = null;
+        }
+
+        // 清空畫布
+        function clearCanvas() {
+            if (confirm('確定要清空整個畫布嗎？')) {
+                nodes = [];
+                connections = [];
+                frames = [];
+                selectedElement = null;
+                redrawCanvas();
+            }
+        }
+
+        // 檔案系統 API 功能
+        async function selectProjectFolder() {
+            if (!fileSystemSupported) {
+                alert('您的瀏覽器不支援此功能，請使用 Chrome、Edge 或 Opera 瀏覽器');
+                return;
+            }
+
+            try {
+                const dirHandle = await window.showDirectoryPicker();
+                projectFolderHandle = dirHandle;
+                currentProjectName = dirHandle.name;
+
+                // 更新 UI
+                document.getElementById('projectFolderPath').textContent = dirHandle.name;
+                document.getElementById('projectFolderPath').title = dirHandle.name;
+
+                // 自動載入資料夾中的 maps
+                await loadMapsFromFolder();
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('選擇資料夾時發生錯誤：', err);
+                    alert('選擇資料夾時發生錯誤：' + err.message);
+                }
+            }
+        }
+
+        async function loadMapsFromFolder() {
+            if (!projectFolderHandle) {
+                alert('請先選擇專案資料夾');
+                return;
+            }
+
+            try {
+                maps = {};
+                const htmlFiles = [];
+
+                // 遍歷資料夾中的所有檔案
+                for await (const entry of projectFolderHandle.values()) {
+                    if (entry.kind === 'file' && entry.name.endsWith('.html')) {
+                        htmlFiles.push(entry);
+                    }
+                }
+
+                // 讀取所有 HTML 檔案
+                for (const fileHandle of htmlFiles) {
+                    try {
+                        const file = await fileHandle.getFile();
+                        const content = await file.text();
+
+                        // 從 HTML 中提取 data
+                        const match = content.match(/const data = ({[\s\S]*?});/);
+                        if (match) {
+                            const data = JSON.parse(match[1]);
+                            const mapName = data.mapName || file.name.replace('.html', '');
+
+                            maps[mapName] = {
+                                nodes: data.nodes || [],
+                                connections: data.connections || [],
+                                frames: data.frames || [],
+                                fileHandle: fileHandle // 保存 fileHandle 以便後續更新
+                            };
+                        }
+                    } catch (err) {
+                        console.error(`讀取檔案 ${fileHandle.name} 時發生錯誤：`, err);
+                    }
+                }
+
+                updateMapList();
+
+                // 如果有 maps，載入第一個
+                const mapNames = Object.keys(maps);
+                if (mapNames.length > 0) {
+                    loadMap(mapNames[0]);
+                    alert(`已載入 ${mapNames.length} 個 Map`);
+                } else {
+                    alert('資料夾中沒有找到有效的 Concept Map HTML 檔案');
+                }
+            } catch (err) {
+                console.error('載入資料夾中的檔案時發生錯誤：', err);
+                alert('載入資料夾中的檔案時發生錯誤：' + err.message);
+            }
+        }
+
+        async function saveMapToFile(mapName, mapData) {
+            if (!fileSystemSupported) {
+                // 降級使用傳統下載方式
+                saveAsHtmlLegacy(mapName, mapData);
+                return;
+            }
+
+            try {
+                const data = {
+                    nodes: mapData.nodes,
+                    connections: mapData.connections,
+                    frames: mapData.frames,
+                    projectName: currentProjectName,
+                    mapName: mapName
+                };
+
+                const htmlContent = generateStandaloneHtml(data);
+
+                // 使用 showSaveFilePicker 讓用戶選擇儲存位置
+                const options = {
+                    suggestedName: `${mapName}.html`,
+                    types: [{
+                        description: 'HTML Files',
+                        accept: { 'text/html': ['.html'] }
+                    }]
+                };
+
+                // 如果有專案資料夾，嘗試在該資料夾中儲存
+                if (projectFolderHandle) {
+                    options.startIn = projectFolderHandle;
+                }
+
+                const fileHandle = await window.showSaveFilePicker(options);
+                const writable = await fileHandle.createWritable();
+                await writable.write(htmlContent);
+                await writable.close();
+
+                // 更新 maps 中的 fileHandle
+                if (maps[mapName]) {
+                    maps[mapName].fileHandle = fileHandle;
+                }
+
+                alert(`Map「${mapName}」已儲存`);
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('儲存檔案時發生錯誤：', err);
+                    alert('儲存檔案時發生錯誤：' + err.message);
+                }
+            }
+        }
+
+        function saveAsHtmlLegacy(mapName, mapData) {
+            // 傳統的下載方式（降級方案）
+            const data = {
+                nodes: mapData.nodes,
+                connections: mapData.connections,
+                frames: mapData.frames,
+                projectName: currentProjectName || 'Concept Map',
+                mapName: mapName
+            };
+
+            const htmlContent = generateStandaloneHtml(data);
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${mapName}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Map 管理
+        function loadMapsFromStorage() {
+            // 這個函數現在主要用於不支援檔案系統 API 的瀏覽器
+            // 如果支援檔案系統 API，使用者應該點擊「選擇專案資料夾」
+            updateMapList();
+        }
+
+
+        function updateMapList() {
+            const list = document.getElementById('mapList');
+            list.innerHTML = '';
+
+            Object.keys(maps).forEach(mapName => {
+                const li = document.createElement('li');
+                li.className = 'project-item';
+                li.textContent = mapName;
+                li.addEventListener('click', () => loadMap(mapName));
+                if (mapName === currentMapName) {
+                    li.style.backgroundColor = '#3498db';
+                    li.style.color = 'white';
+                }
+                list.appendChild(li);
+            });
+        }
+
+        function loadMap(mapName) {
+            if (!maps[mapName]) return;
+
+            currentMapName = mapName;
+            document.getElementById('currentMapName').value = mapName;
+
+            const mapData = maps[mapName];
+            nodes = mapData.nodes || [];
+            connections = mapData.connections || [];
+            frames = mapData.frames || [];
+            selectedElement = null;
+
+            redrawCanvas();
+            updateMapList();
+        }
+
+        async function saveCurrentMap() {
+            const mapName = document.getElementById('currentMapName').value.trim();
+            if (!mapName) {
+                alert('請輸入 Map 名稱');
+                return;
+            }
+
+            currentMapName = mapName;
+
+            // 更新 maps 物件
+            if (!maps[mapName]) {
+                maps[mapName] = {};
+            }
+            maps[mapName].nodes = JSON.parse(JSON.stringify(nodes));
+            maps[mapName].connections = JSON.parse(JSON.stringify(connections));
+            maps[mapName].frames = JSON.parse(JSON.stringify(frames));
+
+            updateMapList();
+
+            // 直接儲存到檔案系統
+            const mapData = {
+                nodes: maps[mapName].nodes,
+                connections: maps[mapName].connections,
+                frames: maps[mapName].frames
+            };
+
+            // 如果這個 map 已經有 fileHandle（從資料夾載入的），直接覆寫
+            if (maps[mapName].fileHandle) {
+                try {
+                    const data = {
+                        nodes: mapData.nodes,
+                        connections: mapData.connections,
+                        frames: mapData.frames,
+                        projectName: currentProjectName,
+                        mapName: mapName
+                    };
+
+                    const htmlContent = generateStandaloneHtml(data);
+                    const writable = await maps[mapName].fileHandle.createWritable();
+                    await writable.write(htmlContent);
+                    await writable.close();
+
+                    alert(`Map「${mapName}」已儲存`);
+                } catch (err) {
+                    console.error('儲存檔案時發生錯誤：', err);
+                    alert('儲存檔案時發生錯誤：' + err.message);
+                }
+            } else {
+                // 新建的 map，使用 saveMapToFile 讓用戶選擇位置
+                await saveMapToFile(mapName, mapData);
+            }
+        }
+
+        function createNewMap() {
+            const mapName = prompt('請輸入新 Map 名稱：');
+            if (!mapName || !mapName.trim()) return;
+
+            const trimmedName = mapName.trim();
+            if (maps[trimmedName]) {
+                alert('Map 名稱已存在');
+                return;
+            }
+
+            // 清空畫布
+            nodes = [];
+            connections = [];
+            frames = [];
+            selectedElement = null;
+
+            currentMapName = trimmedName;
+            document.getElementById('currentMapName').value = trimmedName;
+
+            redrawCanvas();
+            updateMapList();
+        }
+
+        function loadMapFromFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+
+                // 從 HTML 中提取 data
+                const match = content.match(/const data = ({[\s\S]*?});/);
+                if (!match) {
+                    alert('無法解析檔案，這不是有效的 Concept Map HTML');
+                    return;
+                }
+
+                try {
+                    const data = JSON.parse(match[1]);
+
+                    // 載入資料
+                    nodes = data.nodes || [];
+                    connections = data.connections || [];
+                    frames = data.frames || [];
+                    selectedElement = null;
+
+                    // 設定 map 名稱
+                    const mapName = data.mapName || file.name.replace('.html', '');
+                    currentMapName = mapName;
+                    document.getElementById('currentMapName').value = mapName;
+
+                    // 如果有專案名稱，也載入
+                    if (data.projectName && !currentProjectName) {
+                        currentProjectName = data.projectName;
+                        document.getElementById('currentProjectName').value = data.projectName;
+                        saveProjectName();
+                    }
+
+                    redrawCanvas();
+                    alert('Map 已載入');
+                } catch (err) {
+                    alert('解析檔案時發生錯誤：' + err.message);
+                }
+            };
+            reader.readAsText(file);
+
+            // 清空 file input，允許重複載入同一個檔案
+            event.target.value = '';
+        }
+
+        function generateStandaloneHtml(data) {
+            return `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>${data.mapName}</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: 'Microsoft JhengHei', Arial, sans-serif; }
+        #canvas { width: 100%; height: 90vh; border: 1px solid #ccc; }
+        .node-rect { stroke: #2c3e50; stroke-width: 2; }
+        .node-text { fill: white; font-size: 14px; text-anchor: middle; pointer-events: none; }
+        .node-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            box-sizing: border-box;
+            color: white;
+            font-size: 14px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            text-align: center;
+            line-height: 1.3;
+            user-select: text;
+            cursor: default;
+            pointer-events: auto;
+        }
+        .node-content:hover { cursor: text; }
+        .node-content a { color: inherit; text-decoration: underline; cursor: pointer; }
+        .node-content a:hover { text-decoration: underline; opacity: 0.8; }
+        .connection { stroke: #2c3e50; stroke-width: 2; fill: none; }
+        .connection-label { font-size: 12px; fill: #e74c3c; text-anchor: middle; }
+        .frame { fill: rgba(52, 152, 219, 0.1); stroke: #3498db; stroke-width: 2; stroke-dasharray: 5,5; }
+        .frame-label { font-size: 16px; font-weight: bold; fill: #3498db; }
+    </style>
+</head>
+<body>
+    <h1>${data.mapName}</h1>
+    <svg id="canvas">
+        <defs>
+            <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#2c3e50" />
+            </marker>
+        </defs>
+    </svg>
+    <script>
+        const data = ${JSON.stringify(data)};
+        const svg = document.getElementById('canvas');
+
+        // 將十六進制顏色轉換為 RGB
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\\d]{2})([a-f\\d]{2})([a-f\\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        data.frames.forEach(frame => {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('class', 'frame');
+            rect.setAttribute('x', frame.x);
+            rect.setAttribute('y', frame.y);
+            rect.setAttribute('width', frame.width);
+            rect.setAttribute('height', frame.height);
+            rect.setAttribute('rx', '10');
+
+            // 設置顏色
+            const color = frame.color || '#3498db';
+            rect.style.stroke = color;
+            const rgb = hexToRgb(color);
+            if (rgb) {
+                rect.style.fill = \`rgba(\${rgb.r}, \${rgb.g}, \${rgb.b}, 0.1)\`;
+            }
+
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('class', 'frame-label');
+            text.setAttribute('x', frame.x + 10);
+            text.setAttribute('y', frame.y + 25);
+            text.textContent = frame.label;
+            text.style.fill = color;
+
+            g.appendChild(rect);
+            g.appendChild(text);
+            svg.appendChild(g);
+        });
+
+        // 計算射線與矩形邊緣的交點
+        function getRectEdgeIntersection(centerX, centerY, targetX, targetY, rectX, rectY, rectWidth, rectHeight) {
+            const dx = targetX - centerX;
+            const dy = targetY - centerY;
+            if (dx === 0 && dy === 0) return { x: centerX, y: centerY };
+
+            const halfWidth = rectWidth / 2;
+            const halfHeight = rectHeight / 2;
+            const absDx = Math.abs(dx);
+            const absDy = Math.abs(dy);
+            let edgeX, edgeY;
+
+            if (absDx / halfWidth > absDy / halfHeight) {
+                if (dx > 0) {
+                    edgeX = centerX + halfWidth;
+                    edgeY = centerY + (dy / dx) * halfWidth;
+                } else {
+                    edgeX = centerX - halfWidth;
+                    edgeY = centerY - (dy / dx) * halfWidth;
+                }
+            } else {
+                if (dy > 0) {
+                    edgeX = centerX + (dx / dy) * halfHeight;
+                    edgeY = centerY + halfHeight;
+                } else {
+                    edgeX = centerX - (dx / dy) * halfHeight;
+                    edgeY = centerY - halfHeight;
+                }
+            }
+            return { x: edgeX, y: edgeY };
+        }
+
+        data.connections.forEach(conn => {
+            const from = data.nodes.find(n => n.id === conn.from);
+            const to = data.nodes.find(n => n.id === conn.to);
+            if (!from || !to) return;
+
+            // 計算節點中心
+            const fromCenterX = from.x + from.width / 2;
+            const fromCenterY = from.y + from.height / 2;
+            const toCenterX = to.x + to.width / 2;
+            const toCenterY = to.y + to.height / 2;
+
+            // 計算精確的邊緣交點
+            const fromEdge = getRectEdgeIntersection(
+                fromCenterX, fromCenterY, toCenterX, toCenterY,
+                from.x, from.y, from.width, from.height
+            );
+            const toEdge = getRectEdgeIntersection(
+                toCenterX, toCenterY, fromCenterX, fromCenterY,
+                to.x, to.y, to.width, to.height
+            );
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            line.setAttribute('class', 'connection');
+            const path = \`M \${fromEdge.x} \${fromEdge.y} L \${toEdge.x} \${toEdge.y}\`;
+            line.setAttribute('d', path);
+            if (conn.hasArrow) {
+                line.setAttribute('marker-end', 'url(#arrowhead)');
+            }
+            svg.appendChild(line);
+
+            if (conn.label) {
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('class', 'connection-label');
+                text.setAttribute('x', (fromEdge.x + toEdge.x) / 2);
+                text.setAttribute('y', (fromEdge.y + toEdge.y) / 2 - 5);
+                text.textContent = conn.label;
+                svg.appendChild(text);
+            }
+        });
+
+        data.nodes.forEach(node => {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('transform', \`translate(\${node.x}, \${node.y})\`);
+
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('class', 'node-rect');
+            rect.setAttribute('width', node.width);
+            rect.setAttribute('height', node.height);
+            rect.setAttribute('rx', '5');
+            rect.style.fill = node.color;
+
+            // 使用 foreignObject 來支持文字換行和選擇
+            const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+            foreignObject.setAttribute('width', node.width);
+            foreignObject.setAttribute('height', node.height);
+            foreignObject.setAttribute('x', 0);
+            foreignObject.setAttribute('y', 0);
+
+            const div = document.createElement('div');
+            div.setAttribute('class', 'node-content');
+            div.innerHTML = node.text;
+
+            foreignObject.appendChild(div);
+
+            g.appendChild(rect);
+            g.appendChild(foreignObject);
+            svg.appendChild(g);
+        });
+    <\/script>
+</body>
+</html>`;
+        }
+
+        // 初始化應用程式
+        console.log('開始初始化...');
+
+        // 確保 DOM 完全載入後才執行
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        console.log('初始化完成');
+    </script>
+</body>
+</html>
