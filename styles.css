@@ -1,0 +1,494 @@
+/* ========== 全域樣式 ========== */
+:root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #242424;
+    --bg-tertiary: #2d2d2d;
+    --border-color: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --accent-color: #64b5f6;
+    --accent-hover: #42a5f5;
+    --success-color: #81c784;
+    --danger-color: #e57373;
+    --warning-color: #ffb74d;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ========== 工具列 ========== */
+.toolbar {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+}
+
+.toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.app-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent-color);
+    margin: 0;
+}
+
+.tool-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.tool-btn:hover {
+    background: var(--bg-primary);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.tool-btn.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #fff;
+}
+
+.btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.btn:hover:not(:disabled) {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #fff;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zoom-display {
+    color: var(--text-secondary);
+    font-size: 14px;
+    min-width: 50px;
+    text-align: center;
+}
+
+/* ========== 主要內容區 ========== */
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ========== 側邊欄 ========== */
+.sidebar {
+    width: 280px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.sidebar-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.project-info {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.project-info .hint {
+    font-style: italic;
+    opacity: 0.7;
+}
+
+.project-path {
+    background: var(--bg-tertiary);
+    padding: 8px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    word-break: break-all;
+    margin-bottom: 8px;
+}
+
+.file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.file-item {
+    background: var(--bg-tertiary);
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.file-item:hover {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.file-item.active {
+    background: var(--accent-hover);
+    color: #fff;
+    font-weight: 500;
+}
+
+/* ========== 畫布容器 ========== */
+.canvas-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #1a1a1a;
+}
+
+.canvas {
+    width: 100%;
+    height: 100%;
+    cursor: default;
+}
+
+.canvas.panning {
+    cursor: grabbing;
+}
+
+/* ========== 節點樣式 ========== */
+.node {
+    cursor: move;
+}
+
+.node-rect {
+    fill: var(--bg-secondary);
+    stroke: var(--border-color);
+    stroke-width: 2;
+    rx: 8;
+}
+
+.node-rect.selected {
+    stroke: var(--accent-color);
+    stroke-width: 3;
+}
+
+.node-rect.status-complete {
+    fill: #1b5e20;
+    stroke: var(--success-color);
+}
+
+.node-rect.status-abandoned {
+    fill: #b71c1c;
+    stroke: var(--danger-color);
+}
+
+.node-status-icon {
+    font-size: 48px;
+    opacity: 0.15;
+    pointer-events: none;
+}
+
+.node-content {
+    padding: 12px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.node-content a {
+    color: var(--accent-color);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.node-content a:hover {
+    color: var(--accent-hover);
+}
+
+/* ========== Frame 樣式 ========== */
+.frame {
+    cursor: move;
+}
+
+.frame-rect {
+    fill: rgba(100, 181, 246, 0.05);
+    stroke: var(--accent-color);
+    stroke-width: 2;
+    stroke-dasharray: 8, 4;
+    rx: 12;
+}
+
+.frame-rect.selected {
+    fill: rgba(100, 181, 246, 0.1);
+    stroke-width: 3;
+}
+
+.frame-label {
+    fill: var(--accent-color);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* ========== 連接線樣式 ========== */
+.connection {
+    cursor: pointer;
+}
+
+.connection-line {
+    fill: none;
+    stroke: #64b5f6;
+    stroke-width: 2;
+    transition: stroke-width 0.2s ease;
+}
+
+.connection-line.selected {
+    stroke: #42a5f5;
+    stroke-width: 3;
+}
+
+.connection:hover .connection-line {
+    stroke-width: 3;
+}
+
+/* ========== 調整大小控制點 ========== */
+.resize-handle {
+    fill: var(--accent-color);
+    stroke: #fff;
+    stroke-width: 1;
+    cursor: nwse-resize;
+}
+
+.resize-handle.ne,
+.resize-handle.sw {
+    cursor: nesw-resize;
+}
+
+.resize-handle.n,
+.resize-handle.s {
+    cursor: ns-resize;
+}
+
+.resize-handle.e,
+.resize-handle.w {
+    cursor: ew-resize;
+}
+
+/* ========== 右鍵選單 ========== */
+.context-menu {
+    position: fixed;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    padding: 4px;
+    z-index: 10000;
+    min-width: 180px;
+}
+
+.context-menu-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.15s ease;
+}
+
+.context-menu-item:hover {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
+}
+
+/* ========== 對話框 ========== */
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.dialog {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.dialog-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dialog-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.dialog-body {
+    padding: 20px;
+}
+
+.dialog-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* ========== 表單元素 ========== */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+}
+
+.form-group input[type="text"],
+.form-group input[type="url"],
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+/* ========== 選擇框 ========== */
+.selection-box {
+    fill: none;
+    stroke: var(--accent-color);
+    stroke-width: 1;
+    stroke-dasharray: 5, 5;
+    pointer-events: none;
+}
+
+/* ========== 滾動條樣式 ========== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* ========== 動畫 ========== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dialog-overlay {
+    animation: fadeIn 0.2s ease;
+}
