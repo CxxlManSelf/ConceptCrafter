@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConceptCrafter - 概念圖製造機</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 工具欄 */
+        #toolbar {
+            background: #2c3e50;
+            color: white;
+            padding: 10px 15px;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            border-bottom: 1px solid #34495e;
+        }
+
+        #toolbar button {
+            background: #34495e;
+            color: white;
+            border: 1px solid #2c3e50;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        #toolbar button:hover {
+            background: #45627b;
+        }
+
+        #toolbar button:active {
+            background: #1a252f;
+        }
+
+        #toolbar .separator {
+            width: 1px;
+            height: 20px;
+            background: #555;
+            margin: 0 5px;
+        }
+
+        #projectInfo {
+            margin-left: auto;
+            font-size: 12px;
+            color: #bdc3c7;
+        }
+
+        /* 主容器 */
+        #mainContainer {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Map 列表側欄 */
+        #mapListPanel {
+            width: 200px;
+            background: white;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #mapListHeader {
+            padding: 10px;
+            background: #ecf0f1;
+            border-bottom: 1px solid #bdc3c7;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        #mapList {
+            flex: 1;
+            overflow-y: auto;
+            list-style: none;
+        }
+
+        .mapItem {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ecf0f1;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        .mapItem:hover {
+            background: #f8f9fa;
+        }
+
+        .mapItem.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .mapItemDirty::after {
+            content: ' ●';
+            color: #e74c3c;
+        }
+
+        /* Canvas 區域 */
+        #canvasContainer {
+            flex: 1;
+            background: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #canvas {
+            display: block;
+            cursor: default;
+        }
+
+        /* 屬性面板 */
+        #propertyPanel {
+            width: 250px;
+            background: white;
+            border-left: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #propertyPanelHeader {
+            padding: 10px;
+            background: #ecf0f1;
+            border-bottom: 1px solid #bdc3c7;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        #propertyContent {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 12px;
+        }
+
+        .propertyGroup {
+            margin-bottom: 15px;
+        }
+
+        .propertyGroupLabel {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .propertyItem {
+            margin-bottom: 8px;
+        }
+
+        .propertyItem label {
+            display: block;
+            margin-bottom: 3px;
+            color: #555;
+        }
+
+        .propertyItem input,
+        .propertyItem select {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        /* 狀態欄 */
+        #statusbar {
+            background: #34495e;
+            color: #bdc3c7;
+            padding: 8px 15px;
+            font-size: 11px;
+            border-top: 1px solid #2c3e50;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* 對話框 */
+        .dialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 1000;
+            max-height: 90vh;
+            overflow-y: auto;
+            min-width: 400px;
+        }
+
+        .dialog.active {
+            display: block;
+        }
+
+        .dialogOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        .dialogOverlay.active {
+            display: block;
+        }
+
+        .dialogHeader {
+            padding: 15px;
+            background: #34495e;
+            color: white;
+            font-weight: bold;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .dialogContent {
+            padding: 15px;
+        }
+
+        .dialogFooter {
+            padding: 15px;
+            background: #ecf0f1;
+            border-top: 1px solid #ccc;
+            text-align: right;
+        }
+
+        .dialogFooter button {
+            margin-left: 10px;
+            padding: 8px 15px;
+            background: #34495e;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .dialogFooter button:hover {
+            background: #45627b;
+        }
+
+        .dialogFooter button.cancel {
+            background: #95a5a6;
+        }
+
+        .dialogFooter button.cancel:hover {
+            background: #7f8c8d;
+        }
+
+        /* 說明對話框 */
+        #helpDialog table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+
+        #helpDialog th,
+        #helpDialog td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        #helpDialog th {
+            background: #34495e;
+            color: white;
+        }
+
+        #helpDialog h3 {
+            margin: 15px 0 10px 0;
+            color: #2c3e50;
+        }
+
+        /* 滾動條樣式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <!-- 工具欄 -->
+    <div id="toolbar">
+        <button id="btnNewProject" title="新建專案">新建專案</button>
+        <button id="btnOpenProject" title="打開專案">打開專案</button>
+        <button id="btnNewMap" title="新建 Map">新建 Map</button>
+        <button id="btnSave" title="保存 (Ctrl+S)">保存</button>
+        <div class="separator"></div>
+        <button id="btnAddNode" title="添加節點">添加節點</button>
+        <button id="btnAddArrow" title="添加連接線">添加連接線</button>
+        <button id="btnAddFrame" title="添加框架">添加框架</button>
+        <button id="btnDelete" title="刪除 (Delete)">刪除</button>
+        <div class="separator"></div>
+        <button id="btnCompleted" title="標示完成">✓ 完成</button>
+        <button id="btnAbandoned" title="標示放棄">✗ 放棄</button>
+        <button id="btnClearStatus" title="清除狀態">清除狀態</button>
+        <div class="separator"></div>
+        <button id="btnClearAll" title="清除全部">清除全部</button>
+        <button id="btnHelp" title="顯示說明">說明</button>
+        <div id="projectInfo">專案: 無</div>
+    </div>
+
+    <!-- 主容器 -->
+    <div id="mainContainer">
+        <!-- Map 列表側欄 -->
+        <div id="mapListPanel">
+            <div id="mapListHeader">Map 列表</div>
+            <ul id="mapList"></ul>
+        </div>
+
+        <!-- Canvas 畫布區域 -->
+        <div id="canvasContainer">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <!-- 屬性面板 -->
+        <div id="propertyPanel">
+            <div id="propertyPanelHeader">屬性</div>
+            <div id="propertyContent">
+                <div class="propertyGroup">
+                    <div class="propertyGroupLabel">未選擇任何對象</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 狀態欄 -->
+    <div id="statusbar">
+        <span id="statusText">就緒</span>
+        <span id="coordinateText">坐標: (0, 0)</span>
+    </div>
+
+    <!-- 對話框背景 -->
+    <div id="dialogOverlay" class="dialogOverlay"></div>
+
+    <!-- 說明對話框 -->
+    <div id="helpDialog" class="dialog">
+        <div class="dialogHeader">ConceptCrafter 使用說明</div>
+        <div class="dialogContent">
+            <h3>基本操作</h3>
+            <table>
+                <tr>
+                    <th>操作</th>
+                    <th>說明</th>
+                </tr>
+                <tr>
+                    <td>新建節點</td>
+                    <td>點擊「添加節點」按鈕，然後在畫布上點擊要放置的位置</td>
+                </tr>
+                <tr>
+                    <td>編輯節點</td>
+                    <td>雙擊節點打開編輯對話框，修改文字、格式和超連結</td>
+                </tr>
+                <tr>
+                    <td>刪除節點</td>
+                    <td>選中節點，點擊「刪除」按鈕或按 Delete 鍵</td>
+                </tr>
+            </table>
+
+            <h3>連接線操作</h3>
+            <table>
+                <tr>
+                    <th>操作</th>
+                    <th>說明</th>
+                </tr>
+                <tr>
+                    <td>創建連接線</td>
+                    <td>點擊「添加連接線」按鈕，先點擊起始節點，再點擊終止節點</td>
+                </tr>
+                <tr>
+                    <td>編輯連接線標籤</td>
+                    <td>雙擊連接線標籤進行編輯</td>
+                </tr>
+                <tr>
+                    <td>修改箭頭樣式</td>
+                    <td>選中連接線，在屬性面板中選擇箭頭樣式（單箭頭/雙箭頭/無箭頭）</td>
+                </tr>
+            </table>
+
+            <h3>快捷鍵</h3>
+            <table>
+                <tr>
+                    <th>快捷鍵</th>
+                    <th>功能</th>
+                </tr>
+                <tr>
+                    <td>Ctrl+S / Cmd+S</td>
+                    <td>保存當前 Map</td>
+                </tr>
+                <tr>
+                    <td>Ctrl+Z / Cmd+Z</td>
+                    <td>撤銷上一步操作</td>
+                </tr>
+                <tr>
+                    <td>Delete</td>
+                    <td>刪除選中的對象</td>
+                </tr>
+                <tr>
+                    <td>Ctrl+A / Cmd+A</td>
+                    <td>全選所有對象</td>
+                </tr>
+            </table>
+        </div>
+        <div class="dialogFooter">
+            <button class="cancel" onclick="closeDialog('helpDialog')">關閉</button>
+        </div>
+    </div>
+
+    <!-- JavaScript 核心代碼 -->
+    <script>
+        // ==================== 全局變量 ====================
+        const state = {
+            currentProject: null,
+            // Provide a safe default currentMap object to avoid runtime errors when code
+            // sets properties like currentMap.isDirty before a real map is opened/created.
+            currentMap: {
+                id: null,
+                title: '',
+                filename: '',
+                nodes: [],
+                arrows: [],
+                frames: [],
+                isDirty: false,
+                createdAt: null,
+                updatedAt: null
+            },
+            mapData: {
+                nodes: [],
+                arrows: [],
+                frames: []
+            },
+            selectedObject: null,
+            mode: 'select', // select, addNode, addArrow, addFrame
+            canvas: null,
+            ctx: null,
+            zoom: 1,
+            panX: 0,
+            panY: 0,
+            isDirty: false,
+            // 拖拽相關
+            isDragging: false,
+            dragStart: { x: 0, y: 0 },
+            dragOffset: { x: 0, y: 0 },
+            // 創建連接線時的中間狀態
+            creatingArrow: null,
+            // 撤銷/重做
+            history: [],
+            historyIndex: -1,
+            // 複製粘貼
+            clipboard: null,
+            // 框架創建狀態
+            creatingFrame: null
+        };
+
+        // ==================== 初始化 ====================
+        function init() {
+            const canvas = document.getElementById('canvas');
+            state.canvas = canvas;
+            state.ctx = canvas.getContext('2d');
+            
+            // 設置 Canvas 大小
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // 綁定事件
+            setupEventListeners();
+            
+            // 初始化 Map 列表
+            updateMapList();
+            
+            // 第一次繪製
+            redraw();
+        }
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvasContainer');
+            state.canvas.width = container.clientWidth;
+            state.canvas.height = container.clientHeight;
+            redraw();
+        }
+
+        function setupEventListeners() {
+            // 工具欄按鈕
+            document.getElementById('btnNewProject').addEventListener('click', newProject);
+            document.getElementById('btnOpenProject').addEventListener('click', openProject);
+            document.getElementById('btnNewMap').addEventListener('click', newMap);
+            document.getElementById('btnSave').addEventListener('click', saveMap);
+            document.getElementById('btnAddNode').addEventListener('click', () => setMode('addNode'));
+            document.getElementById('btnAddArrow').addEventListener('click', () => setMode('addArrow'));
+            document.getElementById('btnAddFrame').addEventListener('click', () => setMode('addFrame'));
+            document.getElementById('btnDelete').addEventListener('click', deleteSelected);
+            document.getElementById('btnCompleted').addEventListener('click', markCompleted);
+            document.getElementById('btnAbandoned').addEventListener('click', markAbandoned);
+            document.getElementById('btnClearStatus').addEventListener('click', clearStatus);
+            document.getElementById('btnClearAll').addEventListener('click', clearAll);
+            document.getElementById('btnHelp').addEventListener('click', () => showDialog('helpDialog'));
+
+            // Canvas 事件
+            state.canvas.addEventListener('mousedown', onCanvasMouseDown);
+            state.canvas.addEventListener('mousemove', onCanvasMouseMove);
+            state.canvas.addEventListener('mouseup', onCanvasMouseUp);
+            state.canvas.addEventListener('wheel', onCanvasWheel);
+            state.canvas.addEventListener('dblclick', onCanvasDblClick);
+
+            // 鍵盤事件
+            document.addEventListener('keydown', onKeyDown);
+
+            // 對話框背景
+            document.getElementById('dialogOverlay').addEventListener('click', closeAllDialogs);
+        }
+
+        // ==================== 模式管理 ====================
+        function setMode(mode) {
+            state.mode = mode;
+            state.selectedObject = null;
+            updateStatus(`模式: ${mode}`);
+            redraw();
+        }
+
+        // ==================== 項目管理 ====================
+        function newProject() {
+            // 顯示選擇資料夾的說明對話框
+            const choice = confirm('請選擇要建立新專案的資料夾。\n\n在文件選擇對話框中：\n1. 創建新資料夾或選擇空資料夾\n2. 點擊「選擇資料夾」按鈕確認\n\n點擊「確定」繼續');
+            if (!choice) return;
+            
+            // 使用 File API 選擇資料夾
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.webkitdirectory = true; // 資料夾模式
+            input.mozdirectory = true;    // Firefox 支持
+            input.nwdirectory = true;     // NW.js 支持
+            input.multiple = true;
+            
+            input.onchange = (e) => {
+                const files = e.target.files;
+                if (files.length === 0) return;
+                
+                // 從文件路徑提取資料夾名稱
+                const firstFilePath = files[0].webkitRelativePath || files[0].name;
+                const folderName = firstFilePath.split('/')[0];
+                
+                state.currentProject = {
+                    name: folderName,
+                    folderPath: folderName,
+                    maps: [],
+                    files: files
+                };
+                
+                updateProjectInfo();
+                updateMapList();
+                updateStatus(`新建專案: ${folderName}`);
+            };
+            
+            input.click();
+        }
+
+        function openProject() {
+            // 顯示選擇資料夾的說明對話框
+            const choice = confirm('請選擇要打開的專案資料夾。\n\n在文件選擇對話框中：\n選擇包含 project.json 或 HTML 檔案的資料夾\n然後點擊「選擇資料夾」按鈕確認\n\n點擊「確定」繼續');
+            if (!choice) return;
+            
+            // 使用 File API 選擇資料夾
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.webkitdirectory = true; // 資料夾模式
+            input.mozdirectory = true;    // Firefox 支持
+            input.nwdirectory = true;     // NW.js 支持
+            input.multiple = true;
+            
+            input.onchange = (e) => {
+                const files = e.target.files;
+                if (files.length === 0) return;
+                
+                // 從文件路徑提取資料夾名稱
+                const firstFilePath = files[0].webkitRelativePath || files[0].name;
+                const folderName = firstFilePath.split('/')[0];
+                
+                // 查找 project.json
+                let projectConfigFile = null;
+                let htmlFiles = [];
+                
+                for (let file of files) {
+                    if (file.name === 'project.json') {
+                        projectConfigFile = file;
+                    }
+                    if (file.name.endsWith('.html')) {
+                        htmlFiles.push(file);
+                    }
+                }
+                
+                // 讀取 project.json 或創建新的
+                if (projectConfigFile) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const projectData = JSON.parse(event.target.result);
+                            state.currentProject = {
+                                name: projectData.projectName || folderName,
+                                folderPath: folderName,
+                                maps: projectData.maps || [],
+                                files: files
+                            };
+                        } catch (error) {
+                            console.error('讀取 project.json 失敗:', error);
+                            createNewProjectFromFolder(folderName, files);
+                        }
+                        updateProjectInfo();
+                        updateMapList();
+                        updateStatus(`打開專案: ${folderName}`);
+                    };
+                    reader.readAsText(projectConfigFile);
+                } else {
+                    createNewProjectFromFolder(folderName, files);
+                    updateStatus(`打開專案: ${folderName} (新建)`);
+                }
+            };
+            
+            input.click();
+        }
+
+        function createNewProjectFromFolder(folderName, files) {
+            const maps = [];
+            
+            for (let file of files) {
+                if (file.name.endsWith('.html')) {
+                    maps.push({
+                        id: `map-${file.name}`,
+                        filename: file.name,
+                        title: file.name.replace('.html', ''),
+                        isDirty: false,
+                        nodes: [],
+                        arrows: [],
+                        frames: []
+                    });
+                }
+            }
+            
+            state.currentProject = {
+                name: folderName,
+                folderPath: folderName,
+                maps: maps,
+                files: files
+            };
+        }
+
+        function newMap() {
+            if (!state.currentProject) {
+                alert('請先新建或打開專案');
+                return;
+            }
+            
+            const dialog = document.createElement('div');
+            dialog.className = 'dialog active';
+            dialog.innerHTML = `
+                <div class="dialogHeader">新建 Map</div>
+                <div class="dialogContent">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Map 標題：</label>
+                        <input type="text" id="newMapTitle" placeholder="例如：主要概念" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">HTML 檔名：</label>
+                        <input type="text" id="newMapFilename" placeholder="例如：main.html" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                        <small style="color: #999; display: block; margin-top: 5px;">留空自動生成</small>
+                    </div>
+                </div>
+                <div class="dialogFooter">
+                    <button class="cancel" onclick="this.closest('.dialog').remove(); document.getElementById('dialogOverlay').classList.remove('active');">取消</button>
+                    <button onclick="createNewMap()" style="background: #27ae60; margin-left: 10px;">確定</button>
+                </div>
+            `;
+            
+            document.body.appendChild(dialog);
+            document.getElementById('dialogOverlay').classList.add('active');
+            document.getElementById('newMapTitle').focus();
+            
+            window.createNewMap = () => {
+                const title = document.getElementById('newMapTitle').value.trim();
+                if (!title) {
+                    alert('請輸入 Map 標題');
+                    return;
+                }
+                
+                let filename = document.getElementById('newMapFilename').value.trim();
+                if (!filename) {
+                    filename = `${title.replace(/\s+/g, '-')}.html`;
+                } else if (!filename.endsWith('.html')) {
+                    filename += '.html';
+                }
+                
+                const mapId = `map-${Date.now()}`;
+                const newMapData = {
+                    id: mapId,
+                    title: title,
+                    filename: filename,
+                    isDirty: false,
+                    nodes: [],
+                    arrows: [],
+                    frames: [],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                state.currentProject.maps.push(newMapData);
+                state.currentMap = newMapData;
+                state.mapData = {
+                    nodes: [],
+                    arrows: [],
+                    frames: []
+                };
+                state.history = [JSON.parse(JSON.stringify(state.mapData))];
+                state.historyIndex = 0;
+                
+                updateMapList();
+                updateProjectInfo();
+                updateStatus(`新建 Map: ${title}`);
+                redraw();
+                
+                dialog.remove();
+                document.getElementById('dialogOverlay').classList.remove('active');
+            };
+        }
+
+        function saveMap() {
+            if (!state.currentMap) {
+                alert('沒有打開的 Map');
+                return;
+            }
+            
+            // 複製當前數據到 Map
+            state.currentMap.nodes = state.mapData.nodes;
+            state.currentMap.arrows = state.mapData.arrows;
+            state.currentMap.frames = state.mapData.frames;
+            state.currentMap.isDirty = false;
+            state.currentMap.updatedAt = new Date().toISOString();
+            state.isDirty = false;
+            
+            // 保存到 LocalStorage
+            saveMapToLocalStorage();
+            
+            // 生成 HTML 文件並下載
+            exportMapAsHTML();
+            
+            updateMapList();
+            updateStatus(`Map 已保存: ${state.currentMap.title}`);
+        }
+
+        function saveMapToLocalStorage() {
+            if (!state.currentProject || !state.currentMap) return;
+            
+            const storageKey = `conceptcrafter_${state.currentProject.name}_${state.currentMap.id}`;
+            const mapData = {
+                ...state.currentMap,
+                nodes: state.mapData.nodes,
+                arrows: state.mapData.arrows,
+                frames: state.mapData.frames
+            };
+            localStorage.setItem(storageKey, JSON.stringify(mapData));
+        }
+
+        function exportMapAsHTML() {
+            const mapData = {
+                ...state.currentMap,
+                nodes: state.mapData.nodes,
+                arrows: state.mapData.arrows,
+                frames: state.mapData.frames
+            };
+            
+            const mapDataJSON = JSON.stringify(mapData);
+            const mapTitle = mapData.title;
+            const mapCreatedAt = mapData.createdAt || new Date().toISOString();
+            const mapUpdatedAt = mapData.updatedAt || new Date().toISOString();
+            
+            const htmlContent = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${mapTitle} - ConceptCrafter</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f5f5f5; }
+        canvas { border: 1px solid #ddd; background: white; display: block; margin: 20px auto; }
+        h1 { text-align: center; color: #2c3e50; }
+        .info { text-align: center; color: #7f8c8d; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>${mapTitle}</h1>
+    <div class="info">Created: ${mapCreatedAt} | Updated: ${mapUpdatedAt}</div>
+    <canvas id="canvas" width="1200" height="600"></canvas>
+    <script>
+        const mapData = ${mapDataJSON};
+        console.log('Map Data:', mapData);
+    </script>
+</body>
+</html>`;
+            
+            // 下載 HTML 文件
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = state.currentMap.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function loadMapFromHTML(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const htmlContent = e.target.result;
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(htmlContent, 'text/html');
+                    const scripts = doc.querySelectorAll('script');
+                    
+                    for (let script of scripts) {
+                        const match = script.textContent.match(/const mapData = ({.*?});/);
+                        if (match) {
+                            const mapData = JSON.parse(match[1]);
+                            state.mapData = {
+                                nodes: mapData.nodes || [],
+                                arrows: mapData.arrows || [],
+                                frames: mapData.frames || []
+                            };
+                            state.currentMap = {
+                                id: mapData.id,
+                                title: mapData.title,
+                                filename: mapData.filename,
+                                isDirty: false,
+                                createdAt: mapData.createdAt,
+                                updatedAt: mapData.updatedAt
+                            };
+                            state.history = [JSON.parse(JSON.stringify(state.mapData))];
+                            state.historyIndex = 0;
+                            
+                            updateProjectInfo();
+                            updatePropertyPanel();
+                            redraw();
+                            return;
+                        }
+                    }
+                    alert('無法解析 HTML 文件');
+                } catch (error) {
+                    alert('載入失敗: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ==================== Map 列表 ====================
+        function updateMapList() {
+            const mapList = document.getElementById('mapList');
+            mapList.innerHTML = '';
+            
+            if (!state.currentProject) return;
+            
+            state.currentProject.maps.forEach(map => {
+                const li = document.createElement('li');
+                li.className = 'mapItem';
+                if (map.id === state.currentMap?.id) li.classList.add('active');
+                if (map.isDirty) li.classList.add('mapItemDirty');
+                
+                li.textContent = map.title;
+                li.addEventListener('click', () => switchMap(map));
+                
+                mapList.appendChild(li);
+            });
+        }
+
+        function switchMap(map) {
+            state.currentMap = map;
+            state.mapData = {
+                nodes: map.nodes || [],
+                arrows: map.arrows || [],
+                frames: map.frames || []
+            };
+            state.selectedObject = null;
+            
+            updateMapList();
+            updateStatus(`切換到 Map: ${map.title}`);
+            redraw();
+        }
+
+        // ==================== Canvas 繪製 ====================
+        function redraw() {
+            const ctx = state.ctx;
+            const canvas = state.canvas;
+            
+            // 清空 Canvas
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 應用縮放和平移
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(state.zoom, state.zoom);
+            ctx.translate(state.panX, state.panY);
+            
+            // 繪製網格（可選）
+            drawGrid(ctx, canvas);
+            
+            // 繪製連接線
+            state.mapData.arrows.forEach(arrow => {
+                drawArrow(ctx, arrow);
+            });
+            
+            // 繪製框架
+            state.mapData.frames.forEach(frame => {
+                drawFrame(ctx, frame);
+            });
+            
+            // 繪製節點
+            state.mapData.nodes.forEach(node => {
+                drawNode(ctx, node);
+            });
+            
+            ctx.restore();
+        }
+
+        function drawGrid(ctx, canvas) {
+            const gridSize = 20;
+            ctx.strokeStyle = '#f0f0f0';
+            ctx.lineWidth = 0.5;
+            
+            for (let x = -canvas.width; x < canvas.width; x += gridSize * state.zoom) {
+                ctx.beginPath();
+                ctx.moveTo(x, -canvas.height);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let y = -canvas.height; y < canvas.height; y += gridSize * state.zoom) {
+                ctx.beginPath();
+                ctx.moveTo(-canvas.width, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawNode(ctx, node) {
+            const { x, y, width, height, text, color, status } = node;
+            const isSelected = state.selectedObject === node;
+            
+            // 繪製節點背景
+            ctx.fillStyle = color || '#ecf0f1';
+            ctx.strokeStyle = isSelected ? '#3498db' : '#95a5a6';
+            ctx.lineWidth = isSelected ? 3 : 2;
+            ctx.fillRect(x, y, width, height);
+            ctx.strokeRect(x, y, width, height);
+            
+            // 繪製文字
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, x + width / 2, y + height / 2);
+            
+            // 繪製狀態符號
+            if (status) {
+                const symbolSize = height * 0.35;
+                const symbolX = x + width - symbolSize - 5;
+                const symbolY = y + symbolSize + 5;
+                
+                if (status.isAbandoned) {
+                    drawCross(ctx, symbolX, symbolY, symbolSize, '#e74c3c');
+                } else if (status.isCompleted) {
+                    drawCheckmark(ctx, symbolX, symbolY, symbolSize, '#27ae60');
+                }
+            }
+        }
+
+        function drawCheckmark(ctx, x, y, size, color) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(x, y, size * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x - size * 0.2, y);
+            ctx.lineTo(x - size * 0.05, y + size * 0.15);
+            ctx.lineTo(x + size * 0.25, y - size * 0.15);
+            ctx.stroke();
+        }
+
+        function drawCross(ctx, x, y, size, color) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(x, y, size * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x - size * 0.2, y - size * 0.2);
+            ctx.lineTo(x + size * 0.2, y + size * 0.2);
+            ctx.moveTo(x + size * 0.2, y - size * 0.2);
+            ctx.lineTo(x - size * 0.2, y + size * 0.2);
+            ctx.stroke();
+        }
+
+        function drawArrow(ctx, arrow) {
+            const sourceObj = getObjectById(arrow.sourceId, arrow.sourceType);
+            const targetObj = getObjectById(arrow.targetId, arrow.targetType);
+            
+            if (!sourceObj || !targetObj) return;
+            
+            const isSelected = state.selectedObject === arrow;
+            const source = getObjectBounds(sourceObj);
+            const target = getObjectBounds(targetObj);
+            
+            const x1 = source.x + source.width / 2;
+            const y1 = source.y + source.height / 2;
+            const x2 = target.x + target.width / 2;
+            const y2 = target.y + target.height / 2;
+            
+            // 計算起點和終點在邊界上的位置
+            const startPoint = calcLineRectIntersection(x1, y1, x2, y2, source);
+            const endPoint = calcLineRectIntersection(x2, y2, x1, y1, target);
+            
+            if (!startPoint || !endPoint) return;
+            
+            // 繪製連接線
+            ctx.strokeStyle = isSelected ? '#3498db' : (arrow.color || '#7f8c8d');
+            ctx.lineWidth = isSelected ? 3 : 2;
+            ctx.beginPath();
+            ctx.moveTo(startPoint.x, startPoint.y);
+            ctx.lineTo(endPoint.x, endPoint.y);
+            ctx.stroke();
+            
+            // 繪製箭頭
+            if (arrow.arrowStyle !== 'none') {
+                drawArrowhead(ctx, endPoint.x, endPoint.y, startPoint.x, startPoint.y, arrow.arrowStyle, arrow.color || '#7f8c8d');
+                if (arrow.arrowStyle === 'double') {
+                    drawArrowhead(ctx, startPoint.x, startPoint.y, endPoint.x, endPoint.y, 'single', arrow.color || '#7f8c8d');
+                }
+            }
+            
+            // 繪製標籤
+            if (arrow.label) {
+                const midX = (startPoint.x + endPoint.x) / 2;
+                const midY = (startPoint.y + endPoint.y) / 2;
+                const metrics = ctx.measureText(arrow.label);
+                const labelWidth = metrics.width + 10;
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                ctx.fillRect(midX - labelWidth / 2 - 5, midY - 12, labelWidth + 10, 24);
+                
+                ctx.strokeStyle = '#ccc';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(midX - labelWidth / 2 - 5, midY - 12, labelWidth + 10, 24);
+                
+                ctx.fillStyle = '#2c3e50';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(arrow.label, midX, midY);
+            }
+        }
+
+        function calcLineRectIntersection(fromX, fromY, toX, toY, rect) {
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len === 0) return null;
+            
+            const unitX = dx / len;
+            const unitY = dy / len;
+            
+            const halfW = rect.width / 2;
+            const halfH = rect.height / 2;
+            const centerX = rect.x + halfW;
+            const centerY = rect.y + halfH;
+            
+            const angle = Math.atan2(unitY, unitX);
+            let t;
+            
+            if (Math.abs(unitX) * halfH > Math.abs(unitY) * halfW) {
+                t = halfH / Math.abs(unitY);
+            } else {
+                t = halfW / Math.abs(unitX);
+            }
+            
+            return {
+                x: centerX + unitX * t,
+                y: centerY + unitY * t
+            };
+        }
+
+        function drawArrowhead(ctx, toX, toY, fromX, fromY, style, color) {
+            const headlen = 15;
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            
+            ctx.fillStyle = color || '#7f8c8d';
+            
+            // 只在style為 'single' 或 'double' 時繪製箭頭
+            if (style === 'single' || style === 'double') {
+                ctx.beginPath();
+                ctx.moveTo(toX, toY);
+                ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        function drawFrame(ctx, frame) {
+            const { x, y, width, height, label } = frame;
+            const isSelected = state.selectedObject === frame;
+            
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.1)';
+            ctx.strokeStyle = isSelected ? '#3498db' : '#3498db';
+            ctx.lineWidth = isSelected ? 3 : 2;
+            ctx.setLineDash([5, 5]);
+            ctx.fillRect(x, y, width, height);
+            ctx.strokeRect(x, y, width, height);
+            ctx.setLineDash([]);
+            
+            if (label) {
+                ctx.fillStyle = '#3498db';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText(label, x + 5, y + 5);
+            }
+        }
+
+        // ==================== 事件處理 ====================
+        function onCanvasMouseDown(e) {
+            const rect = state.canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left - state.panX) / state.zoom;
+            const y = (e.clientY - rect.top - state.panY) / state.zoom;
+            
+            if (state.mode === 'select') {
+                selectObject(x, y);
+                if (state.selectedObject) {
+                    // 開始拖拽
+                    state.isDragging = true;
+                    state.dragStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+                }
+            } else if (state.mode === 'addNode') {
+                addNode(x, y);
+                setMode('select');
+            } else if (state.mode === 'addArrow') {
+                // 開始創建連接線
+                const obj = selectObjectAt(x, y);
+                if (obj) {
+                    state.creatingArrow = {
+                        source: obj,
+                        sourceBounds: getObjectBounds(obj)
+                    };
+                }
+            } else if (state.mode === 'addFrame') {
+                // 開始創建框架
+                state.creatingFrame = {
+                    startX: x,
+                    startY: y
+                };
+            }
+        }
+
+        function onCanvasMouseMove(e) {
+            const rect = state.canvas.getBoundingClientRect();
+            const canvasX = e.clientX - rect.left;
+            const canvasY = e.clientY - rect.top;
+            const x = (canvasX - state.panX) / state.zoom;
+            const y = (canvasY - state.panY) / state.zoom;
+            
+            document.getElementById('coordinateText').textContent = `坐標: (${Math.round(x)}, ${Math.round(y)})`;
+            
+            if (state.isDragging && state.selectedObject && state.mode === 'select') {
+                // 拖拽移動
+                const deltaX = e.clientX - rect.left - state.dragStart.x;
+                const deltaY = e.clientY - rect.top - state.dragStart.y;
+                
+                if (state.selectedObject.type === 'node') {
+                    state.selectedObject.x += deltaX / state.zoom;
+                    state.selectedObject.y += deltaY / state.zoom;
+                } else if (state.selectedObject.type === 'frame') {
+                    state.selectedObject.x += deltaX / state.zoom;
+                    state.selectedObject.y += deltaY / state.zoom;
+                }
+                
+                state.dragStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+                state.currentMap.isDirty = true;
+                updateMapList();
+                redraw();
+            } else if (state.creatingFrame && state.mode === 'addFrame') {
+                state.creatingFrame.endX = x;
+                state.creatingFrame.endY = y;
+                redraw();
+            }
+        }
+
+        function onCanvasMouseUp(e) {
+            const rect = state.canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left - state.panX) / state.zoom;
+            const y = (e.clientY - rect.top - state.panY) / state.zoom;
+            
+            state.isDragging = false;
+            
+            if (state.creatingArrow && state.mode === 'addArrow') {
+                // 完成連接線創建
+                const target = selectObjectAt(x, y);
+                if (target && target !== state.creatingArrow.source) {
+                    addArrow(state.creatingArrow.source, target);
+                }
+                state.creatingArrow = null;
+                setMode('select');
+                redraw();
+            } else if (state.creatingFrame && state.mode === 'addFrame') {
+                // 完成框架創建
+                if (state.creatingFrame.endX && state.creatingFrame.endY) {
+                    const minX = Math.min(state.creatingFrame.startX, state.creatingFrame.endX);
+                    const minY = Math.min(state.creatingFrame.startY, state.creatingFrame.endY);
+                    const maxX = Math.max(state.creatingFrame.startX, state.creatingFrame.endX);
+                    const maxY = Math.max(state.creatingFrame.startY, state.creatingFrame.endY);
+                    
+                    addFrame(minX, minY, maxX - minX, maxY - minY);
+                }
+                state.creatingFrame = null;
+                setMode('select');
+                redraw();
+            }
+        }
+
+        function onCanvasWheel(e) {
+            e.preventDefault();
+            
+            const zoomSpeed = 0.1;
+            const rect = state.canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // 計算縮放中心點
+            const oldZoom = state.zoom;
+            if (e.deltaY < 0) {
+                state.zoom = Math.min(3, state.zoom + zoomSpeed);
+            } else {
+                state.zoom = Math.max(0.1, state.zoom - zoomSpeed);
+            }
+            
+            // 調整平移使縮放中心點保持在滑鼠位置
+            const zoomRatio = state.zoom / oldZoom;
+            state.panX = mouseX - (mouseX - state.panX) * zoomRatio;
+            state.panY = mouseY - (mouseY - state.panY) * zoomRatio;
+            
+            redraw();
+        }
+
+        function onCanvasDblClick(e) {
+            const rect = state.canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left - state.panX) / state.zoom;
+            const y = (e.clientY - rect.top - state.panY) / state.zoom;
+            
+            const obj = selectObjectAt(x, y);
+            if (obj?.type === 'node') {
+                editNodeDialog(obj);
+            } else if (obj?.type === 'arrow') {
+                editArrowLabel(obj);
+            }
+        }
+
+        function onKeyDown(e) {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 's' || e.key === 'S') {
+                    e.preventDefault();
+                    saveMap();
+                } else if (e.key === 'a' || e.key === 'A') {
+                    e.preventDefault();
+                    selectAll();
+                } else if (e.key === 'c' || e.key === 'C') {
+                    e.preventDefault();
+                    copySelected();
+                } else if (e.key === 'v' || e.key === 'V') {
+                    e.preventDefault();
+                    pasteClipboard();
+                } else if (e.key === 'z' || e.key === 'Z') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        redo();
+                    } else {
+                        undo();
+                    }
+                } else if (e.key === 'y' || e.key === 'Y') {
+                    e.preventDefault();
+                    redo();
+                }
+            } else if (e.key === 'Delete') {
+                deleteSelected();
+            }
+        }
+
+        // ==================== 選擇和操作 ====================
+        function selectObject(x, y) {
+            state.selectedObject = selectObjectAt(x, y);
+            updatePropertyPanel();
+            redraw();
+        }
+
+        function selectObjectAt(x, y) {
+            // 先檢查箭頭標籤
+            for (let i = state.mapData.arrows.length - 1; i >= 0; i--) {
+                const arrow = state.mapData.arrows[i];
+                if (isPointNearArrowLabel(x, y, arrow)) {
+                    return arrow;
+                }
+            }
+            
+            // 檢查節點（從後往前，後繪製的在上層）
+            for (let i = state.mapData.nodes.length - 1; i >= 0; i--) {
+                const node = state.mapData.nodes[i];
+                if (isPointInNode(x, y, node)) {
+                    return node;
+                }
+            }
+            
+            // 檢查框架
+            for (let i = state.mapData.frames.length - 1; i >= 0; i--) {
+                const frame = state.mapData.frames[i];
+                if (isPointInFrame(x, y, frame)) {
+                    return frame;
+                }
+            }
+            
+            // 檢查連接線
+            for (let i = state.mapData.arrows.length - 1; i >= 0; i--) {
+                const arrow = state.mapData.arrows[i];
+                if (isPointNearArrowLine(x, y, arrow)) {
+                    return arrow;
+                }
+            }
+            
+            return null;
+        }
+
+        function getObjectBounds(obj) {
+            if (!obj) return null;
+            if (obj.type === 'node') {
+                return {
+                    x: obj.x,
+                    y: obj.y,
+                    width: obj.width,
+                    height: obj.height
+                };
+            } else if (obj.type === 'frame') {
+                return {
+                    x: obj.x,
+                    y: obj.y,
+                    width: obj.width,
+                    height: obj.height
+                };
+            }
+            return null;
+        }
+
+        function isPointInNode(x, y, node) {
+            return x >= node.x && x <= node.x + node.width &&
+                   y >= node.y && y <= node.y + node.height;
+        }
+
+        function isPointInFrame(x, y, frame) {
+            return x >= frame.x && x <= frame.x + frame.width &&
+                   y >= frame.y && y <= frame.y + frame.height;
+        }
+
+        function isPointNearArrowLine(x, y, arrow, tolerance = 5) {
+            const source = getObjectBounds(getObjectById(arrow.sourceId, arrow.sourceType));
+            const target = getObjectBounds(getObjectById(arrow.targetId, arrow.targetType));
+            if (!source || !target) return false;
+            
+            const x1 = source.x + source.width / 2;
+            const y1 = source.y + source.height / 2;
+            const x2 = target.x + target.width / 2;
+            const y2 = target.y + target.height / 2;
+            
+            // 點到直線的距離
+            const A = y2 - y1;
+            const B = x1 - x2;
+            const C = A * x1 + B * y1;
+            const dist = Math.abs(A * x + B * y - C) / Math.sqrt(A * A + B * B);
+            
+            // 檢查是否在線段範圍內
+            const minX = Math.min(x1, x2) - tolerance;
+            const maxX = Math.max(x1, x2) + tolerance;
+            const minY = Math.min(y1, y2) - tolerance;
+            const maxY = Math.max(y1, y2) + tolerance;
+            
+            return dist <= tolerance && x >= minX && x <= maxX && y >= minY && y <= maxY;
+        }
+
+        function isPointNearArrowLabel(x, y, arrow, tolerance = 15) {
+            const source = getObjectBounds(getObjectById(arrow.sourceId, arrow.sourceType));
+            const target = getObjectBounds(getObjectById(arrow.targetId, arrow.targetType));
+            if (!source || !target) return false;
+            
+            const x1 = source.x + source.width / 2;
+            const y1 = source.y + source.height / 2;
+            const x2 = target.x + target.width / 2;
+            const y2 = target.y + target.height / 2;
+            
+            const mx = (x1 + x2) / 2;
+            const my = (y1 + y2) / 2;
+            
+            return Math.abs(x - mx) <= tolerance && Math.abs(y - my) <= tolerance;
+        }
+
+        function getObjectById(id, type) {
+            if (type === 'node') {
+                return state.mapData.nodes.find(n => n.id === id);
+            } else if (type === 'frame') {
+                return state.mapData.frames.find(f => f.id === id);
+            }
+            return null;
+        }
+
+        function isPointInRect(x, y, rect) {
+            const canvas = state.canvas;
+            const scaleX = canvas.width / 2;
+            const scaleY = canvas.height / 2;
+            
+            const rectX = scaleX + (rect.x + state.panX) * state.zoom;
+            const rectY = scaleY + (rect.y + state.panY) * state.zoom;
+            const rectW = rect.width * state.zoom;
+            const rectH = rect.height * state.zoom;
+            
+            return x >= rectX && x <= rectX + rectW && y >= rectY && y <= rectY + rectH;
+        }
+
+        function addNode(x, y) {
+            const newNode = {
+                id: `node-${Date.now()}`,
+                type: 'node',
+                text: '新節點',
+                x: x - 50,
+                y: y - 25,
+                width: 100,
+                height: 50,
+                color: '#ecf0f1',
+                status: { isCompleted: false, isAbandoned: false },
+                hyperlinks: []
+            };
+            
+            state.mapData.nodes.push(newNode);
+            state.isDirty = true;
+            state.currentMap.isDirty = true;
+            
+            updateMapList();
+            setMode('select');
+            editNode(newNode);
+        }
+
+        function editNode(node) {
+            editNodeDialog(node);
+        }
+
+        function editNodeDialog(node) {
+            const dialog = document.createElement('div');
+            dialog.className = 'dialog active';
+            dialog.innerHTML = `
+                <div class="dialogHeader">編輯節點</div>
+                <div class="dialogContent" style="max-width: 600px;">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">文字內容：</label>
+                        <textarea id="nodeText" style="width: 100%; height: 80px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;" placeholder="輸入節點文字"></textarea>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">顏色：</label>
+                            <input type="color" id="nodeColor" style="width: 100%; height: 35px; cursor: pointer;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">狀態：</label>
+                            <select id="nodeStatus" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                                <option value="normal">正常</option>
+                                <option value="completed">已完成 (✓)</option>
+                                <option value="abandoned">已放棄 (✗)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="dialogFooter">
+                    <button class="cancel" onclick="this.closest('.dialog').remove(); document.getElementById('dialogOverlay').classList.remove('active');">取消</button>
+                    <button onclick="saveNodeEdit()" style="background: #27ae60; margin-left: 10px;">確定</button>
+                </div>
+            `;
+            
+            // 在 DOM 中後填充值
+            document.body.appendChild(dialog);
+            document.getElementById('nodeText').value = node.text;
+            document.getElementById('nodeColor').value = node.color || '#ecf0f1';
+            document.getElementById('nodeStatus').value = 
+                node.status?.isAbandoned ? 'abandoned' : 
+                (node.status?.isCompleted ? 'completed' : 'normal');
+            document.getElementById('dialogOverlay').classList.add('active');
+            
+            window.saveNodeEdit = () => {
+                node.text = document.getElementById('nodeText').value;
+                node.color = document.getElementById('nodeColor').value;
+                const status = document.getElementById('nodeStatus').value;
+                node.status.isCompleted = status === 'completed';
+                node.status.isAbandoned = status === 'abandoned';
+                
+                saveToHistory();
+                state.currentMap.isDirty = true;
+                updateMapList();
+                redraw();
+                dialog.remove();
+                document.getElementById('dialogOverlay').classList.remove('active');
+            };
+        }
+
+        function addArrow(source, target) {
+            const newArrow = {
+                id: `arrow-${Date.now()}`,
+                type: 'arrow',
+                sourceId: source.id,
+                sourceType: source.type,
+                targetId: target.id,
+                targetType: target.type,
+                label: '關係',
+                arrowStyle: 'single',
+                color: '#34495e'
+            };
+            
+            state.mapData.arrows.push(newArrow);
+            saveToHistory();
+            state.currentMap.isDirty = true;
+            updateMapList();
+            redraw();
+        }
+
+        function editArrowLabel(arrow) {
+            const dialog = document.createElement('div');
+            dialog.className = 'dialog active';
+            dialog.innerHTML = `
+                <div class="dialogHeader">編輯連接線</div>
+                <div class="dialogContent">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">標籤：</label>
+                        <input type="text" id="arrowLabel" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">箭頭樣式：</label>
+                        <select id="arrowStyle" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                            <option value="single">單箭頭 →</option>
+                            <option value="double">雙箭頭 ↔</option>
+                            <option value="none">無箭頭 —</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="dialogFooter">
+                    <button class="cancel" onclick="this.closest('.dialog').remove(); document.getElementById('dialogOverlay').classList.remove('active');">取消</button>
+                    <button onclick="saveArrowEdit()" style="background: #27ae60; margin-left: 10px;">確定</button>
+                </div>
+            `;
+            
+            document.getElementById('arrowLabel').value = arrow.label;
+            document.getElementById('arrowStyle').value = arrow.arrowStyle;
+            
+            document.body.appendChild(dialog);
+            document.getElementById('dialogOverlay').classList.add('active');
+            
+            window.saveArrowEdit = () => {
+                arrow.label = document.getElementById('arrowLabel').value;
+                arrow.arrowStyle = document.getElementById('arrowStyle').value;
+                
+                saveToHistory();
+                state.currentMap.isDirty = true;
+                updateMapList();
+                redraw();
+                dialog.remove();
+                document.getElementById('dialogOverlay').classList.remove('active');
+            };
+        }
+
+        function addFrame(x, y, width, height) {
+            const newFrame = {
+                id: `frame-${Date.now()}`,
+                type: 'frame',
+                label: '新框架',
+                x: x,
+                y: y,
+                width: Math.max(100, width),
+                height: Math.max(50, height),
+                nodeIds: [],
+                color: '#e8f4f8',
+                opacity: 0.3
+            };
+            
+            state.mapData.frames.push(newFrame);
+            saveToHistory();
+            state.currentMap.isDirty = true;
+            updateMapList();
+            redraw();
+        }
+
+        function saveToHistory() {
+            // 保存當前狀態到歷史紀錄
+            state.historyIndex++;
+            state.history = state.history.slice(0, state.historyIndex);
+            state.history.push(JSON.parse(JSON.stringify(state.mapData)));
+        }
+
+        function undo() {
+            if (state.historyIndex > 0) {
+                state.historyIndex--;
+                state.mapData = JSON.parse(JSON.stringify(state.history[state.historyIndex]));
+                redraw();
+            }
+        }
+
+        function redo() {
+            if (state.historyIndex < state.history.length - 1) {
+                state.historyIndex++;
+                state.mapData = JSON.parse(JSON.stringify(state.history[state.historyIndex]));
+                redraw();
+            }
+        }
+
+        function copySelected() {
+            if (state.selectedObject && state.selectedObject.type === 'node') {
+                state.clipboard = JSON.parse(JSON.stringify(state.selectedObject));
+            }
+        }
+
+        function pasteClipboard() {
+            if (!state.clipboard) return;
+            
+            const newNode = JSON.parse(JSON.stringify(state.clipboard));
+            newNode.id = `node-${Date.now()}`;
+            newNode.x += 20;
+            newNode.y += 20;
+            
+            state.mapData.nodes.push(newNode);
+            saveToHistory();
+            state.currentMap.isDirty = true;
+            updateMapList();
+            redraw();
+        }
+
+        function deleteSelected() {
+            if (!state.selectedObject) return;
+            
+            if (state.selectedObject.type === 'node') {
+                const index = state.mapData.nodes.indexOf(state.selectedObject);
+                if (index > -1) {
+                    state.mapData.nodes.splice(index, 1);
+                    state.mapData.arrows = state.mapData.arrows.filter(
+                        arrow => arrow.sourceId !== state.selectedObject.id && arrow.targetId !== state.selectedObject.id
+                    );
+                }
+            } else if (state.selectedObject.type === 'arrow') {
+                const index = state.mapData.arrows.indexOf(state.selectedObject);
+                if (index > -1) {
+                    state.mapData.arrows.splice(index, 1);
+                }
+            }
+            
+            state.selectedObject = null;
+            state.isDirty = true;
+            state.currentMap.isDirty = true;
+            updateMapList();
+            redraw();
+        }
+
+        function markCompleted() {
+            if (state.selectedObject && state.selectedObject.type === 'node') {
+                state.selectedObject.status.isCompleted = true;
+                state.isDirty = true;
+                state.currentMap.isDirty = true;
+                updateMapList();
+                redraw();
+            }
+        }
+
+        function markAbandoned() {
+            if (state.selectedObject && state.selectedObject.type === 'node') {
+                state.selectedObject.status.isAbandoned = true;
+                state.isDirty = true;
+                state.currentMap.isDirty = true;
+                updateMapList();
+                redraw();
+            }
+        }
+
+        function clearStatus() {
+            if (state.selectedObject && state.selectedObject.type === 'node') {
+                state.selectedObject.status.isCompleted = false;
+                state.selectedObject.status.isAbandoned = false;
+                state.isDirty = true;
+                state.currentMap.isDirty = true;
+                updateMapList();
+                redraw();
+            }
+        }
+
+        function clearAll() {
+            if (confirm('確定要清除所有內容嗎？')) {
+                state.mapData = { nodes: [], arrows: [], frames: [] };
+                state.selectedObject = null;
+                state.isDirty = true;
+                state.currentMap.isDirty = true;
+                updateMapList();
+                redraw();
+            }
+        }
+
+        function selectAll() {
+            // 簡單實現：標記所有節點
+            state.selectedObject = null;
+            updatePropertyPanel();
+            redraw();
+        }
+
+        // ==================== UI 更新 ====================
+        function updatePropertyPanel() {
+            const content = document.getElementById('propertyContent');
+            
+            if (!state.selectedObject) {
+                content.innerHTML = '<div class="propertyGroup"><div class="propertyGroupLabel">未選擇任何對象</div></div>';
+                return;
+            }
+            
+            let html = '';
+            
+            if (state.selectedObject.type === 'node') {
+                html = `
+                    <div class="propertyGroup">
+                        <div class="propertyGroupLabel">節點屬性</div>
+                        <div class="propertyItem">
+                            <label>ID:</label>
+                            <input type="text" id="propNodeId" disabled>
+                        </div>
+                        <div class="propertyItem">
+                            <label>文字:</label>
+                            <input type="text" id="propNodeText" onchange="updateNodeText(this.value)">
+                        </div>
+                        <div class="propertyItem">
+                            <label>寬度:</label>
+                            <input type="number" id="propNodeWidth" onchange="updateNodeWidth(this.value)">
+                        </div>
+                        <div class="propertyItem">
+                            <label>高度:</label>
+                            <input type="number" id="propNodeHeight" onchange="updateNodeHeight(this.value)">
+                        </div>
+                        <div class="propertyItem">
+                            <label>顏色:</label>
+                            <input type="color" id="propNodeColor" onchange="updateNodeColor(this.value)">
+                        </div>
+                        <div class="propertyItem">
+                            <label>完成:</label>
+                            <input type="checkbox" id="propNodeCompleted" onchange="toggleCompleted()">
+                        </div>
+                        <div class="propertyItem">
+                            <label>放棄:</label>
+                            <input type="checkbox" id="propNodeAbandoned" onchange="toggleAbandoned()">
+                        </div>
+                    </div>
+                `;
+                
+                content.innerHTML = html;
+                
+                // 在設置 innerHTML 後填充值
+                document.getElementById('propNodeId').value = state.selectedObject.id;
+                document.getElementById('propNodeText').value = state.selectedObject.text;
+                document.getElementById('propNodeWidth').value = state.selectedObject.width;
+                document.getElementById('propNodeHeight').value = state.selectedObject.height;
+                document.getElementById('propNodeColor').value = state.selectedObject.color || '#ecf0f1';
+                document.getElementById('propNodeCompleted').checked = state.selectedObject.status?.isCompleted || false;
+                document.getElementById('propNodeAbandoned').checked = state.selectedObject.status?.isAbandoned || false;
+            } else {
+                content.innerHTML = html;
+            }
+        }
+
+        function updateNodeText(value) {
+            if (state.selectedObject && state.selectedObject.type === 'node') {
+                state.selectedObject.text = value;
+                state.isDirty = true;
+                redraw();
+            }
+        }
+
+        function updateNodeWidth(value) {
+            if (state.selectedObject && state.selectedObject.type === 'node') {
+                state.selectedObject.width = parseInt(value);
+                state.isDirty = true;
+                redraw();
+            }
+        }
+
+        function updateNodeHeight(value) {
+            if (state.selectedObject && state.selectedObject.type === 'node') {
+                state.selectedObject.height = parseInt(value);
+                state.isDirty = true;
+                redraw();
+            }
+        }
+
+        function updateNodeColor(value) {
+            if (state.selectedObject && state.selectedObject.type === 'node') {
+                state.selectedObject.color = value;
+                state.isDirty = true;
+                redraw();
+            }
+        }
+
+        function toggleCompleted() {
+            if (state.selectedObject && state.selectedObject.type === 'node') {
+                state.selectedObject.status.isCompleted = !state.selectedObject.status.isCompleted;
+                state.isDirty = true;
+                redraw();
+            }
+        }
+
+        function toggleAbandoned() {
+            if (state.selectedObject && state.selectedObject.type === 'node') {
+                state.selectedObject.status.isAbandoned = !state.selectedObject.status.isAbandoned;
+                state.isDirty = true;
+                redraw();
+            }
+        }
+
+        function updateStatus(message) {
+            document.getElementById('statusText').textContent = message;
+        }
+
+        function updateProjectInfo() {
+            const info = state.currentProject ? state.currentProject.name : '無';
+            document.getElementById('projectInfo').textContent = `專案: ${info}`;
+        }
+
+        // ==================== 對話框 ====================
+        function showDialog(dialogId) {
+            document.getElementById(dialogId).classList.add('active');
+            document.getElementById('dialogOverlay').classList.add('active');
+        }
+
+        function closeDialog(dialogId) {
+            document.getElementById(dialogId).classList.remove('active');
+            if (!document.querySelector('.dialog.active')) {
+                document.getElementById('dialogOverlay').classList.remove('active');
+            }
+        }
+
+        function closeAllDialogs() {
+            document.querySelectorAll('.dialog.active').forEach(dialog => {
+                dialog.classList.remove('active');
+            });
+            document.getElementById('dialogOverlay').classList.remove('active');
+        }
+
+        // ==================== 啟動應用 ====================
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
