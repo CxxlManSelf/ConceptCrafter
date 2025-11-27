@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept Crafter - 概念圖編輯器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #f5f5f5;
+        }
+
+        #toolbar {
+            background: #2c3e50;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #toolbar button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        #toolbar button:hover:not(:disabled) {
+            background: #2980b9;
+        }
+
+        #toolbar button.active {
+            background: #27ae60;
+        }
+
+        #toolbar button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: calc(100vh - 50px);
+            overflow: hidden;
+            position: relative;
+            cursor: grab;
+        }
+
+        #canvas-container.panning {
+            cursor: grabbing;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            padding: 5px 0;
+            z-index: 1000;
+            min-width: 150px;
+        }
+
+        .context-menu-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: #f0f0f0;
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background: #e0e0e0;
+            margin: 5px 0;
+        }
+
+        .resize-handle {
+            cursor: nwse-resize;
+        }
+
+        #project-panel {
+            position: fixed;
+            right: 0;
+            top: 50px;
+            width: 250px;
+            height: calc(100vh - 50px);
+            background: white;
+            border-left: 1px solid #ccc;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            display: none;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        #project-panel.open {
+            display: flex;
+        }
+
+        #project-header {
+            padding: 15px;
+            background: #34495e;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #close-panel {
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+        }
+
+        #project-info {
+            padding: 10px 15px;
+            background: #ecf0f1;
+            border-bottom: 1px solid #bdc3c7;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        #file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .file-item {
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-item:hover {
+            background: #e9ecef;
+        }
+
+        .file-item.current {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+
+        .file-item-delete {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 2px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .file-item-delete:hover {
+            background: #c0392b;
+        }
+
+        #project-actions {
+            padding: 10px;
+            border-top: 1px solid #ccc;
+        }
+
+        #project-actions button {
+            width: 100%;
+            margin-bottom: 5px;
+            padding: 8px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        #project-actions button:hover {
+            background: #229954;
+        }
+
+        #project-actions button:last-child {
+            margin-bottom: 0;
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 24px;
+            background: #7f8c8d;
+            margin: 0 5px;
+        }
+
+        /* 對話框樣式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            min-width: 400px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-field {
+            margin-bottom: 15px;
+        }
+
+        .modal-field label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .modal-field input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .modal-field input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-footer button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .modal-footer button.primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .modal-footer button.primary:hover {
+            background: #2980b9;
+        }
+
+        .modal-footer button.secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .modal-footer button.secondary:hover {
+            background: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <button id="add-node-btn" disabled>新增節點</button>
+        <button id="add-frame-btn" disabled>新增框架</button>
+        <button id="add-link-btn" disabled>新增連接</button>
+        <div class="toolbar-separator"></div>
+        <button id="select-folder-btn">選擇專案資料夾</button>
+        <button id="new-file-btn" disabled>新建 map</button>
+        <button id="load-map-btn" disabled>載入 map</button>
+        <button id="save-current-btn" disabled>儲存 map</button>
+        <span style="margin-left: auto; font-size: 12px;">縮放: <span id="zoom-level">100%</span></span>
+    </div>
+
+    <div id="canvas-container">
+        <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <!-- 單向箭頭 -->
+                <marker id="arrowhead-single" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                    <polygon points="0 0, 10 3, 0 6" fill="#333" />
+                </marker>
+                <!-- 雙向箭頭起點 -->
+                <marker id="arrowhead-start" markerWidth="10" markerHeight="10" refX="1" refY="3" orient="auto">
+                    <polygon points="10 0, 0 3, 10 6" fill="#333" />
+                </marker>
+            </defs>
+            <g id="main-group"></g>
+        </svg>
+    </div>
+
+    <div id="project-panel">
+        <div id="project-header">
+            <span>專案檔案</span>
+            <button id="close-panel">×</button>
+        </div>
+        <div id="project-info">未選擇專案資料夾</div>
+        <div id="file-list"></div>
+        <div id="project-actions">
+            <button id="refresh-files-btn">重新整理檔案列表</button>
+        </div>
+    </div>
+
+    <!-- 新建 map 對話框 -->
+    <div id="new-map-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">新建 Concept Map</div>
+            <div class="modal-body">
+                <div class="modal-field">
+                    <label for="map-title">標題名稱 *</label>
+                    <input type="text" id="map-title" placeholder="請輸入 map 標題">
+                </div>
+                <div class="modal-field">
+                    <label for="map-filename">檔案名稱（選填，留空則使用標題名稱）</label>
+                    <input type="text" id="map-filename" placeholder="不含 .html 副檔名">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary" id="cancel-new-map">取消</button>
+                <button class="primary" id="confirm-new-map">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局狀態
+        const state = {
+            nodes: [],
+            frames: [],
+            links: [],
+            selectedElement: null,
+            mode: null, // 'add-node', 'add-frame', 'add-link'
+            linkStart: null,
+            pan: { x: 0, y: 0 },
+            zoom: 1,
+            isPanning: false,
+            panStart: { x: 0, y: 0 },
+            dragElement: null,
+            dragOffset: { x: 0, y: 0 },
+            resizeElement: null,
+            resizeType: null,
+            // 專案管理
+            projectHandle: null,
+            currentFileHandle: null,
+            currentFileName: null,
+            currentMapTitle: null,
+            hasUnsavedChanges: false,
+            unsavedMaps: [] // 儲存所有未保存的 map
+        };
+
+        // SVG 元素
+        const svg = document.getElementById('canvas');
+        const mainGroup = document.getElementById('main-group');
+        const canvasContainer = document.getElementById('canvas-container');
+
+        // 工具按鈕
+        const addNodeBtn = document.getElementById('add-node-btn');
+        const addFrameBtn = document.getElementById('add-frame-btn');
+        const addLinkBtn = document.getElementById('add-link-btn');
+        const selectFolderBtn = document.getElementById('select-folder-btn');
+        const saveCurrentBtn = document.getElementById('save-current-btn');
+        const newFileBtn = document.getElementById('new-file-btn');
+        const loadMapBtn = document.getElementById('load-map-btn');
+        const zoomLevelSpan = document.getElementById('zoom-level');
+
+        // 專案面板元素
+        const projectPanel = document.getElementById('project-panel');
+        const closePanel = document.getElementById('close-panel');
+        const projectInfo = document.getElementById('project-info');
+        const fileList = document.getElementById('file-list');
+        const refreshFilesBtn = document.getElementById('refresh-files-btn');
+
+        // 對話框元素
+        const newMapModal = document.getElementById('new-map-modal');
+        const mapTitleInput = document.getElementById('map-title');
+        const mapFilenameInput = document.getElementById('map-filename');
+        const cancelNewMapBtn = document.getElementById('cancel-new-map');
+        const confirmNewMapBtn = document.getElementById('confirm-new-map');
+
+        // 工具函數
+        function generateId() {
+            return 'id-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function getMousePosition(evt) {
+            const CTM = svg.getScreenCTM();
+            return {
+                x: (evt.clientX - CTM.e) / CTM.a,
+                y: (evt.clientY - CTM.f) / CTM.d
+            };
+        }
+
+        function updateTransform() {
+            mainGroup.setAttribute('transform', `translate(${state.pan.x}, ${state.pan.y}) scale(${state.zoom})`);
+            zoomLevelSpan.textContent = Math.round(state.zoom * 100) + '%';
+        }
+
+        // 節點類
+        class Node {
+            constructor(x, y, text = '新節點') {
+                this.id = generateId();
+                this.x = x;
+                this.y = y;
+                this.width = 120;
+                this.height = 60;
+                this.text = text;
+                this.element = null;
+                this.render();
+            }
+
+            render() {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', 'node');
+                g.setAttribute('data-id', this.id);
+
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', this.x);
+                rect.setAttribute('y', this.y);
+                rect.setAttribute('width', this.width);
+                rect.setAttribute('height', this.height);
+                rect.setAttribute('fill', '#3498db');
+                rect.setAttribute('stroke', '#2c3e50');
+                rect.setAttribute('stroke-width', '2');
+                rect.setAttribute('rx', '5');
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', this.x + this.width / 2);
+                text.setAttribute('y', this.y + this.height / 2);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dominant-baseline', 'middle');
+                text.setAttribute('fill', 'white');
+                text.setAttribute('font-size', '14');
+                text.textContent = this.text;
+
+                // 調整大小的控制點
+                const resizeHandle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                resizeHandle.setAttribute('class', 'resize-handle');
+                resizeHandle.setAttribute('x', this.x + this.width - 8);
+                resizeHandle.setAttribute('y', this.y + this.height - 8);
+                resizeHandle.setAttribute('width', '8');
+                resizeHandle.setAttribute('height', '8');
+                resizeHandle.setAttribute('fill', '#2c3e50');
+
+                g.appendChild(rect);
+                g.appendChild(text);
+                g.appendChild(resizeHandle);
+
+                this.element = g;
+                mainGroup.appendChild(g);
+
+                this.attachEvents();
+            }
+
+            attachEvents() {
+                const rect = this.element.querySelector('rect:not(.resize-handle)');
+                const resizeHandle = this.element.querySelector('.resize-handle');
+
+                rect.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                rect.addEventListener('contextmenu', (e) => this.onContextMenu(e));
+                resizeHandle.addEventListener('mousedown', (e) => this.onResizeStart(e));
+            }
+
+            onMouseDown(e) {
+                if (e.button !== 0) return; // 只處理左鍵
+                e.stopPropagation();
+
+                if (state.mode === 'add-link') {
+                    if (!state.linkStart) {
+                        state.linkStart = this;
+                        this.element.querySelector('rect').setAttribute('stroke', '#e74c3c');
+                        this.element.querySelector('rect').setAttribute('stroke-width', '4');
+                    } else if (state.linkStart !== this) {
+                        const link = new Link(state.linkStart, this);
+                        state.links.push(link);
+                        state.linkStart.element.querySelector('rect').setAttribute('stroke', '#2c3e50');
+                        state.linkStart.element.querySelector('rect').setAttribute('stroke-width', '2');
+                        state.linkStart = null;
+                        markAsChanged();
+                    }
+                    return;
+                }
+
+                state.dragElement = this;
+                const mousePos = getMousePosition(e);
+                state.dragOffset = {
+                    x: mousePos.x - this.x,
+                    y: mousePos.y - this.y
+                };
+            }
+
+            onResizeStart(e) {
+                e.stopPropagation();
+                state.resizeElement = this;
+                state.resizeType = 'node';
+            }
+
+            onContextMenu(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                showContextMenu(e.clientX, e.clientY, this, 'node');
+            }
+
+            update(x, y, width, height) {
+                this.x = x;
+                this.y = y;
+                if (width !== undefined) this.width = width;
+                if (height !== undefined) this.height = height;
+
+                const rect = this.element.querySelector('rect:not(.resize-handle)');
+                rect.setAttribute('x', this.x);
+                rect.setAttribute('y', this.y);
+                rect.setAttribute('width', this.width);
+                rect.setAttribute('height', this.height);
+
+                const text = this.element.querySelector('text');
+                text.setAttribute('x', this.x + this.width / 2);
+                text.setAttribute('y', this.y + this.height / 2);
+
+                const resizeHandle = this.element.querySelector('.resize-handle');
+                resizeHandle.setAttribute('x', this.x + this.width - 8);
+                resizeHandle.setAttribute('y', this.y + this.height - 8);
+
+                // 更新相關的連接線
+                updateLinks();
+                markAsChanged();
+            }
+
+            updateText(newText) {
+                this.text = newText;
+                const text = this.element.querySelector('text');
+                text.textContent = this.text;
+                markAsChanged();
+            }
+
+            updateColor(color) {
+                const rect = this.element.querySelector('rect:not(.resize-handle)');
+                rect.setAttribute('fill', color);
+                markAsChanged();
+            }
+
+            remove() {
+                // 移除相關的連接線
+                state.links = state.links.filter(link => {
+                    if (link.start === this || link.end === this) {
+                        link.remove();
+                        return false;
+                    }
+                    return true;
+                });
+
+                this.element.remove();
+                state.nodes = state.nodes.filter(n => n !== this);
+                markAsChanged();
+            }
+        }
+
+        // 框架類
+        class Frame {
+            constructor(x, y, width = 200, height = 150, label = '新框架') {
+                this.id = generateId();
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.label = label;
+                this.element = null;
+                this.render();
+            }
+
+            render() {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', 'frame');
+                g.setAttribute('data-id', this.id);
+
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', this.x);
+                rect.setAttribute('y', this.y);
+                rect.setAttribute('width', this.width);
+                rect.setAttribute('height', this.height);
+                rect.setAttribute('fill', 'rgba(149, 165, 166, 0.1)');
+                rect.setAttribute('stroke', '#95a5a6');
+                rect.setAttribute('stroke-width', '2');
+                rect.setAttribute('stroke-dasharray', '5,5');
+                rect.setAttribute('rx', '8');
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', this.x + 10);
+                text.setAttribute('y', this.y + 20);
+                text.setAttribute('fill', '#7f8c8d');
+                text.setAttribute('font-size', '14');
+                text.setAttribute('font-weight', 'bold');
+                text.textContent = this.label;
+
+                const resizeHandle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                resizeHandle.setAttribute('class', 'resize-handle');
+                resizeHandle.setAttribute('x', this.x + this.width - 8);
+                resizeHandle.setAttribute('y', this.y + this.height - 8);
+                resizeHandle.setAttribute('width', '8');
+                resizeHandle.setAttribute('height', '8');
+                resizeHandle.setAttribute('fill', '#95a5a6');
+
+                g.appendChild(rect);
+                g.appendChild(text);
+                g.appendChild(resizeHandle);
+
+                this.element = g;
+                // 框架應該在最底層
+                mainGroup.insertBefore(g, mainGroup.firstChild);
+
+                this.attachEvents();
+            }
+
+            attachEvents() {
+                const rect = this.element.querySelector('rect:not(.resize-handle)');
+                const resizeHandle = this.element.querySelector('.resize-handle');
+
+                rect.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                rect.addEventListener('contextmenu', (e) => this.onContextMenu(e));
+                resizeHandle.addEventListener('mousedown', (e) => this.onResizeStart(e));
+            }
+
+            onMouseDown(e) {
+                if (e.button !== 0) return;
+                e.stopPropagation();
+
+                state.dragElement = this;
+                const mousePos = getMousePosition(e);
+                state.dragOffset = {
+                    x: mousePos.x - this.x,
+                    y: mousePos.y - this.y
+                };
+            }
+
+            onResizeStart(e) {
+                e.stopPropagation();
+                state.resizeElement = this;
+                state.resizeType = 'frame';
+            }
+
+            onContextMenu(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                showContextMenu(e.clientX, e.clientY, this, 'frame');
+            }
+
+            update(x, y, width, height) {
+                this.x = x;
+                this.y = y;
+                if (width !== undefined) this.width = width;
+                if (height !== undefined) this.height = height;
+
+                const rect = this.element.querySelector('rect:not(.resize-handle)');
+                rect.setAttribute('x', this.x);
+                rect.setAttribute('y', this.y);
+                rect.setAttribute('width', this.width);
+                rect.setAttribute('height', this.height);
+
+                const text = this.element.querySelector('text');
+                text.setAttribute('x', this.x + 10);
+                text.setAttribute('y', this.y + 20);
+
+                const resizeHandle = this.element.querySelector('.resize-handle');
+                resizeHandle.setAttribute('x', this.x + this.width - 8);
+                resizeHandle.setAttribute('y', this.y + this.height - 8);
+                markAsChanged();
+            }
+
+            updateLabel(newLabel) {
+                this.label = newLabel;
+                const text = this.element.querySelector('text');
+                text.textContent = this.label;
+                markAsChanged();
+            }
+
+            remove() {
+                this.element.remove();
+                state.frames = state.frames.filter(f => f !== this);
+                markAsChanged();
+            }
+        }
+
+        // 連接線類
+        class Link {
+            constructor(startNode, endNode, arrowType = 'single') {
+                this.id = generateId();
+                this.start = startNode;
+                this.end = endNode;
+                this.arrowType = arrowType; // 'single', 'double', 'none'
+                this.element = null;
+                this.render();
+            }
+
+            render() {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('class', 'link');
+                line.setAttribute('data-id', this.id);
+                line.setAttribute('stroke', '#333');
+                line.setAttribute('stroke-width', '2');
+
+                this.updateArrowMarkers(line);
+                this.updatePosition(line);
+
+                this.element = line;
+                // 連接線應該在框架之後，節點之前
+                const firstNode = mainGroup.querySelector('.node');
+                if (firstNode) {
+                    mainGroup.insertBefore(line, firstNode);
+                } else {
+                    mainGroup.appendChild(line);
+                }
+
+                line.addEventListener('contextmenu', (e) => this.onContextMenu(e));
+            }
+
+            updateArrowMarkers(line) {
+                if (this.arrowType === 'single') {
+                    line.setAttribute('marker-end', 'url(#arrowhead-single)');
+                    line.removeAttribute('marker-start');
+                } else if (this.arrowType === 'double') {
+                    line.setAttribute('marker-end', 'url(#arrowhead-single)');
+                    line.setAttribute('marker-start', 'url(#arrowhead-start)');
+                } else {
+                    line.removeAttribute('marker-end');
+                    line.removeAttribute('marker-start');
+                }
+            }
+
+            updatePosition(line) {
+                const startCenterX = this.start.x + this.start.width / 2;
+                const startCenterY = this.start.y + this.start.height / 2;
+                const endCenterX = this.end.x + this.end.width / 2;
+                const endCenterY = this.end.y + this.end.height / 2;
+
+                line.setAttribute('x1', startCenterX);
+                line.setAttribute('y1', startCenterY);
+                line.setAttribute('x2', endCenterX);
+                line.setAttribute('y2', endCenterY);
+            }
+
+            update() {
+                this.updatePosition(this.element);
+            }
+
+            setArrowType(type) {
+                this.arrowType = type;
+                this.updateArrowMarkers(this.element);
+                markAsChanged();
+            }
+
+            onContextMenu(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                showContextMenu(e.clientX, e.clientY, this, 'link');
+            }
+
+            remove() {
+                this.element.remove();
+                state.links = state.links.filter(l => l !== this);
+                markAsChanged();
+            }
+        }
+
+        // 更新所有連接線
+        function updateLinks() {
+            state.links.forEach(link => link.update());
+        }
+
+        // 右鍵選單
+        function showContextMenu(x, y, element, type) {
+            hideContextMenu();
+
+            const menu = document.createElement('div');
+            menu.className = 'context-menu';
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+
+            if (type === 'node') {
+                menu.innerHTML = `
+                    <div class="context-menu-item" data-action="edit-text">編輯文字</div>
+                    <div class="context-menu-item" data-action="change-color">更改顏色</div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item" data-action="delete">刪除</div>
+                `;
+
+                menu.querySelector('[data-action="edit-text"]').addEventListener('click', () => {
+                    const newText = prompt('輸入新文字:', element.text);
+                    if (newText !== null) element.updateText(newText);
+                    hideContextMenu();
+                });
+
+                menu.querySelector('[data-action="change-color"]').addEventListener('click', () => {
+                    const color = prompt('輸入顏色 (例如: #3498db, red):', '#3498db');
+                    if (color) element.updateColor(color);
+                    hideContextMenu();
+                });
+
+                menu.querySelector('[data-action="delete"]').addEventListener('click', () => {
+                    element.remove();
+                    hideContextMenu();
+                });
+            } else if (type === 'frame') {
+                menu.innerHTML = `
+                    <div class="context-menu-item" data-action="edit-label">編輯標籤</div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item" data-action="delete">刪除</div>
+                `;
+
+                menu.querySelector('[data-action="edit-label"]').addEventListener('click', () => {
+                    const newLabel = prompt('輸入新標籤:', element.label);
+                    if (newLabel !== null) element.updateLabel(newLabel);
+                    hideContextMenu();
+                });
+
+                menu.querySelector('[data-action="delete"]').addEventListener('click', () => {
+                    element.remove();
+                    hideContextMenu();
+                });
+            } else if (type === 'link') {
+                menu.innerHTML = `
+                    <div class="context-menu-item" data-action="arrow-single">單向箭頭 →</div>
+                    <div class="context-menu-item" data-action="arrow-double">雙向箭頭 ↔</div>
+                    <div class="context-menu-item" data-action="arrow-none">無箭頭 —</div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item" data-action="delete">刪除</div>
+                `;
+
+                menu.querySelector('[data-action="arrow-single"]').addEventListener('click', () => {
+                    element.setArrowType('single');
+                    hideContextMenu();
+                });
+
+                menu.querySelector('[data-action="arrow-double"]').addEventListener('click', () => {
+                    element.setArrowType('double');
+                    hideContextMenu();
+                });
+
+                menu.querySelector('[data-action="arrow-none"]').addEventListener('click', () => {
+                    element.setArrowType('none');
+                    hideContextMenu();
+                });
+
+                menu.querySelector('[data-action="delete"]').addEventListener('click', () => {
+                    element.remove();
+                    hideContextMenu();
+                });
+            }
+
+            document.body.appendChild(menu);
+
+            // 點擊其他地方關閉選單
+            setTimeout(() => {
+                document.addEventListener('click', hideContextMenu);
+            }, 0);
+        }
+
+        function hideContextMenu() {
+            const menus = document.querySelectorAll('.context-menu');
+            menus.forEach(menu => menu.remove());
+            document.removeEventListener('click', hideContextMenu);
+        }
+
+        // 模式切換
+        function setMode(mode) {
+            state.mode = state.mode === mode ? null : mode;
+
+            // 重置連接線起點
+            if (state.mode !== 'add-link' && state.linkStart) {
+                state.linkStart.element.querySelector('rect').setAttribute('stroke', '#2c3e50');
+                state.linkStart.element.querySelector('rect').setAttribute('stroke-width', '2');
+                state.linkStart = null;
+            }
+
+            // 更新按鈕狀態
+            addNodeBtn.classList.toggle('active', state.mode === 'add-node');
+            addFrameBtn.classList.toggle('active', state.mode === 'add-frame');
+            addLinkBtn.classList.toggle('active', state.mode === 'add-link');
+
+            // 更新游標
+            if (state.mode === 'add-node' || state.mode === 'add-frame') {
+                canvasContainer.style.cursor = 'crosshair';
+            } else if (state.mode === 'add-link') {
+                canvasContainer.style.cursor = 'pointer';
+            } else {
+                canvasContainer.style.cursor = 'grab';
+            }
+        }
+
+        // 事件處理
+        addNodeBtn.addEventListener('click', () => setMode('add-node'));
+        addFrameBtn.addEventListener('click', () => setMode('add-frame'));
+        addLinkBtn.addEventListener('click', () => setMode('add-link'));
+
+        svg.addEventListener('click', (e) => {
+            if (e.target !== svg && e.target.parentElement !== mainGroup) return;
+
+            const mousePos = getMousePosition(e);
+
+            if (state.mode === 'add-node') {
+                const node = new Node(mousePos.x - 60, mousePos.y - 30);
+                state.nodes.push(node);
+                markAsChanged();
+            } else if (state.mode === 'add-frame') {
+                const frame = new Frame(mousePos.x - 100, mousePos.y - 75);
+                state.frames.push(frame);
+                markAsChanged();
+            }
+        });
+
+        // 拖動和調整大小
+        svg.addEventListener('mousemove', (e) => {
+            const mousePos = getMousePosition(e);
+
+            if (state.dragElement) {
+                const newX = mousePos.x - state.dragOffset.x;
+                const newY = mousePos.y - state.dragOffset.y;
+                state.dragElement.update(newX, newY);
+            }
+
+            if (state.resizeElement) {
+                const newWidth = Math.max(50, mousePos.x - state.resizeElement.x);
+                const newHeight = Math.max(30, mousePos.y - state.resizeElement.y);
+                state.resizeElement.update(
+                    state.resizeElement.x,
+                    state.resizeElement.y,
+                    newWidth,
+                    newHeight
+                );
+            }
+        });
+
+        svg.addEventListener('mouseup', () => {
+            state.dragElement = null;
+            state.resizeElement = null;
+        });
+
+        // 平移
+        canvasContainer.addEventListener('mousedown', (e) => {
+            if (e.target !== svg && e.target !== canvasContainer) return;
+            if (state.mode) return; // 在特殊模式下不平移
+
+            state.isPanning = true;
+            state.panStart = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
+            canvasContainer.classList.add('panning');
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!state.isPanning) return;
+
+            state.pan.x = e.clientX - state.panStart.x;
+            state.pan.y = e.clientY - state.panStart.y;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (state.isPanning) {
+                state.isPanning = false;
+                canvasContainer.classList.remove('panning');
+            }
+        });
+
+        // 縮放
+        canvasContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newZoom = Math.max(0.1, Math.min(5, state.zoom * delta));
+
+            // 以滑鼠位置為中心縮放
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            const rect = canvasContainer.getBoundingClientRect();
+            const x = mouseX - rect.left;
+            const y = mouseY - rect.top;
+
+            state.pan.x = x - (x - state.pan.x) * (newZoom / state.zoom);
+            state.pan.y = y - (y - state.pan.y) * (newZoom / state.zoom);
+            state.zoom = newZoom;
+
+            updateTransform();
+        });
+
+        // 檢查瀏覽器是否支援 File System Access API
+        const supportsFileSystemAccess = 'showDirectoryPicker' in window;
+
+        if (!supportsFileSystemAccess) {
+            selectFolderBtn.disabled = true;
+            selectFolderBtn.title = '您的瀏覽器不支援此功能，請使用 Chrome 或 Edge';
+        }
+
+        // 選擇專案資料夾
+        selectFolderBtn.addEventListener('click', async () => {
+            try {
+                const dirHandle = await window.showDirectoryPicker({
+                    mode: 'readwrite'
+                });
+                state.projectHandle = dirHandle;
+                projectInfo.textContent = `專案: ${dirHandle.name}`;
+                newFileBtn.disabled = false;
+                loadMapBtn.disabled = false;
+                // 儲存按鈕只有在有變更時才啟用
+                projectPanel.classList.add('open');
+                await refreshFileList();
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    alert('無法開啟資料夾: ' + err.message);
+                }
+            }
+        });
+
+        // 關閉專案面板
+        closePanel.addEventListener('click', () => {
+            projectPanel.classList.remove('open');
+        });
+
+        // 重新整理檔案列表
+        refreshFilesBtn.addEventListener('click', refreshFileList);
+
+        async function refreshFileList() {
+            if (!state.projectHandle) return;
+
+            fileList.innerHTML = '';
+            const allFiles = []; // 包括已保存和未保存的文件
+            let currentFileExists = false;
+
+            try {
+                // 掃描已保存的文件
+                for await (const entry of state.projectHandle.values()) {
+                    if (entry.kind === 'file' && entry.name.endsWith('.html')) {
+                        allFiles.push({
+                            name: entry.name,
+                            handle: entry,
+                            saved: true
+                        });
+                        if (state.currentFileName === entry.name) {
+                            currentFileExists = true;
+                        }
+                    }
+                }
+
+                // 加入所有未保存的 map
+                state.unsavedMaps.forEach(map => {
+                    allFiles.push({
+                        name: map.fileName,
+                        handle: null,
+                        saved: false
+                    });
+                });
+
+                // 如果當前有未保存的 map 且不在 unsavedMaps 中，也加入列表
+                if (state.currentFileName && !currentFileExists) {
+                    const alreadyInList = state.unsavedMaps.some(m => m.fileName === state.currentFileName);
+                    if (!alreadyInList) {
+                        allFiles.push({
+                            name: state.currentFileName,
+                            handle: null,
+                            saved: false
+                        });
+                    }
+                }
+
+                // 按名稱排序（新舊文件一起排序）
+                allFiles.sort((a, b) => a.name.localeCompare(b.name));
+
+                if (allFiles.length === 0) {
+                    fileList.innerHTML = '<div style="padding: 10px; text-align: center; color: #999;">無檔案</div>';
+                } else {
+                    allFiles.forEach(file => {
+                        const item = document.createElement('div');
+                        item.className = 'file-item';
+                        if (state.currentFileName === file.name) {
+                            item.classList.add('current');
+                        }
+
+                        const nameSpan = document.createElement('span');
+                        if (file.saved) {
+                            nameSpan.textContent = file.name;
+                        } else {
+                            // 未保存的文件
+                            nameSpan.textContent = `${file.name} (未儲存)`;
+                            item.style.fontStyle = 'italic';
+                            item.style.opacity = '0.8';
+                        }
+                        nameSpan.style.flex = '1';
+                        nameSpan.style.overflow = 'hidden';
+                        nameSpan.style.textOverflow = 'ellipsis';
+                        nameSpan.style.whiteSpace = 'nowrap';
+
+                        item.appendChild(nameSpan);
+
+                        if (file.saved) {
+                            // 已保存的文件有刪除按鈕
+                            const deleteBtn = document.createElement('button');
+                            deleteBtn.className = 'file-item-delete';
+                            deleteBtn.textContent = '刪除';
+                            deleteBtn.onclick = async (e) => {
+                                e.stopPropagation();
+                                if (confirm(`⚠️ 警告：此操作將永久刪除實際檔案！\n\n檔案名稱：${file.name}\n資料夾：${state.projectHandle.name}\n\n刪除後無法復原，確定要永久刪除此檔案嗎？`)) {
+                                    try {
+                                        await state.projectHandle.removeEntry(file.name);
+                                        if (state.currentFileName === file.name) {
+                                            clearCanvas();
+                                            state.currentFileHandle = null;
+                                            state.currentFileName = null;
+                                            state.currentMapTitle = null;
+                                            state.hasUnsavedChanges = false;
+                                            updateTitle();
+                                            setEditingEnabled(false);
+                                        }
+                                        await refreshFileList();
+                                        alert('檔案已從專案資料夾中永久刪除');
+                                    } catch (err) {
+                                        alert('刪除失敗: ' + err.message);
+                                    }
+                                }
+                            };
+
+                            item.appendChild(deleteBtn);
+
+                            item.onclick = async () => {
+                                // 如果有未保存的變更，提示用戶
+                                if (state.hasUnsavedChanges) {
+                                    if (!confirm('有未儲存的變更，確定要切換檔案嗎？')) {
+                                        return;
+                                    }
+                                }
+
+                                // 切換前先保存當前的未保存 map
+                                if (state.currentFileName && !state.currentFileHandle) {
+                                    saveCurrentToUnsaved();
+                                }
+
+                                await loadFile(file.handle);
+                            };
+                        } else {
+                            // 未保存的文件有"新"標記
+                            const badge = document.createElement('span');
+                            badge.textContent = '新';
+                            badge.style.background = '#f39c12';
+                            badge.style.color = 'white';
+                            badge.style.padding = '2px 6px';
+                            badge.style.borderRadius = '3px';
+                            badge.style.fontSize = '10px';
+                            badge.style.marginLeft = '5px';
+                            item.appendChild(badge);
+
+                            // 添加刪除按鈕
+                            const deleteBtn = document.createElement('button');
+                            deleteBtn.className = 'file-item-delete';
+                            deleteBtn.textContent = '刪除';
+                            deleteBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                if (confirm(`確定要刪除未保存的 ${file.name} 嗎？此操作無法復原。`)) {
+                                    removeUnsavedMap(file.name);
+                                    // 如果刪除的是當前文件，清空畫布
+                                    if (state.currentFileName === file.name) {
+                                        clearCanvas();
+                                        state.currentFileHandle = null;
+                                        state.currentFileName = null;
+                                        state.currentMapTitle = null;
+                                        state.hasUnsavedChanges = false;
+                                        updateTitle();
+                                        setEditingEnabled(false);
+                                    }
+                                    refreshFileList();
+                                }
+                            };
+                            item.appendChild(deleteBtn);
+
+                            // 點擊未儲存的檔案來切換
+                            item.onclick = () => {
+                                if (file.name === state.currentFileName) {
+                                    // 已經是當前檔案，不做任何事
+                                    return;
+                                }
+
+                                // 切換前先保存當前的 map
+                                if (state.currentFileName && !state.currentFileHandle) {
+                                    saveCurrentToUnsaved();
+                                }
+
+                                // 加載選中的未保存 map
+                                loadUnsavedMap(file.name);
+                                refreshFileList();
+                            };
+                        }
+
+                        fileList.appendChild(item);
+                    });
+                }
+            } catch (err) {
+                alert('讀取檔案列表失敗: ' + err.message);
+            }
+        }
+
+        // 新建 map
+        newFileBtn.addEventListener('click', () => {
+            // 如果當前有未保存的 map，保存到列表中
+            if (state.currentFileName && !state.currentFileHandle) {
+                saveCurrentToUnsaved();
+            }
+
+            // 如果當前有未儲存的變更（已存在的 map 被修改）
+            if (state.hasUnsavedChanges && state.currentFileHandle) {
+                if (!confirm('有未儲存的變更，確定要建立新 map 嗎？')) {
+                    return;
+                }
+            }
+
+            // 顯示對話框
+            mapTitleInput.value = '';
+            mapFilenameInput.value = '';
+            newMapModal.classList.add('show');
+            mapTitleInput.focus();
+        });
+
+        // 取消新建 map
+        cancelNewMapBtn.addEventListener('click', () => {
+            newMapModal.classList.remove('show');
+        });
+
+        // 確定新建 map
+        confirmNewMapBtn.addEventListener('click', async () => {
+            const title = mapTitleInput.value.trim();
+            if (!title) {
+                alert('請輸入標題名稱');
+                mapTitleInput.focus();
+                return;
+            }
+
+            let fileName = mapFilenameInput.value.trim();
+            if (!fileName) {
+                fileName = title;
+            }
+
+            // 確保檔案名稱有 .html 副檔名
+            if (!fileName.endsWith('.html')) {
+                fileName += '.html';
+            }
+
+            // 檢查檔名是否與未保存的 map 衝突
+            const existsInUnsaved = state.unsavedMaps.some(m => m.fileName === fileName);
+            if (existsInUnsaved) {
+                alert(`檔案列表中已存在名為 "${fileName}" 的未保存 map，請使用不同的檔案名稱`);
+                mapFilenameInput.focus();
+                return;
+            }
+
+            // 檢查檔名是否與專案資料夾中的檔案衝突
+            if (state.projectHandle) {
+                try {
+                    let existsInFolder = false;
+                    for await (const entry of state.projectHandle.values()) {
+                        if (entry.kind === 'file' && entry.name === fileName) {
+                            existsInFolder = true;
+                            break;
+                        }
+                    }
+                    if (existsInFolder) {
+                        alert(`專案資料夾中已存在名為 "${fileName}" 的檔案，請使用不同的檔案名稱`);
+                        mapFilenameInput.focus();
+                        return;
+                    }
+                } catch (err) {
+                    console.error('檢查檔案時發生錯誤:', err);
+                }
+            }
+
+            clearCanvas();
+            state.currentFileHandle = null;
+            state.currentFileName = fileName;
+            state.currentMapTitle = title;
+            state.hasUnsavedChanges = true; // 新建的 map 視為已變動，需要儲存
+            updateTitle();
+            setEditingEnabled(true);
+            saveCurrentBtn.disabled = false; // 新建時啟用儲存按鈕
+            refreshFileList();
+            newMapModal.classList.remove('show');
+        });
+
+        // 點擊對話框背景關閉
+        newMapModal.addEventListener('click', (e) => {
+            if (e.target === newMapModal) {
+                newMapModal.classList.remove('show');
+            }
+        });
+
+        // Enter 鍵確定
+        mapTitleInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                mapFilenameInput.focus();
+            }
+        });
+
+        mapFilenameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmNewMapBtn.click();
+            }
+        });
+
+        // 載入 map - 顯示檔案選擇對話框
+        loadMapBtn.addEventListener('click', () => {
+            if (!state.projectHandle) {
+                alert('請先選擇專案資料夾');
+                return;
+            }
+
+            // 切換專案面板的開關狀態（如果已開啟則關閉，反之則開啟）
+            if (projectPanel.classList.contains('open')) {
+                projectPanel.classList.remove('open');
+            } else {
+                if (state.hasUnsavedChanges) {
+                    if (!confirm('有未儲存的變更，確定要載入其他 map 嗎？')) {
+                        return;
+                    }
+                }
+                projectPanel.classList.add('open');
+            }
+        });
+
+        // 儲存當前檔案
+        saveCurrentBtn.addEventListener('click', async () => {
+            if (!state.projectHandle) {
+                alert('請先選擇專案資料夾');
+                return;
+            }
+
+            try {
+                const data = {
+                    title: state.currentMapTitle || 'Untitled Map',
+                    nodes: state.nodes.map(n => ({
+                        x: n.x, y: n.y, width: n.width, height: n.height, text: n.text
+                    })),
+                    frames: state.frames.map(f => ({
+                        x: f.x, y: f.y, width: f.width, height: f.height, label: f.label
+                    })),
+                    links: state.links.map(l => ({
+                        startId: state.nodes.indexOf(l.start),
+                        endId: state.nodes.indexOf(l.end),
+                        arrowType: l.arrowType
+                    }))
+                };
+
+                if (!state.currentFileName) {
+                    state.currentFileName = 'concept-map-' + Date.now() + '.html';
+                }
+
+                const fileHandle = await state.projectHandle.getFileHandle(state.currentFileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                const htmlContent = generateHTMLFile(data);
+                await writable.write(htmlContent);
+                await writable.close();
+
+                state.currentFileHandle = fileHandle;
+                state.hasUnsavedChanges = false;
+                updateTitle();
+                saveCurrentBtn.disabled = true; // 儲存後禁用儲存按鈕
+                // 從未保存列表中移除
+                removeUnsavedMap(state.currentFileName);
+                await refreshFileList();
+                alert(`儲存成功！\n\n檔案名稱：${state.currentFileName}\n專案資料夾：${state.projectHandle.name}\n\n請在文件資源管理器中按 F5 刷新查看檔案`);
+            } catch (err) {
+                alert('儲存失敗: ' + err.message);
+            }
+        });
+
+        function generateHTMLFile(data) {
+            const dataStr = JSON.stringify(data, null, 2);
+            return document.documentElement.outerHTML.replace(
+                '<script>',
+                `<script>\nconst SAVED_DATA = ${dataStr};\n`
+            );
+        }
+
+        // 載入檔案
+        async function loadFile(fileHandle) {
+            try {
+                const file = await fileHandle.getFile();
+                const text = await file.text();
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+                const scriptContent = doc.querySelector('script').textContent;
+                const match = scriptContent.match(/const SAVED_DATA = ({[\s\S]*?});/);
+
+                if (match) {
+                    const data = JSON.parse(match[1]);
+                    loadData(data);
+                    state.currentFileHandle = fileHandle;
+                    state.currentFileName = fileHandle.name;
+                    state.currentMapTitle = data.title || fileHandle.name.replace('.html', '');
+                    state.hasUnsavedChanges = false;
+                    updateTitle();
+                    setEditingEnabled(true);
+                    saveCurrentBtn.disabled = true; // 載入後禁用儲存按鈕（沒有變更）
+                    await refreshFileList();
+                }
+            } catch (err) {
+                alert('載入檔案失敗: ' + err.message);
+            }
+        }
+
+        function loadData(data) {
+            // 清除現有內容
+            clearCanvas();
+
+            // 載入框架
+            data.frames.forEach(f => {
+                const frame = new Frame(f.x, f.y, f.width, f.height, f.label);
+                state.frames.push(frame);
+            });
+
+            // 載入節點
+            data.nodes.forEach(n => {
+                const node = new Node(n.x, n.y, n.text);
+                node.width = n.width;
+                node.height = n.height;
+                node.update(n.x, n.y, n.width, n.height);
+                state.nodes.push(node);
+            });
+
+            // 載入連接線
+            data.links.forEach(l => {
+                const link = new Link(
+                    state.nodes[l.startId],
+                    state.nodes[l.endId],
+                    l.arrowType
+                );
+                state.links.push(link);
+            });
+        }
+
+        function clearCanvas() {
+            state.nodes.forEach(n => n.element.remove());
+            state.frames.forEach(f => f.element.remove());
+            state.links.forEach(l => l.element.remove());
+            state.nodes = [];
+            state.frames = [];
+            state.links = [];
+            state.pan = { x: 0, y: 0 };
+            state.zoom = 1;
+            updateTransform();
+        }
+
+        function updateTitle() {
+            if (state.currentMapTitle) {
+                document.title = `${state.currentMapTitle}${state.hasUnsavedChanges ? ' *' : ''} - Concept Crafter`;
+            } else {
+                document.title = 'Concept Crafter - 概念圖編輯器';
+            }
+        }
+
+        // 未保存 map 管理函數
+        function saveCurrentToUnsaved() {
+            // 將當前 map 保存到 unsavedMaps 列表
+            if (state.currentFileName && !state.currentFileHandle) {
+                // 移除已存在的同名未保存 map
+                state.unsavedMaps = state.unsavedMaps.filter(m => m.fileName !== state.currentFileName);
+                // 添加當前 map
+                state.unsavedMaps.push({
+                    fileName: state.currentFileName,
+                    title: state.currentMapTitle,
+                    nodes: state.nodes.map(n => ({
+                        x: n.x, y: n.y, width: n.width, height: n.height, text: n.text
+                    })),
+                    frames: state.frames.map(f => ({
+                        x: f.x, y: f.y, width: f.width, height: f.height, label: f.label
+                    })),
+                    links: state.links.map(l => ({
+                        startId: state.nodes.indexOf(l.start),
+                        endId: state.nodes.indexOf(l.end),
+                        arrowType: l.arrowType
+                    }))
+                });
+            }
+        }
+
+        function loadUnsavedMap(fileName) {
+            // 從 unsavedMaps 加載指定的 map
+            const map = state.unsavedMaps.find(m => m.fileName === fileName);
+            if (map) {
+                clearCanvas();
+                state.currentFileHandle = null;
+                state.currentFileName = map.fileName;
+                state.currentMapTitle = map.title;
+
+                // 載入框架
+                map.frames.forEach(f => {
+                    const frame = new Frame(f.x, f.y, f.width, f.height, f.label);
+                    state.frames.push(frame);
+                });
+
+                // 載入節點
+                map.nodes.forEach(n => {
+                    const node = new Node(n.x, n.y, n.width, n.height, n.text);
+                    state.nodes.push(node);
+                });
+
+                // 載入連接線
+                map.links.forEach(l => {
+                    const link = new Link(
+                        state.nodes[l.startId],
+                        state.nodes[l.endId],
+                        l.arrowType
+                    );
+                    state.links.push(link);
+                });
+
+                state.hasUnsavedChanges = true;
+                updateTitle();
+                setEditingEnabled(true);
+                saveCurrentBtn.disabled = false;
+            }
+        }
+
+        function removeUnsavedMap(fileName) {
+            // 從 unsavedMaps 移除指定的 map
+            state.unsavedMaps = state.unsavedMaps.filter(m => m.fileName !== fileName);
+        }
+
+        // 追蹤變更
+        function markAsChanged() {
+            state.hasUnsavedChanges = true;
+            updateTitle();
+            // 有變更時啟用儲存按鈕
+            if (state.projectHandle && state.currentFileName) {
+                saveCurrentBtn.disabled = false;
+            }
+        }
+
+        // 啟用/禁用編輯按鈕
+        function setEditingEnabled(enabled) {
+            addNodeBtn.disabled = !enabled;
+            addFrameBtn.disabled = !enabled;
+            addLinkBtn.disabled = !enabled;
+
+            if (!enabled) {
+                // 如果禁用編輯，取消當前模式
+                state.mode = null;
+                addNodeBtn.classList.remove('active');
+                addFrameBtn.classList.remove('active');
+                addLinkBtn.classList.remove('active');
+                canvasContainer.style.cursor = 'grab';
+            }
+        }
+
+        // 初始化時檢查是否有儲存的資料
+        if (typeof SAVED_DATA !== 'undefined') {
+            loadData(SAVED_DATA);
+        }
+
+        // 初始化
+        updateTransform();
+    </script>
+</body>
+</html>
