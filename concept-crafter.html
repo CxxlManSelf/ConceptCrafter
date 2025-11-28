@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept Crafter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+
+        #toolbar {
+            background: #2c3e50;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        button:active {
+            background: #21618c;
+        }
+
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        button:disabled:hover {
+            background: #95a5a6;
+        }
+
+        #container {
+            display: flex;
+            height: calc(100vh - 50px);
+            position: relative;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: white;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #canvas.grabbing {
+            cursor: grabbing;
+        }
+
+        #map-panel {
+            width: 300px;
+            background: #ecf0f1;
+            border-left: 1px solid #bdc3c7;
+            overflow-y: auto;
+            transition: transform 0.3s;
+        }
+
+        #map-panel.hidden {
+            transform: translateX(100%);
+        }
+
+        #toggle-panel {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 5px;
+            cursor: pointer;
+            border-radius: 4px 0 0 4px;
+            z-index: 10;
+            transition: right 0.3s;
+        }
+
+        #toggle-panel.panel-visible {
+            right: 300px;
+        }
+
+        .map-item {
+            background: white;
+            margin: 10px;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .map-item.active {
+            border: 2px solid #3498db;
+        }
+
+        .map-item h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+
+        .map-item .buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .map-item button {
+            font-size: 12px;
+            padding: 5px 10px;
+        }
+
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+            min-width: 150px;
+        }
+
+        .context-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .context-menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .context-menu-item:hover {
+            background: #f0f0f0;
+        }
+
+        .context-menu-submenu {
+            position: relative;
+        }
+
+        .context-menu-submenu > .submenu {
+            position: absolute;
+            left: 100%;
+            top: 0;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: none;
+            min-width: 120px;
+        }
+
+        .context-menu-submenu:hover > .submenu {
+            display: block;
+        }
+
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .node {
+            position: absolute;
+            background: #3498db;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: move;
+            min-width: 100px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            user-select: none;
+            word-wrap: break-word;
+        }
+
+        .node .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 15px;
+            height: 15px;
+            cursor: nwse-resize;
+            background: rgba(255,255,255,0.3);
+            border-radius: 0 0 8px 0;
+        }
+
+        .frame {
+            position: absolute;
+            border: 2px dashed #95a5a6;
+            background: rgba(149, 165, 166, 0.1);
+            cursor: move;
+            min-width: 200px;
+            min-height: 150px;
+        }
+
+        .frame .frame-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: #95a5a6;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .frame .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 15px;
+            height: 15px;
+            cursor: nwse-resize;
+            background: #95a5a6;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            width: 400px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .modal-content label {
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            color: #34495e;
+            font-weight: 500;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .modal-content .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        #project-name {
+            color: #ecf0f1;
+            margin-left: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <button id="select-folder">選擇專案資料夾</button>
+        <button id="new-map">新增 Map</button>
+        <button id="load-map">載入 Map</button>
+        <button id="add-node">新增節點</button>
+        <button id="add-frame">新增 Frame</button>
+        <button id="connect-mode">連接模式</button>
+        <span id="project-name">未選擇專案</span>
+    </div>
+
+    <div id="container">
+        <div id="canvas-container">
+            <svg id="svg-layer">
+                <defs>
+                    <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#2c3e50" />
+                    </marker>
+                    <marker id="arrowhead-double" viewBox="0 0 10 10" refX="1" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 10 0 L 0 5 L 10 10 z" fill="#2c3e50" />
+                    </marker>
+                </defs>
+            </svg>
+            <div id="canvas"></div>
+        </div>
+        <button id="toggle-panel">☰</button>
+        <div id="map-panel" class="hidden">
+            <div style="padding: 15px; background: #2c3e50; color: white;">
+                <h2 style="margin: 0;">Map 列表</h2>
+            </div>
+            <div id="map-list"></div>
+        </div>
+    </div>
+
+    <div id="context-menu" class="context-menu"></div>
+
+    <div id="text-modal" class="modal">
+        <div class="modal-content">
+            <h2>編輯文字</h2>
+            <input type="text" id="modal-text-input" placeholder="輸入文字">
+            <div class="modal-buttons">
+                <button id="modal-cancel">取消</button>
+                <button id="modal-ok">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="new-map-modal" class="modal">
+        <div class="modal-content">
+            <h2>建立新 Map</h2>
+            <label for="map-title-input">Map 標題：</label>
+            <input type="text" id="map-title-input" placeholder="輸入 Map 標題">
+            <label for="map-filename-input">檔案名稱（選填）：</label>
+            <input type="text" id="map-filename-input" placeholder="留空則使用標題作為檔名">
+            <div class="modal-buttons">
+                <button id="new-map-cancel">取消</button>
+                <button id="new-map-ok">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ConceptCrafter {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.svgLayer = document.getElementById('svg-layer');
+                this.contextMenu = document.getElementById('context-menu');
+
+                this.projectHandle = null;
+                this.currentMap = null;
+                this.maps = [];
+
+                this.nodes = [];
+                this.frames = [];
+                this.connections = [];
+
+                this.scale = 1;
+                this.offsetX = 0;
+                this.offsetY = 0;
+                this.isPanning = false;
+                this.panStart = { x: 0, y: 0 };
+
+                this.connectMode = false;
+                this.connectStart = null;
+
+                this.dragElement = null;
+                this.resizeElement = null;
+                this.dragOffset = { x: 0, y: 0 };
+
+                this.init();
+            }
+
+            init() {
+                this.checkBrowserSupport();
+                this.setupEventListeners();
+                this.updateSVGSize();
+                this.updateButtonStates();
+                this.canvasContainer = document.getElementById('canvas-container');
+                window.addEventListener('resize', () => this.updateSVGSize());
+            }
+
+            checkBrowserSupport() {
+                if (!window.showDirectoryPicker) {
+                    const selectBtn = document.getElementById('select-folder');
+                    selectBtn.disabled = true;
+                    selectBtn.title = '您的瀏覽器不支援 File System Access API，請使用 Chrome、Edge 或其他支援的瀏覽器';
+                }
+            }
+
+            updateButtonStates() {
+                const hasProject = this.projectHandle !== null;
+                const hasMap = this.currentMap !== null;
+
+                document.getElementById('new-map').disabled = !hasProject;
+                document.getElementById('load-map').disabled = !hasProject;
+                document.getElementById('add-node').disabled = !hasMap;
+                document.getElementById('add-frame').disabled = !hasMap;
+                document.getElementById('connect-mode').disabled = !hasMap;
+            }
+
+            setupEventListeners() {
+                // Toolbar buttons
+                document.getElementById('select-folder').addEventListener('click', () => this.selectProjectFolder());
+                document.getElementById('new-map').addEventListener('click', () => this.createNewMap());
+                document.getElementById('load-map').addEventListener('click', () => this.loadMapFromFile());
+                document.getElementById('add-node').addEventListener('click', () => this.addNode());
+                document.getElementById('add-frame').addEventListener('click', () => this.addFrame());
+                document.getElementById('connect-mode').addEventListener('click', () => this.toggleConnectMode());
+                document.getElementById('toggle-panel').addEventListener('click', () => this.togglePanel());
+
+                // Canvas interactions
+                this.canvas.addEventListener('mousedown', (e) => this.onCanvasMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.onCanvasMouseMove(e));
+                this.canvas.addEventListener('mouseup', (e) => this.onCanvasMouseUp(e));
+                this.canvas.addEventListener('wheel', (e) => this.onCanvasWheel(e));
+                this.canvas.addEventListener('contextmenu', (e) => this.onCanvasContextMenu(e));
+
+                // Hide context menu on click
+                document.addEventListener('click', () => this.hideContextMenu());
+
+                // Modal
+                document.getElementById('modal-ok').addEventListener('click', () => this.modalOk());
+                document.getElementById('modal-cancel').addEventListener('click', () => this.modalCancel());
+
+                // New Map Modal
+                document.getElementById('new-map-ok').addEventListener('click', () => this.newMapModalOk());
+                document.getElementById('new-map-cancel').addEventListener('click', () => this.newMapModalCancel());
+
+                // Enter key support for new map modal
+                document.getElementById('map-title-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.newMapModalOk();
+                });
+                document.getElementById('map-filename-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.newMapModalOk();
+                });
+            }
+
+            updateSVGSize() {
+                const canvasArea = document.querySelector('.canvas-area') || document.getElementById('canvas-container');
+                const rect = canvasArea.getBoundingClientRect();
+                this.svgLayer.setAttribute('width', rect.width);
+                this.svgLayer.setAttribute('height', rect.height);
+            }
+
+            async selectProjectFolder() {
+                if (!window.showDirectoryPicker) {
+                    alert('您的瀏覽器不支援 File System Access API\n\n請使用：\n- Chrome 86+\n- Edge 86+\n- Opera 72+\n\n或直接使用「載入 Map」功能');
+                    return;
+                }
+
+                try {
+                    console.log('開始選擇資料夾...');
+                    this.projectHandle = await window.showDirectoryPicker();
+                    console.log('已選擇資料夾:', this.projectHandle.name);
+                    document.getElementById('project-name').textContent = `專案: ${this.projectHandle.name}`;
+                    this.updateButtonStates();
+                    this.loadProjectMaps();
+                    console.log('按鈕狀態已更新');
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error('選擇資料夾錯誤:', err);
+                        alert('無法選擇資料夾: ' + err.message + '\n\n請確認：\n1. 使用支援的瀏覽器\n2. 允許網頁存取檔案系統\n3. 不是在無痕模式中');
+                    } else {
+                        console.log('用戶取消選擇資料夾');
+                    }
+                }
+            }
+
+            async loadProjectMaps() {
+                // This would scan the directory for .html files
+                // For now, we'll just clear the current maps
+                this.maps = [];
+                this.updateMapList();
+            }
+
+            createNewMap() {
+                if (!this.projectHandle) {
+                    alert('請先選擇專案資料夾');
+                    return;
+                }
+
+                // Show new map modal
+                const modal = document.getElementById('new-map-modal');
+                const titleInput = document.getElementById('map-title-input');
+                const filenameInput = document.getElementById('map-filename-input');
+
+                titleInput.value = '';
+                filenameInput.value = '';
+                modal.style.display = 'block';
+                titleInput.focus();
+            }
+
+            newMapModalOk() {
+                const titleInput = document.getElementById('map-title-input');
+                const filenameInput = document.getElementById('map-filename-input');
+                const modal = document.getElementById('new-map-modal');
+
+                const title = titleInput.value.trim();
+                if (!title) {
+                    alert('請輸入 Map 標題');
+                    return;
+                }
+
+                const filename = filenameInput.value.trim() || title;
+
+                const map = {
+                    id: Date.now(),
+                    name: filename,
+                    title: title,
+                    data: {
+                        nodes: [],
+                        frames: [],
+                        connections: []
+                    },
+                    modified: true,
+                    file: null
+                };
+
+                this.maps.push(map);
+                this.switchToMap(map);
+                this.updateMapList();
+
+                modal.style.display = 'none';
+            }
+
+            newMapModalCancel() {
+                const modal = document.getElementById('new-map-modal');
+                modal.style.display = 'none';
+            }
+
+            async loadMapFromFile() {
+                if (!this.projectHandle) {
+                    alert('請先選擇專案資料夾');
+                    return;
+                }
+
+                try {
+                    const pickerOpts = {
+                        types: [{
+                            description: 'HTML Files',
+                            accept: { 'text/html': ['.html'] }
+                        }],
+                        startIn: this.projectHandle
+                    };
+
+                    const [fileHandle] = await window.showOpenFilePicker(pickerOpts);
+
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
+
+                    // Extract map data from HTML file
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(content, 'text/html');
+                    const dataScript = doc.querySelector('#map-data');
+
+                    if (dataScript) {
+                        const jsonData = JSON.parse(dataScript.textContent);
+
+                        // Support both old and new format
+                        let mapData, mapTitle;
+                        if (jsonData.data && jsonData.title) {
+                            // New format with title
+                            mapData = jsonData.data;
+                            mapTitle = jsonData.title;
+                        } else {
+                            // Old format without title
+                            mapData = jsonData;
+                            mapTitle = file.name.replace('.html', '');
+                        }
+
+                        const map = {
+                            id: Date.now(),
+                            name: file.name.replace('.html', ''),
+                            title: mapTitle,
+                            data: mapData,
+                            modified: false,
+                            file: fileHandle
+                        };
+
+                        this.maps.push(map);
+                        this.switchToMap(map);
+                        this.updateMapList();
+                    } else {
+                        alert('這不是有效的 Concept Map 檔案');
+                    }
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        alert('載入檔案失敗: ' + err.message);
+                    }
+                }
+            }
+
+            switchToMap(map) {
+                this.currentMap = map;
+                this.nodes = [...map.data.nodes];
+                this.frames = [...map.data.frames];
+                this.connections = [...map.data.connections];
+                this.render();
+                this.updateMapList();
+                this.updateButtonStates();
+            }
+
+            async saveMap(map) {
+                if (!this.projectHandle) {
+                    alert('請先選擇專案資料夾');
+                    return;
+                }
+
+                map.data.nodes = this.currentMap === map ? [...this.nodes] : map.data.nodes;
+                map.data.frames = this.currentMap === map ? [...this.frames] : map.data.frames;
+                map.data.connections = this.currentMap === map ? [...this.connections] : map.data.connections;
+
+                const html = this.generateMapHTML(map);
+
+                try {
+                    const fileName = `${map.name}.html`;
+                    const fileHandle = await this.projectHandle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(html);
+                    await writable.close();
+
+                    map.file = fileHandle;
+                    map.modified = false;
+                    this.updateMapList();
+                    alert('儲存成功');
+                } catch (err) {
+                    alert('儲存失敗: ' + err.message);
+                }
+            }
+
+            generateMapHTML(map) {
+                const mapData = {
+                    title: map.title || map.name,
+                    data: map.data
+                };
+                const jsonData = JSON.stringify(mapData);
+                const displayTitle = map.title || map.name;
+
+                return `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${displayTitle} - Concept Map</title>
+    <script id="map-data" type="application/json">${jsonData}<` + `/script>
+</head>
+<body>
+    <h1>${displayTitle}</h1>
+    <p>這是一個 Concept Crafter 地圖檔案。請使用 Concept Crafter 開啟。</p>
+</body>
+</html>`;
+            }
+
+            removeMap(map) {
+                const index = this.maps.indexOf(map);
+                if (index > -1) {
+                    this.maps.splice(index, 1);
+                    if (this.currentMap === map) {
+                        this.currentMap = null;
+                        this.nodes = [];
+                        this.frames = [];
+                        this.connections = [];
+                        this.render();
+                    }
+                    this.updateMapList();
+                    this.updateButtonStates();
+                }
+            }
+
+            async deleteMap(map) {
+                if (!confirm(`確定要刪除 "${map.name}" 嗎？這將會刪除檔案。`)) {
+                    return;
+                }
+
+                if (map.file && this.projectHandle) {
+                    try {
+                        await this.projectHandle.removeEntry(`${map.name}.html`);
+                    } catch (err) {
+                        alert('刪除檔案失敗: ' + err.message);
+                    }
+                }
+
+                this.removeMap(map);
+            }
+
+            updateMapList() {
+                const listContainer = document.getElementById('map-list');
+                listContainer.innerHTML = '';
+
+                this.maps.forEach(map => {
+                    const item = document.createElement('div');
+                    item.className = 'map-item';
+                    if (map === this.currentMap) {
+                        item.classList.add('active');
+                    }
+
+                    const title = document.createElement('h3');
+                    const displayTitle = map.title || map.name;
+                    title.textContent = displayTitle;
+                    title.style.cursor = 'pointer';
+                    title.onclick = () => this.switchToMap(map);
+                    item.appendChild(title);
+
+                    const buttons = document.createElement('div');
+                    buttons.className = 'buttons';
+
+                    if (map.modified) {
+                        const saveBtn = document.createElement('button');
+                        saveBtn.textContent = '儲存';
+                        saveBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            this.saveMap(map);
+                        };
+                        buttons.appendChild(saveBtn);
+                    }
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.textContent = '移除';
+                    removeBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        this.removeMap(map);
+                    };
+                    buttons.appendChild(removeBtn);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = '刪除';
+                    deleteBtn.style.background = '#e74c3c';
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        this.deleteMap(map);
+                    };
+                    buttons.appendChild(deleteBtn);
+
+                    item.appendChild(buttons);
+                    listContainer.appendChild(item);
+                });
+            }
+
+            togglePanel() {
+                const panel = document.getElementById('map-panel');
+                const toggle = document.getElementById('toggle-panel');
+                panel.classList.toggle('hidden');
+                toggle.classList.toggle('panel-visible');
+            }
+
+            addNode() {
+                if (!this.currentMap) {
+                    alert('請先建立或載入一個 Map');
+                    return;
+                }
+
+                const node = {
+                    id: Date.now(),
+                    x: 100,
+                    y: 100,
+                    width: 120,
+                    height: 80,
+                    text: '新節點',
+                    color: '#3498db'
+                };
+                this.nodes.push(node);
+                this.markModified();
+                this.render();
+            }
+
+            addFrame() {
+                if (!this.currentMap) {
+                    alert('請先建立或載入一個 Map');
+                    return;
+                }
+
+                const frame = {
+                    id: Date.now(),
+                    x: 150,
+                    y: 150,
+                    width: 300,
+                    height: 200,
+                    label: '新 Frame'
+                };
+                this.frames.push(frame);
+                this.markModified();
+                this.render();
+            }
+
+            toggleConnectMode() {
+                if (!this.currentMap) {
+                    alert('請先建立或載入一個 Map');
+                    return;
+                }
+
+                this.connectMode = !this.connectMode;
+                const btn = document.getElementById('connect-mode');
+                btn.style.background = this.connectMode ? '#e74c3c' : '#3498db';
+                btn.textContent = this.connectMode ? '取消連接' : '連接模式';
+                this.connectStart = null;
+            }
+
+            markModified() {
+                if (this.currentMap) {
+                    this.currentMap.modified = true;
+                    this.updateMapList();
+                }
+            }
+
+            onCanvasMouseDown(e) {
+                if (e.button === 2) return; // Right click
+
+                // 使用 canvas-container 的座標而不是 canvas（因為 canvas 被 transform 了）
+                const rect = this.canvasContainer.getBoundingClientRect();
+                const x = (e.clientX - rect.left - this.offsetX) / this.scale;
+                const y = (e.clientY - rect.top - this.offsetY) / this.scale;
+
+                // Check for resize handles
+                const resizeNode = this.nodes.find(node => this.isInResizeHandle(x, y, node));
+                if (resizeNode) {
+                    this.resizeElement = { type: 'node', element: resizeNode };
+                    this.dragOffset = { x: resizeNode.width, y: resizeNode.height };
+                    return;
+                }
+
+                const resizeFrame = this.frames.find(frame => this.isInResizeHandle(x, y, frame));
+                if (resizeFrame) {
+                    this.resizeElement = { type: 'frame', element: resizeFrame };
+                    this.dragOffset = { x: resizeFrame.width, y: resizeFrame.height };
+                    return;
+                }
+
+                // Check for nodes
+                const clickedNode = this.nodes.find(node => this.isInNode(x, y, node));
+                if (clickedNode) {
+                    if (this.connectMode) {
+                        if (!this.connectStart) {
+                            this.connectStart = clickedNode;
+                        } else {
+                            this.createConnection(this.connectStart, clickedNode);
+                            this.connectStart = null;
+                        }
+                    } else {
+                        this.dragElement = { type: 'node', element: clickedNode };
+                        this.dragOffset = { x: x - clickedNode.x, y: y - clickedNode.y };
+                    }
+                    return;
+                }
+
+                // Check for frames
+                const clickedFrame = this.frames.find(frame => this.isInFrame(x, y, frame));
+                if (clickedFrame) {
+                    if (this.connectMode) {
+                        if (!this.connectStart) {
+                            this.connectStart = clickedFrame;
+                        } else {
+                            this.createConnection(this.connectStart, clickedFrame);
+                            this.connectStart = null;
+                        }
+                    } else {
+                        this.dragElement = { type: 'frame', element: clickedFrame };
+                        this.dragOffset = { x: x - clickedFrame.x, y: y - clickedFrame.y };
+                    }
+                    return;
+                }
+
+                // Pan canvas
+                this.isPanning = true;
+                this.panStart = { x: e.clientX, y: e.clientY };
+                this.canvas.classList.add('grabbing');
+            }
+
+            onCanvasMouseMove(e) {
+                const rect = this.canvasContainer.getBoundingClientRect();
+                const x = (e.clientX - rect.left - this.offsetX) / this.scale;
+                const y = (e.clientY - rect.top - this.offsetY) / this.scale;
+
+                if (this.resizeElement) {
+                    const elem = this.resizeElement.element;
+                    elem.width = Math.max(50, x - elem.x);
+                    elem.height = Math.max(30, y - elem.y);
+                    this.markModified();
+                    this.render();
+                    return;
+                }
+
+                if (this.dragElement) {
+                    const elem = this.dragElement.element;
+                    elem.x = x - this.dragOffset.x;
+                    elem.y = y - this.dragOffset.y;
+                    this.markModified();
+                    this.render();
+                    return;
+                }
+
+                if (this.isPanning) {
+                    this.offsetX += e.clientX - this.panStart.x;
+                    this.offsetY += e.clientY - this.panStart.y;
+                    this.panStart = { x: e.clientX, y: e.clientY };
+                    this.render();
+                }
+            }
+
+            onCanvasMouseUp(e) {
+                this.isPanning = false;
+                this.dragElement = null;
+                this.resizeElement = null;
+                this.canvas.classList.remove('grabbing');
+            }
+
+            onCanvasWheel(e) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                // 使用 canvasContainer 的座標（未被 transform 影響）
+                const rect = this.canvasContainer.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                // 縮放時保持鼠標位置不變
+                this.offsetX = mouseX - (mouseX - this.offsetX) * delta;
+                this.offsetY = mouseY - (mouseY - this.offsetY) * delta;
+                this.scale *= delta;
+
+                this.render();
+            }
+
+            onCanvasContextMenu(e) {
+                e.preventDefault();
+                const rect = this.canvasContainer.getBoundingClientRect();
+                const x = (e.clientX - rect.left - this.offsetX) / this.scale;
+                const y = (e.clientY - rect.top - this.offsetY) / this.scale;
+
+                const clickedNode = this.nodes.find(node => this.isInNode(x, y, node));
+                if (clickedNode) {
+                    this.showNodeContextMenu(e.clientX, e.clientY, clickedNode);
+                    return;
+                }
+
+                const clickedFrame = this.frames.find(frame => this.isInFrame(x, y, frame));
+                if (clickedFrame) {
+                    this.showFrameContextMenu(e.clientX, e.clientY, clickedFrame);
+                    return;
+                }
+
+                const clickedConnection = this.findConnectionAtPoint(x, y);
+                if (clickedConnection) {
+                    this.showConnectionContextMenu(e.clientX, e.clientY, clickedConnection);
+                    return;
+                }
+            }
+
+            showNodeContextMenu(x, y, node) {
+                this.contextMenu.innerHTML = `
+                    <div class="context-menu-item" onclick="app.editNodeText(${node.id})">編輯文字</div>
+                    <div class="context-menu-item context-menu-submenu">
+                        變更顏色
+                        <div class="submenu">
+                            <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#3498db')">藍色</div>
+                            <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#2ecc71')">綠色</div>
+                            <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#e74c3c')">紅色</div>
+                            <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#f39c12')">橙色</div>
+                            <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#9b59b6')">紫色</div>
+                        </div>
+                    </div>
+                    <div class="context-menu-item" onclick="app.deleteNode(${node.id})">刪除節點</div>
+                `;
+                this.showContextMenuAt(x, y);
+            }
+
+            showFrameContextMenu(x, y, frame) {
+                this.contextMenu.innerHTML = `
+                    <div class="context-menu-item" onclick="app.editFrameLabel(${frame.id})">編輯標籤</div>
+                    <div class="context-menu-item" onclick="app.deleteFrame(${frame.id})">刪除 Frame</div>
+                `;
+                this.showContextMenuAt(x, y);
+            }
+
+            showConnectionContextMenu(x, y, connection) {
+                this.contextMenu.innerHTML = `
+                    <div class="context-menu-item" onclick="app.editConnectionLabel(${connection.id})">編輯標籤</div>
+                    <div class="context-menu-item context-menu-submenu">
+                        箭頭類型
+                        <div class="submenu">
+                            <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'single')">單向箭頭</div>
+                            <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'double')">雙向箭頭</div>
+                            <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'none')">無箭頭</div>
+                        </div>
+                    </div>
+                    <div class="context-menu-item" onclick="app.deleteConnection(${connection.id})">刪除連接線</div>
+                `;
+                this.showContextMenuAt(x, y);
+            }
+
+            showContextMenuAt(x, y) {
+                this.contextMenu.style.left = x + 'px';
+                this.contextMenu.style.top = y + 'px';
+                this.contextMenu.style.display = 'block';
+            }
+
+            hideContextMenu() {
+                this.contextMenu.style.display = 'none';
+            }
+
+            editNodeText(nodeId) {
+                const node = this.nodes.find(n => n.id === nodeId);
+                if (!node) return;
+
+                this.showModal(node.text, (newText) => {
+                    node.text = newText;
+                    this.markModified();
+                    this.render();
+                });
+            }
+
+            editFrameLabel(frameId) {
+                const frame = this.frames.find(f => f.id === frameId);
+                if (!frame) return;
+
+                this.showModal(frame.label, (newLabel) => {
+                    frame.label = newLabel;
+                    this.markModified();
+                    this.render();
+                });
+            }
+
+            changeNodeColor(nodeId, color) {
+                const node = this.nodes.find(n => n.id === nodeId);
+                if (node) {
+                    node.color = color;
+                    this.markModified();
+                    this.render();
+                }
+            }
+
+            editConnectionLabel(connectionId) {
+                const connection = this.connections.find(c => c.id === connectionId);
+                if (!connection) return;
+
+                this.showModal(connection.label || '', (newLabel) => {
+                    connection.label = newLabel;
+                    this.markModified();
+                    this.render();
+                });
+            }
+
+            changeArrowType(connectionId, arrowType) {
+                const connection = this.connections.find(c => c.id === connectionId);
+                if (connection) {
+                    connection.arrowType = arrowType;
+                    this.markModified();
+                    this.render();
+                }
+            }
+
+            deleteNode(nodeId) {
+                this.nodes = this.nodes.filter(n => n.id !== nodeId);
+                this.connections = this.connections.filter(c => c.from !== nodeId && c.to !== nodeId);
+                this.markModified();
+                this.render();
+            }
+
+            deleteFrame(frameId) {
+                this.frames = this.frames.filter(f => f.id !== frameId);
+                this.connections = this.connections.filter(c => c.from !== frameId && c.to !== frameId);
+                this.markModified();
+                this.render();
+            }
+
+            deleteConnection(connectionId) {
+                this.connections = this.connections.filter(c => c.id !== connectionId);
+                this.markModified();
+                this.render();
+            }
+
+            createConnection(fromNode, toNode) {
+                const connection = {
+                    id: Date.now(),
+                    from: fromNode.id,
+                    to: toNode.id,
+                    arrowType: 'single',
+                    label: ''
+                };
+                this.connections.push(connection);
+                this.markModified();
+                this.render();
+            }
+
+            showModal(currentText, callback) {
+                const modal = document.getElementById('text-modal');
+                const input = document.getElementById('modal-text-input');
+                input.value = currentText;
+                modal.style.display = 'block';
+
+                this.modalCallback = callback;
+            }
+
+            modalOk() {
+                const input = document.getElementById('modal-text-input');
+                if (this.modalCallback) {
+                    this.modalCallback(input.value);
+                }
+                document.getElementById('text-modal').style.display = 'none';
+            }
+
+            modalCancel() {
+                document.getElementById('text-modal').style.display = 'none';
+            }
+
+            isInNode(x, y, node) {
+                return x >= node.x && x <= node.x + node.width &&
+                       y >= node.y && y <= node.y + node.height;
+            }
+
+            isInFrame(x, y, frame) {
+                return x >= frame.x && x <= frame.x + frame.width &&
+                       y >= frame.y && y <= frame.y + frame.height;
+            }
+
+            isInResizeHandle(x, y, element) {
+                const handleSize = 15;
+                return x >= element.x + element.width - handleSize &&
+                       x <= element.x + element.width &&
+                       y >= element.y + element.height - handleSize &&
+                       y <= element.y + element.height;
+            }
+
+            findConnectionAtPoint(x, y) {
+                const threshold = 5;
+                for (const conn of this.connections) {
+                    // Search in both nodes and frames
+                    const fromElement = this.nodes.find(n => n.id === conn.from) || this.frames.find(f => f.id === conn.from);
+                    const toElement = this.nodes.find(n => n.id === conn.to) || this.frames.find(f => f.id === conn.to);
+                    if (!fromElement || !toElement) continue;
+
+                    const fromX = fromElement.x + fromElement.width / 2;
+                    const fromY = fromElement.y + fromElement.height / 2;
+                    const toX = toElement.x + toElement.width / 2;
+                    const toY = toElement.y + toElement.height / 2;
+
+                    const dist = this.pointToLineDistance(x, y, fromX, fromY, toX, toY);
+                    if (dist < threshold) {
+                        return conn;
+                    }
+                }
+                return null;
+            }
+
+            pointToLineDistance(px, py, x1, y1, x2, y2) {
+                const A = px - x1;
+                const B = py - y1;
+                const C = x2 - x1;
+                const D = y2 - y1;
+
+                const dot = A * C + B * D;
+                const lenSq = C * C + D * D;
+                let param = -1;
+
+                if (lenSq !== 0) param = dot / lenSq;
+
+                let xx, yy;
+
+                if (param < 0) {
+                    xx = x1;
+                    yy = y1;
+                } else if (param > 1) {
+                    xx = x2;
+                    yy = y2;
+                } else {
+                    xx = x1 + param * C;
+                    yy = y1 + param * D;
+                }
+
+                const dx = px - xx;
+                const dy = py - yy;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            render() {
+                // Clear canvas
+                this.canvas.innerHTML = '';
+                this.svgLayer.innerHTML = '';
+
+                // Recreate arrow marker definitions (they were cleared by innerHTML = '')
+                const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+
+                // 根據 scale 動態調整 marker 大小（關鍵修復！）
+                const markerSize = 6 * this.scale;
+
+                // Single arrow marker (points to end)
+                const markerEnd = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                markerEnd.setAttribute('id', 'arrowhead');
+                markerEnd.setAttribute('viewBox', '0 0 10 10');
+                markerEnd.setAttribute('refX', '9');
+                markerEnd.setAttribute('refY', '5');
+                markerEnd.setAttribute('markerWidth', markerSize.toString());
+                markerEnd.setAttribute('markerHeight', markerSize.toString());
+                markerEnd.setAttribute('orient', 'auto');
+                const pathEnd = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathEnd.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+                pathEnd.setAttribute('fill', '#2c3e50');
+                markerEnd.appendChild(pathEnd);
+
+                // Double arrow marker (points to start)
+                const markerStart = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                markerStart.setAttribute('id', 'arrowhead-double');
+                markerStart.setAttribute('viewBox', '0 0 10 10');
+                markerStart.setAttribute('refX', '1');
+                markerStart.setAttribute('refY', '5');
+                markerStart.setAttribute('markerWidth', markerSize.toString());
+                markerStart.setAttribute('markerHeight', markerSize.toString());
+                markerStart.setAttribute('orient', 'auto');
+                const pathStart = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathStart.setAttribute('d', 'M 10 0 L 0 5 L 10 10 z');
+                pathStart.setAttribute('fill', '#2c3e50');
+                markerStart.appendChild(pathStart);
+
+                defs.appendChild(markerEnd);
+                defs.appendChild(markerStart);
+                this.svgLayer.appendChild(defs);
+
+                // Apply transformation
+                const transform = `translate(${this.offsetX}px, ${this.offsetY}px) scale(${this.scale})`;
+                this.canvas.style.transform = transform;
+
+                // Render frames first (background)
+                this.frames.forEach(frame => {
+                    const frameEl = document.createElement('div');
+                    frameEl.className = 'frame';
+                    frameEl.style.left = frame.x + 'px';
+                    frameEl.style.top = frame.y + 'px';
+                    frameEl.style.width = frame.width + 'px';
+                    frameEl.style.height = frame.height + 'px';
+
+                    const label = document.createElement('div');
+                    label.className = 'frame-label';
+                    label.textContent = frame.label;
+                    frameEl.appendChild(label);
+
+                    const handle = document.createElement('div');
+                    handle.className = 'resize-handle';
+                    frameEl.appendChild(handle);
+
+                    this.canvas.appendChild(frameEl);
+                });
+
+                // Render connections
+                this.connections.forEach(conn => {
+                    // Search in both nodes and frames
+                    const fromElement = this.nodes.find(n => n.id === conn.from) || this.frames.find(f => f.id === conn.from);
+                    const toElement = this.nodes.find(n => n.id === conn.to) || this.frames.find(f => f.id === conn.to);
+                    if (!fromElement || !toElement) return;
+
+                    this.drawConnection(fromElement, toElement, conn.arrowType);
+                });
+
+                // Render nodes
+                this.nodes.forEach(node => {
+                    const nodeEl = document.createElement('div');
+                    nodeEl.className = 'node';
+                    nodeEl.style.left = node.x + 'px';
+                    nodeEl.style.top = node.y + 'px';
+                    nodeEl.style.width = node.width + 'px';
+                    nodeEl.style.height = node.height + 'px';
+                    nodeEl.style.background = node.color;
+                    nodeEl.textContent = node.text;
+
+                    const handle = document.createElement('div');
+                    handle.className = 'resize-handle';
+                    nodeEl.appendChild(handle);
+
+                    this.canvas.appendChild(nodeEl);
+                });
+            }
+
+            // 完全按照參考檔案的算法計算矩形邊緣交點
+            getRectEdgeIntersection(centerX, centerY, targetX, targetY, rectX, rectY, rectWidth, rectHeight) {
+                const dx = targetX - centerX;
+                const dy = targetY - centerY;
+
+                if (dx === 0 && dy === 0) {
+                    return { x: centerX, y: centerY };
+                }
+
+                const halfWidth = rectWidth / 2;
+                const halfHeight = rectHeight / 2;
+                const absDx = Math.abs(dx);
+                const absDy = Math.abs(dy);
+                let edgeX, edgeY;
+
+                // 判斷主要沿著哪個方向
+                if (absDx / halfWidth > absDy / halfHeight) {
+                    // 與左邊或右邊相交
+                    if (dx > 0) {
+                        // 右邊
+                        edgeX = centerX + halfWidth;
+                        edgeY = centerY + (dy / dx) * halfWidth;
+                    } else {
+                        // 左邊
+                        edgeX = centerX - halfWidth;
+                        edgeY = centerY - (dy / dx) * halfWidth;
+                    }
+                } else {
+                    // 與上邊或下邊相交
+                    if (dy > 0) {
+                        // 下邊
+                        edgeX = centerX + (dx / dy) * halfHeight;
+                        edgeY = centerY + halfHeight;
+                    } else {
+                        // 上邊
+                        edgeX = centerX - (dx / dy) * halfHeight;
+                        edgeY = centerY - halfHeight;
+                    }
+                }
+
+                return { x: edgeX, y: edgeY };
+            }
+
+
+
+            drawConnection(fromElement, toElement, arrowType) {
+                // Get center points in canvas coordinates (before scaling)
+                const fromCenterX = fromElement.x + fromElement.width / 2;
+                const fromCenterY = fromElement.y + fromElement.height / 2;
+                const toCenterX = toElement.x + toElement.width / 2;
+                const toCenterY = toElement.y + toElement.height / 2;
+
+                // Calculate edge points - 使用參考檔案的算法
+                const fromEdge = this.getRectEdgeIntersection(
+                    fromCenterX, fromCenterY, toCenterX, toCenterY,
+                    fromElement.x, fromElement.y, fromElement.width, fromElement.height
+                );
+                const toEdge = this.getRectEdgeIntersection(
+                    toCenterX, toCenterY, fromCenterX, fromCenterY,
+                    toElement.x, toElement.y, toElement.width, toElement.height
+                );
+
+                // Apply scale and offset for rendering
+                const fromX = fromEdge.x * this.scale + this.offsetX;
+                const fromY = fromEdge.y * this.scale + this.offsetY;
+                const toX = toEdge.x * this.scale + this.offsetX;
+                const toY = toEdge.y * this.scale + this.offsetY;
+
+                // Draw the line using path (like reference file)
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                line.setAttribute('class', 'connection');
+                const pathData = `M ${fromX} ${fromY} L ${toX} ${toY}`;
+                line.setAttribute('d', pathData);
+                line.setAttribute('stroke', '#2c3e50');
+                line.setAttribute('stroke-width', '2');
+                line.setAttribute('fill', 'none');
+
+                // Add arrow markers based on arrowType
+                if (arrowType === 'single') {
+                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                } else if (arrowType === 'double') {
+                    line.setAttribute('marker-start', 'url(#arrowhead-double)');
+                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                }
+
+                this.svgLayer.appendChild(line);
+
+                // Draw label if exists
+                const connection = this.connections.find(c =>
+                    (c.from === fromElement.id && c.to === toElement.id) ||
+                    (c.to === fromElement.id && c.from === toElement.id)
+                );
+
+                if (connection && connection.label) {
+                    const midX = (fromX + toX) / 2;
+                    const midY = (fromY + toY) / 2;
+
+                    // 創建帶白色描邊的文字，確保清晰可見
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', midX.toString());
+                    text.setAttribute('y', (midY - 5).toString());
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('font-size', (12 * this.scale).toString());
+                    text.setAttribute('fill', '#e74c3c');
+                    text.setAttribute('stroke', '#ffffff');
+                    text.setAttribute('stroke-width', (3 * this.scale).toString());
+                    text.setAttribute('paint-order', 'stroke fill');
+                    text.setAttribute('font-weight', 'bold');
+                    text.setAttribute('pointer-events', 'none');
+                    text.textContent = connection.label;
+
+                    this.svgLayer.appendChild(text);
+                }
+            }
+        }
+
+        // Initialize app
+        const app = new ConceptCrafter();
+    </script>
+</body>
+</html>
