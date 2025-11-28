@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter</title>
+    <title>Concept Crafter 1.0 概念圖製造機(Beta)</title>
     <style>
         * {
             margin: 0;
@@ -211,6 +211,29 @@
             word-wrap: break-word;
         }
 
+        .node-status-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 3px;
+            pointer-events: none;
+            display: flex;
+            gap: 3px;
+        }
+
+        .status-completed {
+            background: rgba(46, 204, 113, 0.9);
+            color: white;
+        }
+
+        .status-abandoned {
+            background: rgba(231, 76, 60, 0.9);
+            color: white;
+        }
+
         .node .resize-handle {
             position: absolute;
             bottom: 0;
@@ -304,6 +327,44 @@
             color: #ecf0f1;
             margin-left: 20px;
             font-weight: bold;
+        }
+
+        /* Help Modal Styles */
+        #help-modal .modal-content {
+            width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding-bottom: 80px;
+        }
+
+        #help-modal h3 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        #help-modal ul {
+            padding-left: 20px;
+            line-height: 1.6;
+        }
+
+        #help-modal li {
+            margin-bottom: 5px;
+        }
+
+        #help-modal strong {
+            color: #e74c3c;
+        }
+
+        #help-modal .modal-buttons {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            padding: 15px 0 0 0;
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
         }
 
         /* Rich Text Editor Styles */
@@ -410,6 +471,7 @@
         <button id="add-node">新增節點</button>
         <button id="add-frame">新增 Frame</button>
         <button id="connect-mode">連接模式</button>
+        <button id="help-btn" style="background: #27ae60;">使用說明</button>
         <span id="project-name">未選擇專案</span>
     </div>
 
@@ -473,6 +535,69 @@
             <div class="modal-buttons">
                 <button id="new-map-cancel">取消</button>
                 <button id="new-map-ok">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="help-modal" class="modal">
+        <div class="modal-content">
+            <h2>Concept Crafter 使用說明</h2>
+
+            <h3>系統需求</h3>
+            <ul>
+                <li><strong>建議瀏覽器</strong>：Chrome 86+、Edge 86+、Opera 72+</li>
+                <li><strong>原因</strong>：本應用程式使用 <strong>File System Access API</strong> 來讀取和儲存檔案。這是一個較新的網頁標準，目前只有基於
+                    Chromium 的瀏覽器完整支援。</li>
+                <li><strong>Firefox/Safari 用戶</strong>：目前這些瀏覽器不支援「選擇專案資料夾」功能。</li>
+                <li><strong>檢視地圖</strong>：所有現代瀏覽器（包括 Firefox、Safari）都可以正常開啟和檢視已儲存的 .html 地圖檔案。</li>
+            </ul>
+
+            <h3>1. 開始使用</h3>
+            <ul>
+                <li><strong>選擇專案資料夾</strong>：點擊左上角的按鈕選擇一個資料夾。這是為了讓瀏覽器有權限讀取和儲存您的地圖檔案。</li>
+                <li><strong>建立/載入 Map</strong>：選擇資料夾後，您可以建立新的地圖或載入現有的 .html 地圖檔。</li>
+            </ul>
+
+            <h3>2. 基本操作</h3>
+            <ul>
+                <li><strong>新增節點/Frame</strong>：使用上方工具列按鈕新增內容。</li>
+                <li><strong>移動</strong>：直接拖曳節點或 Frame。</li>
+                <li><strong>調整大小</strong>：拖曳節點或 Frame 右下角的調整手柄。</li>
+                <li><strong>縮放與平移</strong>：使用滑鼠滾輪縮放，按住滑鼠左鍵拖曳背景可平移畫布。</li>
+                <li><strong>右鍵選單</strong>：在節點、Frame 或連接線上點擊右鍵，可進行編輯、刪除或變更顏色。</li>
+            </ul>
+
+            <h3>3. 編輯內容</h3>
+            <ul>
+                <li><strong>編輯文字</strong>：右鍵點擊節點選擇「編輯文字」。</li>
+                <li><strong>富文字編輯</strong>：支援 <strong>標題
+                        (H1/H2)</strong>、<strong>列表</strong>、<strong>粗體/斜體</strong>、<strong>顏色</strong> 以及
+                    <strong>超連結</strong>。
+                </li>
+                <li><strong>相對路徑連結</strong>：在編輯超連結時，可以直接輸入相對路徑（如 <code>./image.png</code>），方便檔案搬移。</li>
+            </ul>
+
+            <h3>4. 連接與關聯</h3>
+            <ul>
+                <li><strong>建立連接</strong>：點擊「連接模式」按鈕（變紅色），然後依序點擊兩個物件即可建立連線。完成後請再次點擊按鈕取消模式。</li>
+                <li><strong>編輯連線</strong>：右鍵點擊連線可編輯標籤文字或更改箭頭樣式（單向/雙向/無）。</li>
+            </ul>
+
+            <h3>5. 儲存與分享</h3>
+            <ul>
+                <li><strong>儲存</strong>：在右側面板的 Map 列表中，點擊「儲存」按鈕。</li>
+                <li><strong>獨立瀏覽</strong>：儲存後的 .html 檔案包含獨立瀏覽器。您可以直接將檔案傳給他人，他們只需用瀏覽器打開即可觀看並操作縮放/平移，無需安裝任何軟體。</li>
+            </ul>
+
+            <h3>6. 快捷提示</h3>
+            <ul>
+                <li><strong>組織架構</strong>：使用 Frame 來將相關的節點群組在一起，建立清晰的視覺層次。</li>
+                <li><strong>顏色管理</strong>：使用不同顏色的節點來區分不同類型的概念或狀態。</li>
+                <li><strong>連接線標籤</strong>：為連接線添加標籤可以說明節點之間的關係（例如：「繼承自」、「依賴於」等）。</li>
+            </ul>
+
+            <div class="modal-buttons">
+                <button id="help-close">關閉</button>
             </div>
         </div>
     </div>
@@ -545,6 +670,27 @@
                 document.getElementById('add-frame').addEventListener('click', () => this.addFrame());
                 document.getElementById('connect-mode').addEventListener('click', () => this.toggleConnectMode());
                 document.getElementById('toggle-panel').addEventListener('click', () => this.togglePanel());
+
+                // Help
+                document.getElementById('help-btn').addEventListener('click', () => {
+                    document.getElementById('help-modal').style.display = 'block';
+                });
+
+                const helpModal = document.getElementById('help-modal');
+                const helpClose = document.getElementById('help-close');
+
+                if (helpClose) {
+                    helpClose.addEventListener('click', () => {
+                        helpModal.style.display = 'none';
+                    });
+                }
+
+                // Close help modal when clicking outside
+                helpModal.addEventListener('click', (e) => {
+                    if (e.target === helpModal) {
+                        helpModal.style.display = 'none';
+                    }
+                });
 
                 // Canvas interactions
                 this.canvas.addEventListener('mousedown', (e) => this.onCanvasMouseDown(e));
@@ -664,7 +810,7 @@
                 titleInput.focus();
             }
 
-            newMapModalOk() {
+            async newMapModalOk() {
                 const titleInput = document.getElementById('map-title-input');
                 const filenameInput = document.getElementById('map-filename-input');
                 const modal = document.getElementById('new-map-modal');
@@ -676,6 +822,28 @@
                 }
 
                 const filename = filenameInput.value.trim() || title;
+
+                // Check for duplicate in map list
+                if (this.maps.some(m => m.name === filename)) {
+                    alert(`地圖 "${filename}" 已經在列表中。請使用不同的檔案名稱。`);
+                    return;
+                }
+
+                // Check for duplicate in project folder
+                if (this.projectHandle) {
+                    try {
+                        await this.projectHandle.getFileHandle(`${filename}.html`);
+                        alert(`檔案 "${filename}.html" 已存在於專案資料夾中。請使用不同的檔案名稱。`);
+                        return;
+                    } catch (e) {
+                        if (e.name !== 'NotFoundError') {
+                            console.error('Error checking file existence:', e);
+                            alert('檢查檔案時發生錯誤。');
+                            return;
+                        }
+                        // File does not exist, which is good.
+                    }
+                }
 
                 const map = {
                     id: Date.now(),
@@ -750,6 +918,13 @@
                             modified: false,
                             file: fileHandle
                         };
+
+                        // Check for duplicate in map list
+                        const existingMap = this.maps.find(m => m.name === map.name);
+                        if (existingMap) {
+                            alert(`地圖 "${map.name}" 已經在列表中。\n\n如果您想重新載入，請先移除現有的地圖。`);
+                            return;
+                        }
 
                         this.maps.push(map);
                         this.switchToMap(map);
@@ -828,6 +1003,9 @@
                     .frame-label { position: absolute; top: 5px; left: 5px; background: #95a5a6; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; }
                     .connection { fill: none; stroke: #2c3e50; stroke-width: 2; }
                     #map-title { position: absolute; top: 20px; left: 20px; z-index: 1000; font-size: 24px; font-weight: bold; color: #2c3e50; text-shadow: 2px 2px 4px rgba(255,255,255,0.8); pointer-events: none; }
+                    .node-status-badge { position: absolute; top: 5px; right: 5px; font-size: 18px; font-weight: bold; padding: 2px 6px; border-radius: 3px; pointer-events: none; display: flex; gap: 3px; }
+                    .status-completed { background: rgba(46, 204, 113, 0.9); color: white; }
+                    .status-abandoned { background: rgba(231, 76, 60, 0.9); color: white; }
                 `;
 
                 // Viewer Script
@@ -906,8 +1084,14 @@
                             // Markers
                             const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
                             const markerSize = 6 * this.scale;
-                            
-                            const createMarker = (id, d, refX) => {
+
+                            // Collect all unique connection colors
+                            const colors = new Set(['#2c3e50']); // Default color
+                            this.connections.forEach(conn => {
+                                if (conn.color) colors.add(conn.color);
+                            });
+
+                            const createMarker = (id, d, refX, color) => {
                                 const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
                                 marker.setAttribute('id', id);
                                 marker.setAttribute('viewBox', '0 0 10 10');
@@ -918,13 +1102,18 @@
                                 marker.setAttribute('orient', 'auto');
                                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                                 path.setAttribute('d', d);
-                                path.setAttribute('fill', '#2c3e50');
+                                path.setAttribute('fill', color);
                                 marker.appendChild(path);
                                 return marker;
                             };
-                            
-                            defs.appendChild(createMarker('arrowhead', 'M 0 0 L 10 5 L 0 10 z', '9'));
-                            defs.appendChild(createMarker('arrowhead-double', 'M 10 0 L 0 5 L 10 10 z', '1'));
+
+                            // Create markers for each color
+                            colors.forEach(color => {
+                                const colorId = color.replace('#', '');
+                                defs.appendChild(createMarker(\`arrowhead-\${colorId}\`, 'M 0 0 L 10 5 L 0 10 z', '9', color));
+                                defs.appendChild(createMarker(\`arrowhead-double-\${colorId}\`, 'M 10 0 L 0 5 L 10 10 z', '1', color));
+                            });
+
                             this.svgLayer.appendChild(defs);
 
                             // Transform
@@ -938,7 +1127,15 @@
                                 el.style.top = frame.y + 'px';
                                 el.style.width = frame.width + 'px';
                                 el.style.height = frame.height + 'px';
-                                el.innerHTML = \`<div class="frame-label">\${frame.label}</div>\`;
+                                el.style.borderColor = frame.borderColor || '#95a5a6';
+                                el.style.background = frame.bgColor || 'rgba(149, 165, 166, 0.1)';
+
+                                const label = document.createElement('div');
+                                label.className = 'frame-label';
+                                label.style.background = frame.borderColor || '#95a5a6';
+                                label.textContent = frame.label;
+                                el.appendChild(label);
+
                                 this.canvas.appendChild(el);
                             });
 
@@ -952,6 +1149,29 @@
                                 el.style.height = node.height + 'px';
                                 el.style.background = node.color;
                                 el.innerHTML = \`<div class="node-content">\${node.text}</div>\`;
+
+                                // Add status badges
+                                if (node.completed || node.abandoned) {
+                                    const badge = document.createElement('div');
+                                    badge.className = 'node-status-badge';
+
+                                    if (node.completed) {
+                                        const completedSpan = document.createElement('span');
+                                        completedSpan.className = 'status-completed';
+                                        completedSpan.textContent = '✓';
+                                        badge.appendChild(completedSpan);
+                                    }
+
+                                    if (node.abandoned) {
+                                        const abandonedSpan = document.createElement('span');
+                                        abandonedSpan.className = 'status-abandoned';
+                                        abandonedSpan.textContent = '✗';
+                                        badge.appendChild(abandonedSpan);
+                                    }
+
+                                    el.appendChild(badge);
+                                }
+
                                 this.canvas.appendChild(el);
                             });
 
@@ -999,14 +1219,18 @@
 
                             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                             path.setAttribute('d', \`M \${x1} \${y1} L \${x2} \${y2}\`);
-                            path.setAttribute('stroke', '#2c3e50');
+
+                            const lineColor = conn.color || '#2c3e50';
+                            path.setAttribute('stroke', lineColor);
                             path.setAttribute('stroke-width', '2');
                             path.setAttribute('fill', 'none');
-                            
-                            if (conn.arrowType === 'single') path.setAttribute('marker-end', 'url(#arrowhead)');
+
+                            // Add arrow markers with matching color
+                            const colorId = lineColor.replace('#', '');
+                            if (conn.arrowType === 'single') path.setAttribute('marker-end', \`url(#arrowhead-\${colorId})\`);
                             else if (conn.arrowType === 'double') {
-                                path.setAttribute('marker-start', 'url(#arrowhead-double)');
-                                path.setAttribute('marker-end', 'url(#arrowhead)');
+                                path.setAttribute('marker-start', \`url(#arrowhead-double-\${colorId})\`);
+                                path.setAttribute('marker-end', \`url(#arrowhead-\${colorId})\`);
                             }
                             
                             this.svgLayer.appendChild(path);
@@ -1157,7 +1381,9 @@
                     width: 120,
                     height: 80,
                     text: '新節點',
-                    color: '#3498db'
+                    color: '#3498db',
+                    completed: false,
+                    abandoned: false
                 };
                 this.nodes.push(node);
                 this.markModified();
@@ -1176,7 +1402,9 @@
                     y: 150,
                     width: 300,
                     height: 200,
-                    label: '新 Frame'
+                    label: '新 Frame',
+                    borderColor: '#95a5a6',
+                    bgColor: 'rgba(149, 165, 166, 0.1)'
                 };
                 this.frames.push(frame);
                 this.markModified();
@@ -1346,6 +1574,9 @@
             }
 
             showNodeContextMenu(x, y, node) {
+                const completedText = node.completed ? '取消完成' : '標記為完成';
+                const abandonedText = node.abandoned ? '取消放棄' : '標記為放棄';
+
                 this.contextMenu.innerHTML = `
                     <div class="context-menu-item" onclick="app.editNodeText(${node.id})">編輯文字</div>
                     <div class="context-menu-item context-menu-submenu">
@@ -1358,6 +1589,8 @@
                             <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#9b59b6')">紫色</div>
                         </div>
                     </div>
+                    <div class="context-menu-item" onclick="app.toggleNodeCompleted(${node.id})">${completedText}</div>
+                    <div class="context-menu-item" onclick="app.toggleNodeAbandoned(${node.id})">${abandonedText}</div>
                     <div class="context-menu-item" onclick="app.deleteNode(${node.id})">刪除節點</div>
                 `;
                 this.showContextMenuAt(x, y);
@@ -1366,6 +1599,17 @@
             showFrameContextMenu(x, y, frame) {
                 this.contextMenu.innerHTML = `
                     <div class="context-menu-item" onclick="app.editFrameLabel(${frame.id})">編輯標籤</div>
+                    <div class="context-menu-item context-menu-submenu">
+                        變更顏色
+                        <div class="submenu">
+                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#95a5a6', 'rgba(149, 165, 166, 0.1)')">灰色</div>
+                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#3498db', 'rgba(52, 152, 219, 0.1)')">藍色</div>
+                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#2ecc71', 'rgba(46, 204, 113, 0.1)')">綠色</div>
+                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#e74c3c', 'rgba(231, 76, 60, 0.1)')">紅色</div>
+                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#f39c12', 'rgba(243, 156, 18, 0.1)')">橙色</div>
+                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#9b59b6', 'rgba(155, 89, 182, 0.1)')">紫色</div>
+                        </div>
+                    </div>
                     <div class="context-menu-item" onclick="app.deleteFrame(${frame.id})">刪除 Frame</div>
                 `;
                 this.showContextMenuAt(x, y);
@@ -1380,6 +1624,17 @@
                             <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'single')">單向箭頭</div>
                             <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'double')">雙向箭頭</div>
                             <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'none')">無箭頭</div>
+                        </div>
+                    </div>
+                    <div class="context-menu-item context-menu-submenu">
+                        變更顏色
+                        <div class="submenu">
+                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#2c3e50')">深灰色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#3498db')">藍色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#2ecc71')">綠色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#e74c3c')">紅色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#f39c12')">橙色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#9b59b6')">紫色</div>
                         </div>
                     </div>
                     <div class="context-menu-item" onclick="app.deleteConnection(${connection.id})">刪除連接線</div>
@@ -1428,6 +1683,34 @@
                 }
             }
 
+            toggleNodeCompleted(nodeId) {
+                const node = this.nodes.find(n => n.id === nodeId);
+                if (node) {
+                    node.completed = !node.completed;
+                    this.markModified();
+                    this.render();
+                }
+            }
+
+            toggleNodeAbandoned(nodeId) {
+                const node = this.nodes.find(n => n.id === nodeId);
+                if (node) {
+                    node.abandoned = !node.abandoned;
+                    this.markModified();
+                    this.render();
+                }
+            }
+
+            changeFrameColor(frameId, borderColor, bgColor) {
+                const frame = this.frames.find(f => f.id === frameId);
+                if (frame) {
+                    frame.borderColor = borderColor;
+                    frame.bgColor = bgColor;
+                    this.markModified();
+                    this.render();
+                }
+            }
+
             editConnectionLabel(connectionId) {
                 const connection = this.connections.find(c => c.id === connectionId);
                 if (!connection) return;
@@ -1443,6 +1726,15 @@
                 const connection = this.connections.find(c => c.id === connectionId);
                 if (connection) {
                     connection.arrowType = arrowType;
+                    this.markModified();
+                    this.render();
+                }
+            }
+
+            changeConnectionColor(connectionId, color) {
+                const connection = this.connections.find(c => c.id === connectionId);
+                if (connection) {
+                    connection.color = color;
                     this.markModified();
                     this.render();
                 }
@@ -1474,7 +1766,8 @@
                     from: fromNode.id,
                     to: toNode.id,
                     arrowType: 'single',
-                    label: ''
+                    label: '',
+                    color: '#2c3e50'
                 };
                 this.connections.push(connection);
                 this.markModified();
@@ -1592,39 +1885,51 @@
                 // Recreate arrow marker definitions (they were cleared by innerHTML = '')
                 const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
 
-                // 根據 scale 動態調整 marker 大小（關鍵修復！）
+                // 根據 scale 動態調整 marker 大小
                 const markerSize = 6 * this.scale;
 
-                // Single arrow marker (points to end)
-                const markerEnd = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-                markerEnd.setAttribute('id', 'arrowhead');
-                markerEnd.setAttribute('viewBox', '0 0 10 10');
-                markerEnd.setAttribute('refX', '9');
-                markerEnd.setAttribute('refY', '5');
-                markerEnd.setAttribute('markerWidth', markerSize.toString());
-                markerEnd.setAttribute('markerHeight', markerSize.toString());
-                markerEnd.setAttribute('orient', 'auto');
-                const pathEnd = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                pathEnd.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
-                pathEnd.setAttribute('fill', '#2c3e50');
-                markerEnd.appendChild(pathEnd);
+                // Collect all unique connection colors
+                const colors = new Set(['#2c3e50']); // Default color
+                this.connections.forEach(conn => {
+                    if (conn.color) colors.add(conn.color);
+                });
 
-                // Double arrow marker (points to start)
-                const markerStart = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-                markerStart.setAttribute('id', 'arrowhead-double');
-                markerStart.setAttribute('viewBox', '0 0 10 10');
-                markerStart.setAttribute('refX', '1');
-                markerStart.setAttribute('refY', '5');
-                markerStart.setAttribute('markerWidth', markerSize.toString());
-                markerStart.setAttribute('markerHeight', markerSize.toString());
-                markerStart.setAttribute('orient', 'auto');
-                const pathStart = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                pathStart.setAttribute('d', 'M 10 0 L 0 5 L 10 10 z');
-                pathStart.setAttribute('fill', '#2c3e50');
-                markerStart.appendChild(pathStart);
+                // Create markers for each color
+                colors.forEach(color => {
+                    const colorId = color.replace('#', '');
 
-                defs.appendChild(markerEnd);
-                defs.appendChild(markerStart);
+                    // Single arrow marker (points to end)
+                    const markerEnd = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                    markerEnd.setAttribute('id', `arrowhead-${colorId}`);
+                    markerEnd.setAttribute('viewBox', '0 0 10 10');
+                    markerEnd.setAttribute('refX', '9');
+                    markerEnd.setAttribute('refY', '5');
+                    markerEnd.setAttribute('markerWidth', markerSize.toString());
+                    markerEnd.setAttribute('markerHeight', markerSize.toString());
+                    markerEnd.setAttribute('orient', 'auto');
+                    const pathEnd = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    pathEnd.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+                    pathEnd.setAttribute('fill', color);
+                    markerEnd.appendChild(pathEnd);
+
+                    // Double arrow marker (points to start)
+                    const markerStart = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                    markerStart.setAttribute('id', `arrowhead-double-${colorId}`);
+                    markerStart.setAttribute('viewBox', '0 0 10 10');
+                    markerStart.setAttribute('refX', '1');
+                    markerStart.setAttribute('refY', '5');
+                    markerStart.setAttribute('markerWidth', markerSize.toString());
+                    markerStart.setAttribute('markerHeight', markerSize.toString());
+                    markerStart.setAttribute('orient', 'auto');
+                    const pathStart = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    pathStart.setAttribute('d', 'M 10 0 L 0 5 L 10 10 z');
+                    pathStart.setAttribute('fill', color);
+                    markerStart.appendChild(pathStart);
+
+                    defs.appendChild(markerEnd);
+                    defs.appendChild(markerStart);
+                });
+
                 this.svgLayer.appendChild(defs);
 
                 // Apply transformation
@@ -1639,9 +1944,12 @@
                     frameEl.style.top = frame.y + 'px';
                     frameEl.style.width = frame.width + 'px';
                     frameEl.style.height = frame.height + 'px';
+                    frameEl.style.borderColor = frame.borderColor || '#95a5a6';
+                    frameEl.style.background = frame.bgColor || 'rgba(149, 165, 166, 0.1)';
 
                     const label = document.createElement('div');
                     label.className = 'frame-label';
+                    label.style.background = frame.borderColor || '#95a5a6';
                     label.innerHTML = frame.label;
                     frameEl.appendChild(label);
 
@@ -1659,7 +1967,7 @@
                     const toElement = this.nodes.find(n => n.id === conn.to) || this.frames.find(f => f.id === conn.to);
                     if (!fromElement || !toElement) return;
 
-                    this.drawConnection(fromElement, toElement, conn.arrowType);
+                    this.drawConnection(fromElement, toElement, conn);
                 });
 
                 // Render nodes
@@ -1676,6 +1984,28 @@
                     content.className = 'node-content';
                     content.innerHTML = node.text;
                     nodeEl.appendChild(content);
+
+                    // Add status badges
+                    if (node.completed || node.abandoned) {
+                        const badge = document.createElement('div');
+                        badge.className = 'node-status-badge';
+
+                        if (node.completed) {
+                            const completedSpan = document.createElement('span');
+                            completedSpan.className = 'status-completed';
+                            completedSpan.textContent = '✓';
+                            badge.appendChild(completedSpan);
+                        }
+
+                        if (node.abandoned) {
+                            const abandonedSpan = document.createElement('span');
+                            abandonedSpan.className = 'status-abandoned';
+                            abandonedSpan.textContent = '✗';
+                            badge.appendChild(abandonedSpan);
+                        }
+
+                        nodeEl.appendChild(badge);
+                    }
 
                     const handle = document.createElement('div');
                     handle.className = 'resize-handle';
@@ -1730,7 +2060,7 @@
 
 
 
-            drawConnection(fromElement, toElement, arrowType) {
+            drawConnection(fromElement, toElement, connection) {
                 // Get center points in canvas coordinates (before scaling)
                 const fromCenterX = fromElement.x + fromElement.width / 2;
                 const fromCenterY = fromElement.y + fromElement.height / 2;
@@ -1758,26 +2088,24 @@
                 line.setAttribute('class', 'connection');
                 const pathData = `M ${fromX} ${fromY} L ${toX} ${toY}`;
                 line.setAttribute('d', pathData);
-                line.setAttribute('stroke', '#2c3e50');
+
+                const lineColor = connection.color || '#2c3e50';
+                line.setAttribute('stroke', lineColor);
                 line.setAttribute('stroke-width', '2');
                 line.setAttribute('fill', 'none');
 
-                // Add arrow markers based on arrowType
-                if (arrowType === 'single') {
-                    line.setAttribute('marker-end', 'url(#arrowhead)');
-                } else if (arrowType === 'double') {
-                    line.setAttribute('marker-start', 'url(#arrowhead-double)');
-                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                // Add arrow markers based on arrowType with matching color
+                const colorId = lineColor.replace('#', '');
+                if (connection.arrowType === 'single') {
+                    line.setAttribute('marker-end', `url(#arrowhead-${colorId})`);
+                } else if (connection.arrowType === 'double') {
+                    line.setAttribute('marker-start', `url(#arrowhead-double-${colorId})`);
+                    line.setAttribute('marker-end', `url(#arrowhead-${colorId})`);
                 }
 
                 this.svgLayer.appendChild(line);
 
                 // Draw label if exists
-                const connection = this.connections.find(c =>
-                    (c.from === fromElement.id && c.to === toElement.id) ||
-                    (c.to === fromElement.id && c.from === toElement.id)
-                );
-
                 if (connection && connection.label) {
                     const midX = (fromX + toX) / 2;
                     const midY = (fromY + toY) / 2;
