@@ -86,11 +86,14 @@
             background: #ecf0f1;
             border-left: 1px solid #bdc3c7;
             overflow-y: auto;
-            transition: transform 0.3s;
+            overflow-x: hidden;
+            transition: width 0.3s;
+            flex-shrink: 0;
         }
 
         #map-panel.hidden {
-            transform: translateX(100%);
+            width: 0;
+            border-left: none;
         }
 
         #toggle-panel {
@@ -211,6 +214,10 @@
             word-wrap: break-word;
         }
 
+        .node.connecting-source {
+            box-shadow: 0 0 0 3px #f39c12, 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
         .node-status-badge {
             position: absolute;
             top: 5px;
@@ -252,6 +259,11 @@
             cursor: move;
             min-width: 200px;
             min-height: 150px;
+        }
+
+        .frame.connecting-source {
+            border: 3px solid #f39c12;
+            box-shadow: 0 0 0 2px rgba(243, 156, 18, 0.3);
         }
 
         .frame .frame-label {
@@ -361,10 +373,8 @@
         #help-modal .modal-buttons {
             position: sticky;
             bottom: 0;
-            background: white;
-            padding: 15px 0 0 0;
+            padding-top: 15px;
             margin-top: 20px;
-            border-top: 1px solid #ddd;
         }
 
         /* Rich Text Editor Styles */
@@ -1422,6 +1432,7 @@
                 btn.style.background = this.connectMode ? '#e74c3c' : '#3498db';
                 btn.textContent = this.connectMode ? '取消連接' : '連接模式';
                 this.connectStart = null;
+                this.render(); // Update visual state
             }
 
             markModified() {
@@ -1460,9 +1471,11 @@
                     if (this.connectMode) {
                         if (!this.connectStart) {
                             this.connectStart = clickedNode;
+                            this.render(); // Show highlight on first click
                         } else {
                             this.createConnection(this.connectStart, clickedNode);
                             this.connectStart = null;
+                            this.render(); // Remove highlight after connection
                         }
                     } else {
                         this.dragElement = { type: 'node', element: clickedNode };
@@ -1477,9 +1490,11 @@
                     if (this.connectMode) {
                         if (!this.connectStart) {
                             this.connectStart = clickedFrame;
+                            this.render(); // Show highlight on first click
                         } else {
                             this.createConnection(this.connectStart, clickedFrame);
                             this.connectStart = null;
+                            this.render(); // Remove highlight after connection
                         }
                     } else {
                         this.dragElement = { type: 'frame', element: clickedFrame };
@@ -1940,6 +1955,12 @@
                 this.frames.forEach(frame => {
                     const frameEl = document.createElement('div');
                     frameEl.className = 'frame';
+
+                    // Highlight if this is the connection source
+                    if (this.connectStart === frame) {
+                        frameEl.classList.add('connecting-source');
+                    }
+
                     frameEl.style.left = frame.x + 'px';
                     frameEl.style.top = frame.y + 'px';
                     frameEl.style.width = frame.width + 'px';
@@ -1974,6 +1995,12 @@
                 this.nodes.forEach(node => {
                     const nodeEl = document.createElement('div');
                     nodeEl.className = 'node';
+
+                    // Highlight if this is the connection source
+                    if (this.connectStart === node) {
+                        nodeEl.classList.add('connecting-source');
+                    }
+
                     nodeEl.style.left = node.x + 'px';
                     nodeEl.style.top = node.y + 'px';
                     nodeEl.style.width = node.width + 'px';
