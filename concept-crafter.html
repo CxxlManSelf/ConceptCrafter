@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,7 +25,7 @@
             display: flex;
             gap: 10px;
             align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
 
         button {
@@ -73,6 +74,7 @@
             width: 100%;
             height: 100%;
             cursor: grab;
+            transform-origin: 0 0;
         }
 
         #canvas.grabbing {
@@ -115,7 +117,7 @@
             margin: 10px;
             padding: 15px;
             border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .map-item.active {
@@ -144,7 +146,7 @@
             background: white;
             border: 1px solid #ccc;
             border-radius: 4px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
             display: none;
             z-index: 1000;
             min-width: 150px;
@@ -168,19 +170,19 @@
             position: relative;
         }
 
-        .context-menu-submenu > .submenu {
+        .context-menu-submenu>.submenu {
             position: absolute;
             left: 100%;
             top: 0;
             background: white;
             border: 1px solid #ccc;
             border-radius: 4px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
             display: none;
             min-width: 120px;
         }
 
-        .context-menu-submenu:hover > .submenu {
+        .context-menu-submenu:hover>.submenu {
             display: block;
         }
 
@@ -204,7 +206,7 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             user-select: none;
             word-wrap: break-word;
         }
@@ -216,7 +218,7 @@
             width: 15px;
             height: 15px;
             cursor: nwse-resize;
-            background: rgba(255,255,255,0.3);
+            background: rgba(255, 255, 255, 0.3);
             border-radius: 0 0 8px 0;
         }
 
@@ -258,7 +260,7 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.4);
+            background-color: rgba(0, 0, 0, 0.4);
         }
 
         .modal-content {
@@ -268,7 +270,7 @@
             border: 1px solid #888;
             border-radius: 8px;
             width: 400px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .modal-content h2 {
@@ -303,8 +305,103 @@
             margin-left: 20px;
             font-weight: bold;
         }
+
+        /* Rich Text Editor Styles */
+        .rte-toolbar {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            padding: 5px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex-wrap: wrap;
+        }
+
+        .rte-btn {
+            padding: 6px 12px;
+            background: #f8f9fa;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            min-width: 32px;
+            color: #2c3e50;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rte-btn:hover {
+            background: #e3e8e8;
+            border-color: #95a5a6;
+            transform: translateY(-1px);
+        }
+
+        .rte-btn:active {
+            background: #d5dbdb;
+            transform: translateY(0);
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        #rte-editor {
+            width: 100%;
+            min-height: 150px;
+            max-height: 300px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            background: white;
+        }
+
+        #rte-editor:focus {
+            outline: 2px solid #3498db;
+            border-color: transparent;
+        }
+
+        /* Node Content Styles */
+        .node-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            /* Let clicks pass through to node */
+        }
+
+        .node-content * {
+            margin: 0;
+            pointer-events: none;
+        }
+
+        .node-content h1 {
+            font-size: 1.5em;
+            margin-bottom: 0.2em;
+        }
+
+        .node-content h2 {
+            font-size: 1.2em;
+            margin-bottom: 0.2em;
+        }
+
+        .node-content ul,
+        .node-content ol {
+            padding-left: 20px;
+            text-align: left;
+        }
+
+        .node-content a {
+            color: navy;
+            text-decoration: underline;
+        }
     </style>
 </head>
+
 <body>
     <div id="toolbar">
         <button id="select-folder">選擇專案資料夾</button>
@@ -320,12 +417,12 @@
         <div id="canvas-container">
             <svg id="svg-layer">
                 <defs>
-                    <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5"
-                            markerWidth="6" markerHeight="6" orient="auto">
+                    <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6"
+                        orient="auto">
                         <path d="M 0 0 L 10 5 L 0 10 z" fill="#2c3e50" />
                     </marker>
-                    <marker id="arrowhead-double" viewBox="0 0 10 10" refX="1" refY="5"
-                            markerWidth="6" markerHeight="6" orient="auto">
+                    <marker id="arrowhead-double" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6"
+                        orient="auto">
                         <path d="M 10 0 L 0 5 L 10 10 z" fill="#2c3e50" />
                     </marker>
                 </defs>
@@ -344,9 +441,21 @@
     <div id="context-menu" class="context-menu"></div>
 
     <div id="text-modal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="width: 600px;">
             <h2>編輯文字</h2>
-            <input type="text" id="modal-text-input" placeholder="輸入文字">
+            <div class="rte-toolbar" id="rte-toolbar">
+                <button class="rte-btn" data-cmd="formatBlock" data-val="H1">H1</button>
+                <button class="rte-btn" data-cmd="formatBlock" data-val="H2">H2</button>
+                <button class="rte-btn" data-cmd="formatBlock" data-val="div">內文</button>
+                <button class="rte-btn" data-cmd="bold"><b>B</b></button>
+                <button class="rte-btn" data-cmd="italic"><i>I</i></button>
+                <button class="rte-btn" data-cmd="insertUnorderedList">• List</button>
+                <button class="rte-btn" data-cmd="insertOrderedList">1. List</button>
+                <button class="rte-btn" id="rte-link-btn">連結</button>
+                <input type="color" id="rte-color" title="文字顏色"
+                    style="width: 30px; padding: 0; border: none; height: 26px;">
+            </div>
+            <div id="rte-editor" contenteditable="true"></div>
             <div class="modal-buttons">
                 <button id="modal-cancel">取消</button>
                 <button id="modal-ok">確定</button>
@@ -461,6 +570,42 @@
                 });
                 document.getElementById('map-filename-input').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.newMapModalOk();
+                });
+
+                // RTE Toolbar
+                document.querySelectorAll('.rte-btn[data-cmd]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const cmd = btn.dataset.cmd;
+                        const val = btn.dataset.val || null;
+                        document.execCommand(cmd, false, val);
+                        document.getElementById('rte-editor').focus();
+                    });
+                });
+
+                document.getElementById('rte-link-btn').addEventListener('click', (e) => {
+                    e.preventDefault();
+
+                    let defaultUrl = '';
+                    const selection = window.getSelection();
+                    if (selection.rangeCount > 0) {
+                        // Find if selection is inside a link
+                        let node = selection.getRangeAt(0).commonAncestorContainer;
+                        if (node.nodeType === 3) node = node.parentNode; // Text node -> Element
+                        const anchor = node.closest('a');
+                        if (anchor) {
+                            defaultUrl = anchor.getAttribute('href');
+                        }
+                    }
+
+                    const url = prompt('輸入連結網址:', defaultUrl);
+                    if (url) {
+                        document.execCommand('createLink', false, url);
+                    }
+                });
+
+                document.getElementById('rte-color').addEventListener('input', (e) => {
+                    document.execCommand('foreColor', false, e.target.value);
                 });
             }
 
@@ -665,17 +810,244 @@
                 const jsonData = JSON.stringify(mapData);
                 const displayTitle = map.title || map.name;
 
+                // Minified CSS for the viewer
+                const viewerCSS = `
+                    body { font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; background: #f0f0f0; }
+                    #container { width: 100vw; height: 100vh; overflow: hidden; position: relative; }
+                    #canvas { width: 100%; height: 100%; transform-origin: 0 0; cursor: grab; }
+                    #canvas.grabbing { cursor: grabbing; }
+                    svg { position: absolute; top: 0; left: 0; pointer-events: none; }
+                    .node { position: absolute; background: #3498db; color: white; padding: 10px; border-radius: 8px; min-width: 100px; min-height: 60px; display: flex; align-items: center; justify-content: center; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); user-select: none; }
+                    .node-content { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; }
+                    .node-content * { margin: 0; pointer-events: none; }
+                    .node-content h1 { font-size: 1.5em; margin-bottom: 0.2em; }
+                    .node-content h2 { font-size: 1.2em; margin-bottom: 0.2em; }
+                    .node-content ul, .node-content ol { padding-left: 20px; text-align: left; }
+                    .node-content a { color: navy; text-decoration: underline; pointer-events: auto; }
+                    .frame { position: absolute; border: 2px dashed #95a5a6; background: rgba(149, 165, 166, 0.1); min-width: 200px; min-height: 150px; }
+                    .frame-label { position: absolute; top: 5px; left: 5px; background: #95a5a6; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; }
+                    .connection { fill: none; stroke: #2c3e50; stroke-width: 2; }
+                    #map-title { position: absolute; top: 20px; left: 20px; z-index: 1000; font-size: 24px; font-weight: bold; color: #2c3e50; text-shadow: 2px 2px 4px rgba(255,255,255,0.8); pointer-events: none; }
+                `;
+
+                // Viewer Script
+                const viewerScript = `
+                    class MapViewer {
+                        constructor() {
+                            this.canvas = document.getElementById('canvas');
+                            this.svgLayer = document.getElementById('svg-layer');
+                            this.data = JSON.parse(document.getElementById('map-data').textContent);
+                            
+                            this.nodes = this.data.data.nodes || [];
+                            this.frames = this.data.data.frames || [];
+                            this.connections = this.data.data.connections || [];
+                            
+                            this.scale = 1;
+                            this.offsetX = 0;
+                            this.offsetY = 0;
+                            this.isPanning = false;
+                            this.panStart = { x: 0, y: 0 };
+                            
+                            this.init();
+                        }
+
+                        init() {
+                            this.updateSVGSize();
+                            window.addEventListener('resize', () => this.updateSVGSize());
+                            
+                            this.canvas.addEventListener('mousedown', (e) => {
+                                if (e.button === 0) {
+                                    this.isPanning = true;
+                                    this.panStart = { x: e.clientX, y: e.clientY };
+                                    this.canvas.classList.add('grabbing');
+                                }
+                            });
+                            
+                            window.addEventListener('mousemove', (e) => {
+                                if (this.isPanning) {
+                                    this.offsetX += e.clientX - this.panStart.x;
+                                    this.offsetY += e.clientY - this.panStart.y;
+                                    this.panStart = { x: e.clientX, y: e.clientY };
+                                    this.render();
+                                }
+                            });
+                            
+                            window.addEventListener('mouseup', () => {
+                                this.isPanning = false;
+                                this.canvas.classList.remove('grabbing');
+                            });
+                            
+                            this.canvas.addEventListener('wheel', (e) => {
+                                e.preventDefault();
+                                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                                const rect = this.canvas.parentElement.getBoundingClientRect();
+                                const mouseX = e.clientX - rect.left;
+                                const mouseY = e.clientY - rect.top;
+                                
+                                this.offsetX = mouseX - (mouseX - this.offsetX) * delta;
+                                this.offsetY = mouseY - (mouseY - this.offsetY) * delta;
+                                this.scale *= delta;
+                                this.render();
+                            });
+                            
+                            this.render();
+                        }
+
+                        updateSVGSize() {
+                            const rect = this.canvas.parentElement.getBoundingClientRect();
+                            this.svgLayer.setAttribute('width', rect.width);
+                            this.svgLayer.setAttribute('height', rect.height);
+                        }
+
+                        render() {
+                            this.canvas.innerHTML = '';
+                            this.svgLayer.innerHTML = '';
+                            
+                            // Markers
+                            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                            const markerSize = 6 * this.scale;
+                            
+                            const createMarker = (id, d, refX) => {
+                                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                                marker.setAttribute('id', id);
+                                marker.setAttribute('viewBox', '0 0 10 10');
+                                marker.setAttribute('refX', refX);
+                                marker.setAttribute('refY', '5');
+                                marker.setAttribute('markerWidth', markerSize);
+                                marker.setAttribute('markerHeight', markerSize);
+                                marker.setAttribute('orient', 'auto');
+                                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                                path.setAttribute('d', d);
+                                path.setAttribute('fill', '#2c3e50');
+                                marker.appendChild(path);
+                                return marker;
+                            };
+                            
+                            defs.appendChild(createMarker('arrowhead', 'M 0 0 L 10 5 L 0 10 z', '9'));
+                            defs.appendChild(createMarker('arrowhead-double', 'M 10 0 L 0 5 L 10 10 z', '1'));
+                            this.svgLayer.appendChild(defs);
+
+                            // Transform
+                            this.canvas.style.transform = \`translate(\${this.offsetX}px, \${this.offsetY}px) scale(\${this.scale})\`;
+
+                            // Frames
+                            this.frames.forEach(frame => {
+                                const el = document.createElement('div');
+                                el.className = 'frame';
+                                el.style.left = frame.x + 'px';
+                                el.style.top = frame.y + 'px';
+                                el.style.width = frame.width + 'px';
+                                el.style.height = frame.height + 'px';
+                                el.innerHTML = \`<div class="frame-label">\${frame.label}</div>\`;
+                                this.canvas.appendChild(el);
+                            });
+
+                            // Nodes
+                            this.nodes.forEach(node => {
+                                const el = document.createElement('div');
+                                el.className = 'node';
+                                el.style.left = node.x + 'px';
+                                el.style.top = node.y + 'px';
+                                el.style.width = node.width + 'px';
+                                el.style.height = node.height + 'px';
+                                el.style.background = node.color;
+                                el.innerHTML = \`<div class="node-content">\${node.text}</div>\`;
+                                this.canvas.appendChild(el);
+                            });
+
+                            // Connections
+                            this.connections.forEach(conn => {
+                                const from = this.nodes.find(n => n.id === conn.from) || this.frames.find(f => f.id === conn.from);
+                                const to = this.nodes.find(n => n.id === conn.to) || this.frames.find(f => f.id === conn.to);
+                                if (from && to) this.drawConnection(from, to, conn);
+                            });
+                        }
+
+                        drawConnection(from, to, conn) {
+                            const getCenter = (el) => ({ x: el.x + el.width/2, y: el.y + el.height/2 });
+                            const fromC = getCenter(from);
+                            const toC = getCenter(to);
+                            
+                            const getIntersection = (center, target, rect) => {
+                                const dx = target.x - center.x;
+                                const dy = target.y - center.y;
+                                if (dx === 0 && dy === 0) return center;
+                                
+                                const hw = rect.width / 2;
+                                const hh = rect.height / 2;
+                                
+                                if (Math.abs(dx) / hw > Math.abs(dy) / hh) {
+                                    return {
+                                        x: center.x + (dx > 0 ? hw : -hw),
+                                        y: center.y + (dy / dx) * (dx > 0 ? hw : -hw)
+                                    };
+                                } else {
+                                    return {
+                                        x: center.x + (dx / dy) * (dy > 0 ? hh : -hh),
+                                        y: center.y + (dy > 0 ? hh : -hh)
+                                    };
+                                }
+                            };
+
+                            const start = getIntersection(fromC, toC, from);
+                            const end = getIntersection(toC, fromC, to);
+
+                            const x1 = start.x * this.scale + this.offsetX;
+                            const y1 = start.y * this.scale + this.offsetY;
+                            const x2 = end.x * this.scale + this.offsetX;
+                            const y2 = end.y * this.scale + this.offsetY;
+
+                            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                            path.setAttribute('d', \`M \${x1} \${y1} L \${x2} \${y2}\`);
+                            path.setAttribute('stroke', '#2c3e50');
+                            path.setAttribute('stroke-width', '2');
+                            path.setAttribute('fill', 'none');
+                            
+                            if (conn.arrowType === 'single') path.setAttribute('marker-end', 'url(#arrowhead)');
+                            else if (conn.arrowType === 'double') {
+                                path.setAttribute('marker-start', 'url(#arrowhead-double)');
+                                path.setAttribute('marker-end', 'url(#arrowhead)');
+                            }
+                            
+                            this.svgLayer.appendChild(path);
+
+                            if (conn.label) {
+                                const midX = (x1 + x2) / 2;
+                                const midY = (y1 + y2) / 2;
+                                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                                text.setAttribute('x', midX);
+                                text.setAttribute('y', midY - 5);
+                                text.setAttribute('text-anchor', 'middle');
+                                text.setAttribute('font-size', 12 * this.scale);
+                                text.setAttribute('fill', '#e74c3c');
+                                text.setAttribute('stroke', 'white');
+                                text.setAttribute('stroke-width', 3 * this.scale);
+                                text.setAttribute('paint-order', 'stroke fill');
+                                text.setAttribute('font-weight', 'bold');
+                                text.textContent = conn.label;
+                                this.svgLayer.appendChild(text);
+                            }
+                        }
+                    }
+                    new MapViewer();
+                `;
+
                 return `<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${displayTitle} - Concept Map</title>
+    <title>${displayTitle} - Concept Map Viewer</title>
+    <style>${viewerCSS}</style>
     <script id="map-data" type="application/json">${jsonData}<` + `/script>
 </head>
 <body>
-    <h1>${displayTitle}</h1>
-    <p>這是一個 Concept Crafter 地圖檔案。請使用 Concept Crafter 開啟。</p>
+    <div id="map-title">${displayTitle}</div>
+    <div id="container">
+        <svg id="svg-layer"></svg>
+        <div id="canvas"></div>
+    </div>
+    <script>${viewerScript}<` + `/script>
 </body>
 </html>`;
             }
@@ -1064,7 +1436,7 @@
                     connection.label = newLabel;
                     this.markModified();
                     this.render();
-                });
+                }, 'plain');
             }
 
             changeArrowType(connectionId, arrowType) {
@@ -1109,19 +1481,32 @@
                 this.render();
             }
 
-            showModal(currentText, callback) {
+            showModal(currentText, callback, mode = 'rich') {
                 const modal = document.getElementById('text-modal');
-                const input = document.getElementById('modal-text-input');
-                input.value = currentText;
+                const editor = document.getElementById('rte-editor');
+                const toolbar = document.getElementById('rte-toolbar');
+
+                this.modalMode = mode;
+
+                if (mode === 'plain') {
+                    toolbar.style.display = 'none';
+                    editor.innerText = currentText;
+                } else {
+                    toolbar.style.display = 'flex';
+                    editor.innerHTML = currentText;
+                }
+
                 modal.style.display = 'block';
+                editor.focus();
 
                 this.modalCallback = callback;
             }
 
             modalOk() {
-                const input = document.getElementById('modal-text-input');
+                const editor = document.getElementById('rte-editor');
                 if (this.modalCallback) {
-                    this.modalCallback(input.value);
+                    const content = this.modalMode === 'plain' ? editor.innerText : editor.innerHTML;
+                    this.modalCallback(content);
                 }
                 document.getElementById('text-modal').style.display = 'none';
             }
@@ -1132,20 +1517,20 @@
 
             isInNode(x, y, node) {
                 return x >= node.x && x <= node.x + node.width &&
-                       y >= node.y && y <= node.y + node.height;
+                    y >= node.y && y <= node.y + node.height;
             }
 
             isInFrame(x, y, frame) {
                 return x >= frame.x && x <= frame.x + frame.width &&
-                       y >= frame.y && y <= frame.y + frame.height;
+                    y >= frame.y && y <= frame.y + frame.height;
             }
 
             isInResizeHandle(x, y, element) {
                 const handleSize = 15;
                 return x >= element.x + element.width - handleSize &&
-                       x <= element.x + element.width &&
-                       y >= element.y + element.height - handleSize &&
-                       y <= element.y + element.height;
+                    x <= element.x + element.width &&
+                    y >= element.y + element.height - handleSize &&
+                    y <= element.y + element.height;
             }
 
             findConnectionAtPoint(x, y) {
@@ -1257,7 +1642,7 @@
 
                     const label = document.createElement('div');
                     label.className = 'frame-label';
-                    label.textContent = frame.label;
+                    label.innerHTML = frame.label;
                     frameEl.appendChild(label);
 
                     const handle = document.createElement('div');
@@ -1286,7 +1671,11 @@
                     nodeEl.style.width = node.width + 'px';
                     nodeEl.style.height = node.height + 'px';
                     nodeEl.style.background = node.color;
-                    nodeEl.textContent = node.text;
+
+                    const content = document.createElement('div');
+                    content.className = 'node-content';
+                    content.innerHTML = node.text;
+                    nodeEl.appendChild(content);
 
                     const handle = document.createElement('div');
                     handle.className = 'resize-handle';
@@ -1416,4 +1805,5 @@
         const app = new ConceptCrafter();
     </script>
 </body>
+
 </html>
