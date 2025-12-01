@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 1.0.1 概念圖製造機(Beta)</title>
+    <title>Concept Crafter 1.1.2 概念圖製造機(Beta)</title>
     <style>
         * {
             margin: 0;
@@ -559,13 +559,13 @@
                 <li><strong>原因</strong>：本應用程式使用 <strong>File System Access API</strong> 來讀取和儲存檔案。這是一個較新的網頁標準，目前只有基於
                     Chromium 的瀏覽器完整支援。</li>
                 <li><strong>Firefox/Safari 用戶</strong>：目前這些瀏覽器不支援「選擇專案資料夾」功能。</li>
-                <li><strong>檢視圖稿</strong>：所有現代瀏覽器（包括 Firefox、Safari）都可以正常開啟和檢視已儲存的 .html 圖稿檔案。</li>
+                <li><strong>檢視 map</strong>：所有現代瀏覽器（包括 Firefox、Safari）都可以正常開啟和檢視已儲存的 .html map 檔案。</li>
             </ul>
 
             <h3>1. 開始使用</h3>
             <ul>
-                <li><strong>選擇專案資料夾</strong>：點擊左上角的按鈕選擇一個資料夾。這是為了讓瀏覽器有權限讀取和儲存您的圖稿檔案。</li>
-                <li><strong>建立/載入 Map</strong>：選擇資料夾後，您可以建立新的圖稿或載入現有的 .html 圖稿檔。</li>
+                <li><strong>選擇專案資料夾</strong>：點擊左上角的按鈕選擇一個資料夾。這是為了讓瀏覽器有權限讀取和儲存您的 map 檔案。</li>
+                <li><strong>建立/載入 Map</strong>：選擇資料夾後，您可以建立新的 map 或載入現有的 .html map 檔。</li>
             </ul>
 
             <h3>2. 基本操作</h3>
@@ -639,6 +639,8 @@
                 this.dragElement = null;
                 this.resizeElement = null;
                 this.dragOffset = { x: 0, y: 0 };
+
+                this.clipboard = null; // 用於複製貼上功能
 
                 this.init();
             }
@@ -764,6 +766,21 @@
                 document.getElementById('rte-color').addEventListener('input', (e) => {
                     document.execCommand('foreColor', false, e.target.value);
                 });
+
+                // 鍵盤快捷鍵
+                document.addEventListener('keydown', (e) => {
+                    // Ctrl+C 複製
+                    if (e.ctrlKey && e.key === 'c' && !e.target.matches('input, textarea, [contenteditable]')) {
+                        e.preventDefault();
+                        // 這裡暫時不做任何事，因為需要知道複製什麼
+                        // 複製功能會在右鍵選單中處理
+                    }
+                    // Ctrl+V 貼上
+                    if (e.ctrlKey && e.key === 'v' && !e.target.matches('input, textarea, [contenteditable]')) {
+                        e.preventDefault();
+                        this.paste();
+                    }
+                });
             }
 
             updateSVGSize() {
@@ -836,7 +853,7 @@
 
                 // Check for duplicate in map list
                 if (this.maps.some(m => m.name === filename)) {
-                    alert(`圖稿 "${filename}" 已經在列表中。請使用不同的檔案名稱。`);
+                    alert(`Map "${filename}" 已經在列表中。請使用不同的檔案名稱。`);
                     return;
                 }
 
@@ -943,7 +960,7 @@
                         // Check for duplicate in map list
                         const existingMap = this.maps.find(m => m.name === map.name);
                         if (existingMap) {
-                            alert(`圖稿 "${map.name}" 已經在列表中。\n\n如果您想重新載入，請先移除現有的圖稿。`);
+                            alert(`Map "${map.name}" 已經在列表中。\n\n如果您想重新載入，請先移除現有的 map。`);
                             return;
                         }
 
@@ -1629,6 +1646,21 @@
                     this.showConnectionContextMenu(e.clientX, e.clientY, clickedConnection);
                     return;
                 }
+
+                // 空白處顯示貼上選項
+                this.showCanvasContextMenu(e.clientX, e.clientY);
+            }
+
+            showCanvasContextMenu(x, y) {
+                if (!this.clipboard) {
+                    return; // 如果沒有複製的內容，不顯示選單
+                }
+
+                const itemText = this.clipboard.type === 'node' ? '貼上節點 (Ctrl+V)' : '貼上 Frame (Ctrl+V)';
+                this.contextMenu.innerHTML = `
+                    <div class="context-menu-item" onclick="app.paste()">${itemText}</div>
+                `;
+                this.showContextMenuAt(x, y);
             }
 
             showNodeContextMenu(x, y, node) {
@@ -1637,6 +1669,7 @@
 
                 this.contextMenu.innerHTML = `
                     <div class="context-menu-item" onclick="app.editNodeText(${node.id})">編輯文字</div>
+                    <div class="context-menu-item" onclick="app.copyNode(${node.id})">複製節點 (Ctrl+C)</div>
                     <div class="context-menu-item context-menu-submenu">
                         變更顏色
                         <div class="submenu">
@@ -1657,6 +1690,7 @@
             showFrameContextMenu(x, y, frame) {
                 this.contextMenu.innerHTML = `
                     <div class="context-menu-item" onclick="app.editFrameLabel(${frame.id})">編輯標籤</div>
+                    <div class="context-menu-item" onclick="app.copyFrame(${frame.id})">複製 Frame (Ctrl+C)</div>
                     <div class="context-menu-item context-menu-submenu">
                         變更顏色
                         <div class="submenu">
@@ -1816,6 +1850,56 @@
                 this.connections = this.connections.filter(c => c.id !== connectionId);
                 this.markModified();
                 this.render();
+            }
+
+            copyNode(nodeId) {
+                const node = this.nodes.find(n => n.id === nodeId);
+                if (node) {
+                    // 深拷貝節點資料
+                    this.clipboard = {
+                        type: 'node',
+                        data: JSON.parse(JSON.stringify(node))
+                    };
+                }
+            }
+
+            copyFrame(frameId) {
+                const frame = this.frames.find(f => f.id === frameId);
+                if (frame) {
+                    // 深拷貝 frame 資料
+                    this.clipboard = {
+                        type: 'frame',
+                        data: JSON.parse(JSON.stringify(frame))
+                    };
+                }
+            }
+
+            paste() {
+                if (!this.clipboard || !this.currentMap) {
+                    return;
+                }
+
+                if (this.clipboard.type === 'node') {
+                    // 複製節點
+                    const newNode = { ...this.clipboard.data };
+                    newNode.id = Date.now();
+                    // 偏移位置避免重疊
+                    newNode.x += 30;
+                    newNode.y += 30;
+                    this.nodes.push(newNode);
+                    this.markModified();
+                    this.render();
+                } else if (this.clipboard.type === 'frame') {
+                    // 複製 frame
+                    const newFrame = { ...this.clipboard.data };
+                    newFrame.id = Date.now();
+                    // 偏移位置避免重疊
+                    newFrame.x += 30;
+                    newFrame.y += 30;
+                    this.frames.push(newFrame);
+                    this.markModified();
+                    this.render();
+                }
             }
 
             createConnection(fromNode, toNode) {
