@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 1.1.2 概念圖製造機(Beta)</title>
+    <title>Concept Crafter 1.2.3 概念圖製造機(Beta)</title>
     <style>
         * {
             margin: 0;
@@ -526,8 +526,10 @@
                 <button class="rte-btn" id="rte-link-btn">連結</button>
                 <input type="color" id="rte-color" title="文字顏色"
                     style="width: 30px; padding: 0; border: none; height: 26px;">
+                <button class="rte-btn" id="rte-html-btn" title="編輯 HTML 原始碼">&lt; &gt; HTML</button>
             </div>
             <div id="rte-editor" contenteditable="true"></div>
+            <textarea id="rte-html-editor" style="display: none; width: 100%; min-height: 300px; font-family: 'Courier New', monospace; font-size: 14px; padding: 10px; border: 1px solid #ccc; box-sizing: border-box;"></textarea>
             <div class="modal-buttons">
                 <button id="modal-cancel">取消</button>
                 <button id="modal-ok">確定</button>
@@ -573,8 +575,9 @@
                 <li><strong>新增節點/Frame</strong>：使用上方工具列按鈕新增內容。</li>
                 <li><strong>移動</strong>：直接拖曳節點或 Frame。</li>
                 <li><strong>調整大小</strong>：拖曳節點或 Frame 右下角的調整手柄。</li>
-                <li><strong>縮放與平移</strong>：使用滑鼠滾輪縮放，按住滑鼠左鍵拖曳背景可平移畫布。</li>
-                <li><strong>右鍵選單</strong>：在節點、Frame 或連接線上點擊右鍵，可進行編輯、刪除或變更顏色。</li>
+                <li><strong>縮放與平移</strong>：使用滑鼠滾輪縮放，按住滑鼠左鍵拖曳背景可平移畫布。即使滑鼠移出畫布區域，仍可繼續操作。</li>
+                <li><strong>複製與貼上</strong>：右鍵點擊節點或 Frame 選擇「複製」，或使用 <strong>Ctrl+C</strong>。貼上可使用 <strong>Ctrl+V</strong> 或在空白處右鍵選擇「貼上」。</li>
+                <li><strong>右鍵選單</strong>：在節點、Frame 或連接線上點擊右鍵，可進行編輯、複製、刪除或變更顏色。</li>
             </ul>
 
             <h3>3. 編輯內容</h3>
@@ -584,7 +587,19 @@
                         (H1/H2)</strong>、<strong>列表</strong>、<strong>粗體/斜體</strong>、<strong>顏色</strong> 以及
                     <strong>超連結</strong>。
                 </li>
-                <li><strong>相對路徑連結</strong>：在編輯超連結時，可以直接輸入相對路徑（如 <code>./image.png</code>），方便檔案搬移。</li>
+                <li><strong>連結功能</strong>：
+                    <ul>
+                        <li><strong>專案內 HTML</strong>：使用相對路徑的 HTML 文件（如 <code>./page.html</code>、<code>doc.htm</code>）會在同一視窗開啟，方便專案內導覽。</li>
+                        <li><strong>其他連結</strong>：HTTP/HTTPS 網址、絕對路徑、圖片檔案等都會在新視窗開啟。</li>
+                        <li><strong>特殊功能連結</strong>：
+                            <ul>
+                                <li><code>javascript:history.back()</code> - 回到上一頁</li>
+                                <li><code>javascript:history.forward()</code> - 前往下一頁</li>
+                                <li><code>#section-name</code> - 跳到頁面內的錨點（需配合 HTML id 屬性使用）</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
             </ul>
 
             <h3>4. 連接與關聯</h3>
@@ -593,17 +608,31 @@
                 <li><strong>編輯連線</strong>：右鍵點擊連線可編輯標籤文字或更改箭頭樣式（單向/雙向/無）。</li>
             </ul>
 
-            <h3>5. 儲存與分享</h3>
+            <h3>5. Map 管理</h3>
             <ul>
-                <li><strong>儲存</strong>：在右側面板的 Map 列表中，點擊「儲存」按鈕。</li>
-                <li><strong>獨立瀏覽</strong>：儲存後的 .html 檔案包含獨立瀏覽器。您可以直接將檔案傳給他人，他們只需用瀏覽器打開即可觀看並操作縮放/平移，無需安裝任何軟體。</li>
+                <li><strong>多 Map 支援</strong>：可以同時開啟多個 map 進行編輯，在右側面板切換。</li>
+                <li><strong>獨立視圖</strong>：每個 map 會記住自己的視圖位置和縮放級別，切換 map 時會自動恢復上次的視圖狀態。</li>
+                <li><strong>儲存</strong>：在右側面板的 Map 列表中，點擊「儲存」按鈕。有未儲存變更的 map 會顯示「儲存」按鈕。</li>
             </ul>
 
-            <h3>6. 快捷提示</h3>
+            <h3>6. 分享與協作</h3>
+            <ul>
+                <li><strong>獨立瀏覽</strong>：儲存後的 .html 檔案包含獨立瀏覽器。您可以直接將檔案傳給他人，他們只需用瀏覽器打開即可觀看並操作縮放/平移，無需安裝任何軟體。</li>
+                <li><strong>跨 Map 複製</strong>：可以在不同 map 之間複製貼上節點和 Frame，方便重複使用內容。</li>
+            </ul>
+
+            <h3>7. 鍵盤快捷鍵</h3>
+            <ul>
+                <li><strong>Ctrl+C</strong>：複製選取的節點或 Frame（需先右鍵點擊選取）</li>
+                <li><strong>Ctrl+V</strong>：貼上複製的內容</li>
+            </ul>
+
+            <h3>8. 快捷提示</h3>
             <ul>
                 <li><strong>組織架構</strong>：使用 Frame 來將相關的節點群組在一起，建立清晰的視覺層次。</li>
                 <li><strong>顏色管理</strong>：使用不同顏色的節點來區分不同類型的概念或狀態。</li>
                 <li><strong>連接線標籤</strong>：為連接線添加標籤可以說明節點之間的關係（例如：「繼承自」、「依賴於」等）。</li>
+                <li><strong>流暢操作</strong>：平移和縮放時，即使滑鼠移出畫布區域也能繼續操作，不會中斷。</li>
             </ul>
 
             <div class="modal-buttons">
@@ -641,6 +670,7 @@
                 this.dragOffset = { x: 0, y: 0 };
 
                 this.clipboard = null; // 用於複製貼上功能
+                this.isHtmlMode = false; // 富文本編輯器的 HTML 模式狀態
 
                 this.init();
             }
@@ -760,11 +790,68 @@
                     const url = prompt('輸入連結網址:', defaultUrl);
                     if (url) {
                         document.execCommand('createLink', false, url);
+
+                        // 只有專案內的 HTML 文件才在同一視窗開啟
+                        setTimeout(() => {
+                            const editor = document.getElementById('rte-editor');
+                            const links = editor.querySelectorAll('a');
+                            links.forEach(link => {
+                                const href = link.getAttribute('href');
+                                if (href) {
+                                    // 判斷是否為專案內的 HTML 文件
+                                    const isProjectHtml = !href.match(/^[a-zA-Z]+:\/\//) &&    // 不包含協議
+                                                          !href.match(/^\//) &&                  // 不是 Unix 絕對路徑
+                                                          !href.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
+                                                          href.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
+
+                                    if (isProjectHtml) {
+                                        link.removeAttribute('target');
+                                        link.removeAttribute('rel');
+                                    } else {
+                                        link.setAttribute('target', '_blank');
+                                        link.setAttribute('rel', 'noopener noreferrer');
+                                    }
+                                }
+                            });
+                        }, 0);
                     }
                 });
 
                 document.getElementById('rte-color').addEventListener('input', (e) => {
                     document.execCommand('foreColor', false, e.target.value);
+                });
+
+                // HTML 模式切換
+                document.getElementById('rte-html-btn').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const editor = document.getElementById('rte-editor');
+                    const htmlEditor = document.getElementById('rte-html-editor');
+                    const toolbar = document.querySelectorAll('.rte-btn:not(#rte-html-btn)');
+                    const colorPicker = document.getElementById('rte-color');
+
+                    if (!this.isHtmlMode) {
+                        // 切換到 HTML 模式
+                        htmlEditor.value = editor.innerHTML;
+                        editor.style.display = 'none';
+                        htmlEditor.style.display = 'block';
+                        // 禁用其他工具列按鈕
+                        toolbar.forEach(btn => btn.disabled = true);
+                        colorPicker.disabled = true;
+                        e.target.style.background = '#e74c3c';
+                        e.target.style.color = 'white';
+                        this.isHtmlMode = true;
+                    } else {
+                        // 切換回可視化模式
+                        editor.innerHTML = htmlEditor.value;
+                        editor.style.display = 'block';
+                        htmlEditor.style.display = 'none';
+                        // 啟用其他工具列按鈕
+                        toolbar.forEach(btn => btn.disabled = false);
+                        colorPicker.disabled = false;
+                        e.target.style.background = '';
+                        e.target.style.color = '';
+                        this.isHtmlMode = false;
+                    }
                 });
 
                 // 鍵盤快捷鍵
@@ -1208,6 +1295,24 @@
                                 el.style.height = node.height + 'px';
                                 el.style.background = node.color;
                                 el.innerHTML = \`<div class="node-content">\${node.text}</div>\`;
+
+                                // 處理連結：只有專案內的 HTML 文件在同一視窗開啟
+                                const links = el.querySelectorAll('a');
+                                links.forEach(link => {
+                                    const href = link.getAttribute('href');
+                                    if (href) {
+                                        // 判斷是否為專案內的 HTML 文件
+                                        const isProjectHtml = !href.match(/^[a-zA-Z]+:\\/\\//) &&    // 不包含協議
+                                                              !href.match(/^\\//) &&                  // 不是 Unix 絕對路徑
+                                                              !href.match(/^[a-zA-Z]:[\\//\\\\]/) &&  // 不是 Windows 絕對路徑
+                                                              href.match(/\\.html?$/i);               // 以 .html 或 .htm 結尾
+
+                                        if (!isProjectHtml) {
+                                            link.setAttribute('target', '_blank');
+                                            link.setAttribute('rel', 'noopener noreferrer');
+                                        }
+                                    }
+                                });
 
                                 // Add status badges
                                 if (node.completed || node.abandoned) {
@@ -1939,15 +2044,44 @@
 
             modalOk() {
                 const editor = document.getElementById('rte-editor');
+                const htmlEditor = document.getElementById('rte-html-editor');
+
+                // 如果在 HTML 模式，先同步內容
+                if (this.isHtmlMode) {
+                    editor.innerHTML = htmlEditor.value;
+                }
+
                 if (this.modalCallback) {
                     const content = this.modalMode === 'plain' ? editor.innerText : editor.innerHTML;
                     this.modalCallback(content);
                 }
+
+                this.resetHtmlMode();
                 document.getElementById('text-modal').style.display = 'none';
             }
 
             modalCancel() {
+                this.resetHtmlMode();
                 document.getElementById('text-modal').style.display = 'none';
+            }
+
+            resetHtmlMode() {
+                if (this.isHtmlMode) {
+                    const editor = document.getElementById('rte-editor');
+                    const htmlEditor = document.getElementById('rte-html-editor');
+                    const toolbar = document.querySelectorAll('.rte-btn:not(#rte-html-btn)');
+                    const colorPicker = document.getElementById('rte-color');
+                    const htmlBtn = document.getElementById('rte-html-btn');
+
+                    // 切換回可視化模式
+                    editor.style.display = 'block';
+                    htmlEditor.style.display = 'none';
+                    toolbar.forEach(btn => btn.disabled = false);
+                    colorPicker.disabled = false;
+                    htmlBtn.style.background = '';
+                    htmlBtn.style.color = '';
+                    this.isHtmlMode = false;
+                }
             }
 
             isInNode(x, y, node) {
@@ -2138,6 +2272,24 @@
                     content.className = 'node-content';
                     content.innerHTML = node.text;
                     nodeEl.appendChild(content);
+
+                    // 處理連結：只有專案內的 HTML 文件在同一視窗開啟
+                    const links = nodeEl.querySelectorAll('a');
+                    links.forEach(link => {
+                        const href = link.getAttribute('href');
+                        if (href) {
+                            // 判斷是否為專案內的 HTML 文件
+                            const isProjectHtml = !href.match(/^[a-zA-Z]+:\/\//) &&    // 不包含協議
+                                                  !href.match(/^\//) &&                  // 不是 Unix 絕對路徑
+                                                  !href.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
+                                                  href.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
+
+                            if (!isProjectHtml) {
+                                link.setAttribute('target', '_blank');
+                                link.setAttribute('rel', 'noopener noreferrer');
+                            }
+                        }
+                    });
 
                     // Add status badges
                     if (node.completed || node.abandoned) {
