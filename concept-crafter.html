@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 1.2.3 概念圖製造機(Beta)</title>
+    <title>Concept Crafter 1.2.4 概念圖製造機(Beta)</title>
     <style>
         * {
             margin: 0;
@@ -905,7 +905,18 @@
                 // This would scan the directory for .html files
                 // For now, we'll just clear the current maps
                 this.maps = [];
+                // 清除當前圖稿和畫布內容
+                this.currentMap = null;
+                this.nodes = [];
+                this.frames = [];
+                this.connections = [];
+                // 重置視圖狀態
+                this.offsetX = 0;
+                this.offsetY = 0;
+                this.scale = 1;
+                this.render();
                 this.updateMapList();
+                this.updateButtonStates();
             }
 
             createNewMap() {
