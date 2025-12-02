@@ -377,6 +377,82 @@
             margin-top: 20px;
         }
 
+        /* Recent Projects Modal Styles */
+        #recent-projects-modal .modal-content {
+            width: 600px;
+            max-height: 70vh;
+        }
+
+        #recent-projects-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .recent-project-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border-bottom: 1px solid #ecf0f1;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .recent-project-item:last-child {
+            border-bottom: none;
+        }
+
+        .recent-project-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .recent-project-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .recent-project-name {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .recent-project-path {
+            font-size: 12px;
+            color: #7f8c8d;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .recent-project-remove {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+            flex-shrink: 0;
+        }
+
+        .recent-project-remove:hover {
+            background: #c0392b;
+        }
+
+        .recent-projects-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #95a5a6;
+        }
+
         /* Rich Text Editor Styles */
         .rte-toolbar {
             display: flex;
@@ -643,6 +719,18 @@
         </div>
     </div>
 
+    <!-- Recent Projects Modal -->
+    <div id="recent-projects-modal" class="modal">
+        <div class="modal-content">
+            <h2>最近開啟的專案</h2>
+            <div id="recent-projects-list"></div>
+            <div class="modal-buttons">
+                <button id="recent-projects-cancel">取消</button>
+                <button id="recent-projects-browse">選擇其他資料夾</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         class ConceptCrafter {
             constructor() {
@@ -752,6 +840,19 @@
                 });
                 document.getElementById('map-filename-input').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.newMapModalOk();
+                });
+
+                // Recent Projects Modal
+                document.getElementById('recent-projects-browse').addEventListener('click', () => this.browseForFolder());
+                document.getElementById('recent-projects-cancel').addEventListener('click', () => {
+                    document.getElementById('recent-projects-modal').style.display = 'none';
+                });
+
+                const recentProjectsModal = document.getElementById('recent-projects-modal');
+                recentProjectsModal.addEventListener('click', (e) => {
+                    if (e.target === recentProjectsModal) {
+                        recentProjectsModal.style.display = 'none';
+                    }
                 });
 
                 // RTE Toolbar
@@ -871,6 +972,14 @@
             }
 
             async selectProjectFolder() {
+                // Show recent projects first
+                await this.showRecentProjects();
+            }
+
+            async browseForFolder() {
+                const modal = document.getElementById('recent-projects-modal');
+                modal.style.display = 'none';
+
                 try {
                     const folderPath = await window.electronAPI.selectFolder();
 
@@ -878,6 +987,7 @@
                         this.projectPath = folderPath;
                         const folderName = folderPath.split(/[\\/]/).pop();
                         document.getElementById('project-name').textContent = `專案: ${folderName}`;
+                        this.saveRecentProject(folderPath, folderName);
                         this.updateButtonStates();
                         this.loadProjectMaps();
                     }
@@ -1534,6 +1644,120 @@
                 const toggle = document.getElementById('toggle-panel');
                 panel.classList.toggle('hidden');
                 toggle.classList.toggle('panel-visible');
+            }
+
+            // Recent Projects Management
+            loadRecentProjects() {
+                const stored = localStorage.getItem('recentProjects');
+                if (stored) {
+                    try {
+                        return JSON.parse(stored);
+                    } catch (e) {
+                        console.error('Error loading recent projects:', e);
+                        return [];
+                    }
+                }
+                return [];
+            }
+
+            saveRecentProject(path, name) {
+                let projects = this.loadRecentProjects();
+
+                // Remove if already exists
+                projects = projects.filter(p => p.path !== path);
+
+                // Add to front
+                projects.unshift({
+                    path: path,
+                    name: name,
+                    lastOpened: Date.now()
+                });
+
+                // Keep only last 10 projects
+                projects = projects.slice(0, 10);
+
+                localStorage.setItem('recentProjects', JSON.stringify(projects));
+            }
+
+            removeRecentProject(path) {
+                let projects = this.loadRecentProjects();
+                projects = projects.filter(p => p.path !== path);
+                localStorage.setItem('recentProjects', JSON.stringify(projects));
+                this.updateRecentProjectsList();
+            }
+
+            async showRecentProjects() {
+                const modal = document.getElementById('recent-projects-modal');
+                this.updateRecentProjectsList();
+                modal.style.display = 'block';
+            }
+
+            updateRecentProjectsList() {
+                const listContainer = document.getElementById('recent-projects-list');
+                const projects = this.loadRecentProjects();
+
+                if (projects.length === 0) {
+                    listContainer.innerHTML = '<div class="recent-projects-empty">尚無最近開啟的專案</div>';
+                    return;
+                }
+
+                listContainer.innerHTML = '';
+                projects.forEach(project => {
+                    const item = document.createElement('div');
+                    item.className = 'recent-project-item';
+
+                    const info = document.createElement('div');
+                    info.className = 'recent-project-info';
+                    info.onclick = () => this.selectRecentProject(project.path);
+
+                    const name = document.createElement('div');
+                    name.className = 'recent-project-name';
+                    name.textContent = project.name;
+
+                    const path = document.createElement('div');
+                    path.className = 'recent-project-path';
+                    path.textContent = project.path;
+
+                    info.appendChild(name);
+                    info.appendChild(path);
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'recent-project-remove';
+                    removeBtn.textContent = '移除';
+                    removeBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        this.removeRecentProject(project.path);
+                    };
+
+                    item.appendChild(info);
+                    item.appendChild(removeBtn);
+                    listContainer.appendChild(item);
+                });
+            }
+
+            async selectRecentProject(path) {
+                const modal = document.getElementById('recent-projects-modal');
+                modal.style.display = 'none';
+
+                try {
+                    // Check if folder still exists
+                    const exists = await window.electronAPI.fileExists(path);
+                    if (!exists) {
+                        alert('專案資料夾不存在，可能已被移動或刪除。');
+                        this.removeRecentProject(path);
+                        return;
+                    }
+
+                    this.projectPath = path;
+                    const folderName = path.split(/[\\/]/).pop();
+                    document.getElementById('project-name').textContent = `專案: ${folderName}`;
+                    this.saveRecentProject(path, folderName);
+                    this.updateButtonStates();
+                    this.loadProjectMaps();
+                } catch (err) {
+                    console.error('開啟專案錯誤:', err);
+                    alert('無法開啟專案: ' + err.message);
+                }
             }
 
             addNode() {
