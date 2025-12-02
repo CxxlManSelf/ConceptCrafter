@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 1.2.5 概念圖製造機</title>
+    <title>Concept Crafter 2.0.5 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -650,7 +650,7 @@
                 this.svgLayer = document.getElementById('svg-layer');
                 this.contextMenu = document.getElementById('context-menu');
 
-                this.projectHandle = null;
+                this.projectPath = null;
                 this.currentMap = null;
                 this.maps = [];
 
@@ -679,23 +679,14 @@
 
             init() {
                 this.canvasContainer = document.getElementById('canvas-container');
-                this.checkBrowserSupport();
                 this.setupEventListeners();
                 this.updateSVGSize();
                 this.updateButtonStates();
                 window.addEventListener('resize', () => this.updateSVGSize());
             }
 
-            checkBrowserSupport() {
-                if (!window.showDirectoryPicker) {
-                    const selectBtn = document.getElementById('select-folder');
-                    selectBtn.disabled = true;
-                    selectBtn.title = '您的瀏覽器不支援 File System Access API，請使用 Chrome、Edge 或其他支援的瀏覽器';
-                }
-            }
-
             updateButtonStates() {
-                const hasProject = this.projectHandle !== null;
+                const hasProject = this.projectPath !== null;
                 const hasMap = this.currentMap !== null;
 
                 document.getElementById('new-map').disabled = !hasProject;
@@ -880,34 +871,25 @@
             }
 
             async selectProjectFolder() {
-                if (!window.showDirectoryPicker) {
-                    alert('您的瀏覽器不支援 File System Access API\n\n請使用：\n- Chrome 86+\n- Edge 86+\n- Opera 72+\n\n或直接使用「載入 Map」功能');
-                    return;
-                }
-
                 try {
-                    console.log('開始選擇資料夾...');
-                    this.projectHandle = await window.showDirectoryPicker();
-                    console.log('已選擇資料夾:', this.projectHandle.name);
-                    document.getElementById('project-name').textContent = `專案: ${this.projectHandle.name}`;
-                    this.updateButtonStates();
-                    this.loadProjectMaps();
-                    console.log('按鈕狀態已更新');
-                } catch (err) {
-                    if (err.name !== 'AbortError') {
-                        console.error('選擇資料夾錯誤:', err);
-                        alert('無法選擇資料夾: ' + err.message + '\n\n請確認：\n1. 使用支援的瀏覽器\n2. 允許網頁存取檔案系統\n3. 不是在無痕模式中');
-                    } else {
-                        console.log('用戶取消選擇資料夾');
+                    const folderPath = await window.electronAPI.selectFolder();
+
+                    if (folderPath) {
+                        this.projectPath = folderPath;
+                        const folderName = folderPath.split(/[\\/]/).pop();
+                        document.getElementById('project-name').textContent = `專案: ${folderName}`;
+                        this.updateButtonStates();
+                        this.loadProjectMaps();
                     }
+                } catch (err) {
+                    console.error('選擇資料夾錯誤:', err);
+                    alert('無法選擇資料夾: ' + err.message);
                 }
             }
 
-            async loadProjectMaps() {
-                // This would scan the directory for .html files
-                // For now, we'll just clear the current maps
-                this.maps = [];
+            loadProjectMaps() {
                 // 清除當前圖稿和畫布內容
+                this.maps = [];
                 this.currentMap = null;
                 this.nodes = [];
                 this.frames = [];
@@ -922,7 +904,7 @@
             }
 
             createNewMap() {
-                if (!this.projectHandle) {
+                if (!this.projectPath) {
                     alert('請先選擇專案資料夾');
                     return;
                 }
@@ -958,18 +940,13 @@
                 }
 
                 // Check for duplicate in project folder
-                if (this.projectHandle) {
-                    try {
-                        await this.projectHandle.getFileHandle(`${filename}.html`);
+                if (this.projectPath) {
+                    const separator = await window.electronAPI.getPathSeparator();
+                    const filePath = `${this.projectPath}${separator}${filename}.html`;
+                    const exists = await window.electronAPI.fileExists(filePath);
+                    if (exists) {
                         alert(`檔案 "${filename}.html" 已存在於專案資料夾中。請使用不同的檔案名稱。`);
                         return;
-                    } catch (e) {
-                        if (e.name !== 'NotFoundError') {
-                            console.error('Error checking file existence:', e);
-                            alert('檢查檔案時發生錯誤。');
-                            return;
-                        }
-                        // File does not exist, which is good.
                     }
                 }
 
@@ -1004,24 +981,24 @@
             }
 
             async loadMapFromFile() {
-                if (!this.projectHandle) {
+                if (!this.projectPath) {
                     alert('請先選擇專案資料夾');
                     return;
                 }
 
                 try {
-                    const pickerOpts = {
-                        types: [{
-                            description: 'HTML Files',
-                            accept: { 'text/html': ['.html'] }
-                        }],
-                        startIn: this.projectHandle
-                    };
+                    const filePath = await window.electronAPI.selectFile({
+                        title: '選擇 Map 檔案',
+                        filters: [
+                            { name: 'HTML Files', extensions: ['html', 'htm'] }
+                        ]
+                    });
 
-                    const [fileHandle] = await window.showOpenFilePicker(pickerOpts);
+                    if (!filePath) {
+                        return; // User cancelled
+                    }
 
-                    const file = await fileHandle.getFile();
-                    const content = await file.text();
+                    const content = await window.electronAPI.readFile(filePath);
 
                     // Extract map data from HTML file
                     const parser = new DOMParser();
@@ -1040,16 +1017,18 @@
                         } else {
                             // Old format without title
                             mapData = jsonData;
-                            mapTitle = file.name.replace('.html', '');
+                            const fileName = filePath.split(/[\\/]/).pop();
+                            mapTitle = fileName.replace('.html', '');
                         }
 
+                        const fileName = filePath.split(/[\\/]/).pop();
                         const map = {
                             id: Date.now(),
-                            name: file.name.replace('.html', ''),
+                            name: fileName.replace('.html', ''),
                             title: mapTitle,
                             data: mapData,
                             modified: false,
-                            file: fileHandle,
+                            filePath: filePath,
                             viewState: {
                                 offsetX: 0,
                                 offsetY: 0,
@@ -1071,9 +1050,7 @@
                         alert('這不是有效的 Concept Map 檔案');
                     }
                 } catch (err) {
-                    if (err.name !== 'AbortError') {
-                        alert('載入檔案失敗: ' + err.message);
-                    }
+                    alert('載入檔案失敗: ' + err.message);
                 }
             }
 
@@ -1109,7 +1086,7 @@
             }
 
             async saveMap(map) {
-                if (!this.projectHandle) {
+                if (!this.projectPath) {
                     alert('請先選擇專案資料夾');
                     return;
                 }
@@ -1121,16 +1098,23 @@
                 const html = this.generateMapHTML(map);
 
                 try {
-                    const fileName = `${map.name}.html`;
-                    const fileHandle = await this.projectHandle.getFileHandle(fileName, { create: true });
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(html);
-                    await writable.close();
+                    // Use existing filePath if available, otherwise create new one in project folder
+                    let filePath = map.filePath;
+                    if (!filePath) {
+                        const separator = await window.electronAPI.getPathSeparator();
+                        filePath = `${this.projectPath}${separator}${map.name}.html`;
+                    }
 
-                    map.file = fileHandle;
-                    map.modified = false;
-                    this.updateMapList();
-                    alert('儲存成功');
+                    const result = await window.electronAPI.writeFile(filePath, html);
+
+                    if (result.success) {
+                        map.filePath = filePath;
+                        map.modified = false;
+                        this.updateMapList();
+                        alert('儲存成功');
+                    } else {
+                        alert('儲存失敗: ' + result.error);
+                    }
                 } catch (err) {
                     alert('儲存失敗: ' + err.message);
                 }
@@ -1478,9 +1462,12 @@
                     return;
                 }
 
-                if (map.file && this.projectHandle) {
+                if (map.filePath) {
                     try {
-                        await this.projectHandle.removeEntry(`${map.name}.html`);
+                        const result = await window.electronAPI.deleteFile(map.filePath);
+                        if (!result.success) {
+                            alert('刪除檔案失敗: ' + result.error);
+                        }
                     } catch (err) {
                         alert('刪除檔案失敗: ' + err.message);
                     }
