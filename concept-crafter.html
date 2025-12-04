@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 2.2.9 概念圖製造機</title>
+    <title>Concept Crafter 2.3.0 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -640,6 +640,20 @@
         </div>
     </div>
 
+    <div id="link-modal" class="modal">
+        <div class="modal-content">
+            <h2>插入連結</h2>
+            <label for="link-url-input">連結網址：</label>
+            <input type="text" id="link-url-input" placeholder="https://example.com 或 ./page.html">
+            <label for="link-text-input">連結文字（HTML 模式）：</label>
+            <input type="text" id="link-text-input" placeholder="連結文字">
+            <div class="modal-buttons">
+                <button id="link-cancel">取消</button>
+                <button id="link-ok">確定</button>
+            </div>
+        </div>
+    </div>
+
     <div id="help-modal" class="modal">
         <div class="modal-content">
             <h2>Concept Crafter 使用說明</h2>
@@ -871,6 +885,26 @@
                     if (e.key === 'Enter') this.newMapModalOk();
                 });
 
+                // Link Modal
+                document.getElementById('link-ok').addEventListener('click', () => this.linkModalOk());
+                document.getElementById('link-cancel').addEventListener('click', () => this.linkModalCancel());
+
+                // Enter key support for link modal
+                document.getElementById('link-url-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        // 如果在 HTML 模式且文字框可見，則跳到文字輸入框
+                        const textInput = document.getElementById('link-text-input');
+                        if (textInput.style.display !== 'none') {
+                            textInput.focus();
+                        } else {
+                            this.linkModalOk();
+                        }
+                    }
+                });
+                document.getElementById('link-text-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.linkModalOk();
+                });
+
                 // Recent Projects Modal
                 document.getElementById('recent-projects-browse').addEventListener('click', () => this.browseForFolder());
                 document.getElementById('recent-projects-cancel').addEventListener('click', () => {
@@ -899,45 +933,58 @@
                     e.preventDefault();
 
                     let defaultUrl = '';
-                    const selection = window.getSelection();
-                    if (selection.rangeCount > 0) {
-                        // Find if selection is inside a link
-                        let node = selection.getRangeAt(0).commonAncestorContainer;
-                        if (node.nodeType === 3) node = node.parentNode; // Text node -> Element
-                        const anchor = node.closest('a');
-                        if (anchor) {
-                            defaultUrl = anchor.getAttribute('href');
+                    let selectedText = '';
+
+                    if (this.isHtmlMode) {
+                        // HTML 模式：從 textarea 獲取選取的文字
+                        const htmlEditor = document.getElementById('rte-html-editor');
+                        const start = htmlEditor.selectionStart;
+                        const end = htmlEditor.selectionEnd;
+                        selectedText = htmlEditor.value.substring(start, end);
+
+                        // 儲存選取位置
+                        this.savedHtmlSelection = { start, end };
+                    } else {
+                        // 一般模式：從富文本編輯器獲取選取
+                        const selection = window.getSelection();
+                        if (selection.rangeCount > 0) {
+                            // 保存選取範圍
+                            this.savedRange = selection.getRangeAt(0).cloneRange();
+                            selectedText = selection.toString();
+
+                            // 檢查是否選取了已有的連結
+                            let node = selection.getRangeAt(0).commonAncestorContainer;
+                            if (node.nodeType === 3) node = node.parentNode;
+                            const anchor = node.closest('a');
+                            if (anchor) {
+                                defaultUrl = anchor.getAttribute('href');
+                            }
                         }
                     }
 
-                    const url = prompt('輸入連結網址:', defaultUrl);
-                    if (url) {
-                        document.execCommand('createLink', false, url);
+                    // 顯示連結輸入對話框
+                    const modal = document.getElementById('link-modal');
+                    const urlInput = document.getElementById('link-url-input');
+                    const textInput = document.getElementById('link-text-input');
 
-                        // 只有專案內的 HTML 文件才在同一視窗開啟
-                        setTimeout(() => {
-                            const editor = document.getElementById('rte-editor');
-                            const links = editor.querySelectorAll('a');
-                            links.forEach(link => {
-                                const href = link.getAttribute('href');
-                                if (href) {
-                                    // 判斷是否為專案內的 HTML 文件
-                                    const isProjectHtml = !href.match(/^[a-zA-Z]+:\/\//) &&    // 不包含協議
-                                                          !href.match(/^\//) &&                  // 不是 Unix 絕對路徑
-                                                          !href.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
-                                                          href.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
+                    urlInput.value = defaultUrl;
+                    textInput.value = selectedText || '連結文字';
 
-                                    if (isProjectHtml) {
-                                        link.removeAttribute('target');
-                                        link.removeAttribute('rel');
-                                    } else {
-                                        link.setAttribute('target', '_blank');
-                                        link.setAttribute('rel', 'noopener noreferrer');
-                                    }
-                                }
-                            });
-                        }, 0);
+                    // 根據模式顯示/隱藏文字輸入框
+                    const textLabel = textInput.previousElementSibling;
+                    if (this.isHtmlMode) {
+                        textInput.style.display = 'block';
+                        textLabel.style.display = 'block';
+                    } else {
+                        textInput.style.display = 'none';
+                        textLabel.style.display = 'none';
                     }
+
+                    modal.style.display = 'block';
+                    urlInput.focus();
+
+                    // 儲存當前模式
+                    this.linkModalMode = this.isHtmlMode ? 'html' : 'rich';
                 });
 
                 document.getElementById('rte-color').addEventListener('input', (e) => {
@@ -949,7 +996,7 @@
                     e.preventDefault();
                     const editor = document.getElementById('rte-editor');
                     const htmlEditor = document.getElementById('rte-html-editor');
-                    const toolbar = document.querySelectorAll('.rte-btn:not(#rte-html-btn)');
+                    const toolbar = document.querySelectorAll('.rte-btn:not(#rte-html-btn):not(#rte-link-btn)');
                     const colorPicker = document.getElementById('rte-color');
 
                     if (!this.isHtmlMode) {
@@ -957,7 +1004,7 @@
                         htmlEditor.value = editor.innerHTML;
                         editor.style.display = 'none';
                         htmlEditor.style.display = 'block';
-                        // 禁用其他工具列按鈕
+                        // 禁用其他工具列按鈕（除了連結按鈕）
                         toolbar.forEach(btn => btn.disabled = true);
                         colorPicker.disabled = true;
                         e.target.style.background = '#e74c3c';
@@ -2595,6 +2642,88 @@
             modalCancel() {
                 this.resetHtmlMode();
                 document.getElementById('text-modal').style.display = 'none';
+            }
+
+            linkModalOk() {
+                const modal = document.getElementById('link-modal');
+                const urlInput = document.getElementById('link-url-input');
+                const textInput = document.getElementById('link-text-input');
+                const url = urlInput.value.trim();
+
+                if (!url) {
+                    modal.style.display = 'none';
+                    return;
+                }
+
+                // 如果在 HTML 模式，直接插入 HTML 代碼
+                if (this.linkModalMode === 'html') {
+                    const htmlEditor = document.getElementById('rte-html-editor');
+                    const linkText = textInput.value.trim() || '連結文字';
+
+                    // 判斷是否為專案內的 HTML 文件
+                    const isProjectHtml = !url.match(/^[a-zA-Z]+:\/\//) &&    // 不包含協議
+                                          !url.match(/^\//) &&                  // 不是 Unix 絕對路徑
+                                          !url.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
+                                          url.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
+
+                    let linkHtml;
+                    if (isProjectHtml) {
+                        linkHtml = `<a href="${url}">${linkText}</a>`;
+                    } else {
+                        linkHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+                    }
+
+                    // 使用保存的選取位置插入連結
+                    const start = this.savedHtmlSelection ? this.savedHtmlSelection.start : htmlEditor.selectionStart;
+                    const end = this.savedHtmlSelection ? this.savedHtmlSelection.end : htmlEditor.selectionEnd;
+                    const text = htmlEditor.value;
+                    htmlEditor.value = text.substring(0, start) + linkHtml + text.substring(end);
+                    htmlEditor.selectionStart = htmlEditor.selectionEnd = start + linkHtml.length;
+                    htmlEditor.focus();
+                } else {
+                    // 一般模式，恢復選取範圍後使用 execCommand
+                    const editor = document.getElementById('rte-editor');
+                    editor.focus();
+
+                    // 恢復保存的選取範圍
+                    if (this.savedRange) {
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(this.savedRange);
+                    }
+
+                    document.execCommand('createLink', false, url);
+
+                    // 只有專案內的 HTML 文件才在同一視窗開啟
+                    setTimeout(() => {
+                        const links = editor.querySelectorAll('a');
+                        links.forEach(link => {
+                            const href = link.getAttribute('href');
+                            if (href) {
+                                // 判斷是否為專案內的 HTML 文件
+                                const isProjectHtml = !href.match(/^[a-zA-Z]+:\/\//) &&    // 不包含協議
+                                                      !href.match(/^\//) &&                  // 不是 Unix 絕對路徑
+                                                      !href.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
+                                                      href.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
+
+                                if (isProjectHtml) {
+                                    link.removeAttribute('target');
+                                    link.removeAttribute('rel');
+                                } else {
+                                    link.setAttribute('target', '_blank');
+                                    link.setAttribute('rel', 'noopener noreferrer');
+                                }
+                            }
+                        });
+                        editor.focus();
+                    }, 0);
+                }
+
+                modal.style.display = 'none';
+            }
+
+            linkModalCancel() {
+                document.getElementById('link-modal').style.display = 'none';
             }
 
             resetHtmlMode() {
