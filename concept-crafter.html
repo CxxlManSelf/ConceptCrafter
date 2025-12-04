@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 2.1.7 概念圖製造機</title>
+    <title>Concept Crafter 2.1.8 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -194,6 +194,7 @@
             top: 0;
             left: 0;
             pointer-events: none;
+            z-index: 50;
         }
 
         .node {
@@ -1258,7 +1259,7 @@
                     #container { width: 100vw; height: 100vh; overflow: hidden; position: relative; }
                     #canvas { width: 100%; height: 100%; transform-origin: 0 0; cursor: grab; }
                     #canvas.grabbing { cursor: grabbing; }
-                    svg { position: absolute; top: 0; left: 0; pointer-events: none; }
+                    svg { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 50; }
                     .node { position: absolute; background: #3498db; color: white; padding: 10px; border-radius: 8px; min-width: 100px; min-height: 60px; display: flex; align-items: center; justify-content: center; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); user-select: none; }
                     .node-content { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; }
                     .node-content * { margin: 0; pointer-events: none; }
@@ -1386,8 +1387,14 @@
                             // Transform
                             this.canvas.style.transform = \`translate(\${this.offsetX}px, \${this.offsetY}px) scale(\${this.scale})\`;
 
-                            // Frames
-                            this.frames.forEach(frame => {
+                            // Frames - Sort by zIndex
+                            const sortedFrames = [...this.frames].sort((a, b) => {
+                                const zIndexA = a.zIndex !== undefined ? a.zIndex : 0;
+                                const zIndexB = b.zIndex !== undefined ? b.zIndex : 0;
+                                return zIndexA - zIndexB;
+                            });
+
+                            sortedFrames.forEach(frame => {
                                 const el = document.createElement('div');
                                 el.className = 'frame';
                                 el.style.left = frame.x + 'px';
@@ -1396,6 +1403,7 @@
                                 el.style.height = frame.height + 'px';
                                 el.style.borderColor = frame.borderColor || '#95a5a6';
                                 el.style.background = frame.bgColor || 'rgba(149, 165, 166, 0.1)';
+                                el.style.zIndex = (frame.zIndex !== undefined ? frame.zIndex : 0) + 1;
 
                                 const label = document.createElement('div');
                                 label.className = 'frame-label';
@@ -1415,6 +1423,7 @@
                                 el.style.width = node.width + 'px';
                                 el.style.height = node.height + 'px';
                                 el.style.background = node.color;
+                                el.style.zIndex = 101;
                                 el.innerHTML = \`<div class="node-content">\${node.text}</div>\`;
 
                                 // 處理連結：只有專案內的 HTML 文件在同一視窗開啟
@@ -1810,7 +1819,8 @@
                     height: 200,
                     label: '新 Frame',
                     borderColor: '#95a5a6',
-                    bgColor: 'rgba(149, 165, 166, 0.1)'
+                    bgColor: 'rgba(149, 165, 166, 0.1)',
+                    zIndex: 0
                 };
                 this.frames.push(frame);
                 this.markModified();
@@ -1861,7 +1871,14 @@
                     return;
                 }
 
-                const resizeFrame = this.frames.find(frame => this.isInResizeHandle(x, y, frame));
+                // Sort frames by zIndex (highest first) to check topmost frame first
+                const sortedFramesDesc = [...this.frames].sort((a, b) => {
+                    const zIndexA = a.zIndex !== undefined ? a.zIndex : 0;
+                    const zIndexB = b.zIndex !== undefined ? b.zIndex : 0;
+                    return zIndexB - zIndexA;
+                });
+
+                const resizeFrame = sortedFramesDesc.find(frame => this.isInResizeHandle(x, y, frame));
                 if (resizeFrame) {
                     this.resizeElement = { type: 'frame', element: resizeFrame };
                     this.dragOffset = { x: resizeFrame.width, y: resizeFrame.height };
@@ -1887,8 +1904,8 @@
                     return;
                 }
 
-                // Check for frames
-                const clickedFrame = this.frames.find(frame => this.isInFrame(x, y, frame));
+                // Check for frames (sorted by zIndex, highest first)
+                const clickedFrame = sortedFramesDesc.find(frame => this.isInFrame(x, y, frame));
                 if (clickedFrame) {
                     if (this.connectMode) {
                         if (!this.connectStart) {
@@ -1978,7 +1995,14 @@
                     return;
                 }
 
-                const clickedFrame = this.frames.find(frame => this.isInFrame(x, y, frame));
+                // Sort frames by zIndex (highest first) to check topmost frame first
+                const sortedFramesDesc = [...this.frames].sort((a, b) => {
+                    const zIndexA = a.zIndex !== undefined ? a.zIndex : 0;
+                    const zIndexB = b.zIndex !== undefined ? b.zIndex : 0;
+                    return zIndexB - zIndexA;
+                });
+
+                const clickedFrame = sortedFramesDesc.find(frame => this.isInFrame(x, y, frame));
                 if (clickedFrame) {
                     this.showFrameContextMenu(e.clientX, e.clientY, clickedFrame);
                     return;
@@ -2034,6 +2058,15 @@
                 this.contextMenu.innerHTML = `
                     <div class="context-menu-item" onclick="app.editFrameLabel(${frame.id})">編輯標籤</div>
                     <div class="context-menu-item" onclick="app.copyFrame(${frame.id})">複製 Frame (Ctrl+C)</div>
+                    <div class="context-menu-item context-menu-submenu">
+                        調整層級
+                        <div class="submenu">
+                            <div class="context-menu-item" onclick="app.bringFrameToFront(${frame.id})">移到最前</div>
+                            <div class="context-menu-item" onclick="app.sendFrameToBack(${frame.id})">移到最後</div>
+                            <div class="context-menu-item" onclick="app.bringFrameForward(${frame.id})">向前一層</div>
+                            <div class="context-menu-item" onclick="app.sendFrameBackward(${frame.id})">向後一層</div>
+                        </div>
+                    </div>
                     <div class="context-menu-item context-menu-submenu">
                         變更顏色
                         <div class="submenu">
@@ -2185,6 +2218,52 @@
             deleteFrame(frameId) {
                 this.frames = this.frames.filter(f => f.id !== frameId);
                 this.connections = this.connections.filter(c => c.from !== frameId && c.to !== frameId);
+                this.markModified();
+                this.render();
+            }
+
+            bringFrameToFront(frameId) {
+                const frame = this.frames.find(f => f.id === frameId);
+                if (!frame) return;
+
+                // Find the maximum zIndex among all frames
+                const maxZIndex = Math.max(...this.frames.map(f => f.zIndex !== undefined ? f.zIndex : 0));
+                frame.zIndex = maxZIndex + 1;
+
+                this.markModified();
+                this.render();
+            }
+
+            sendFrameToBack(frameId) {
+                const frame = this.frames.find(f => f.id === frameId);
+                if (!frame) return;
+
+                // Find the minimum zIndex among all frames
+                const minZIndex = Math.min(...this.frames.map(f => f.zIndex !== undefined ? f.zIndex : 0));
+                frame.zIndex = minZIndex - 1;
+
+                this.markModified();
+                this.render();
+            }
+
+            bringFrameForward(frameId) {
+                const frame = this.frames.find(f => f.id === frameId);
+                if (!frame) return;
+
+                const currentZIndex = frame.zIndex !== undefined ? frame.zIndex : 0;
+                frame.zIndex = currentZIndex + 1;
+
+                this.markModified();
+                this.render();
+            }
+
+            sendFrameBackward(frameId) {
+                const frame = this.frames.find(f => f.id === frameId);
+                if (!frame) return;
+
+                const currentZIndex = frame.zIndex !== undefined ? frame.zIndex : 0;
+                frame.zIndex = currentZIndex - 1;
+
                 this.markModified();
                 this.render();
             }
@@ -2451,7 +2530,14 @@
                 this.canvas.style.transform = transform;
 
                 // Render frames first (background)
-                this.frames.forEach(frame => {
+                // Sort frames by zIndex to maintain proper layering
+                const sortedFrames = [...this.frames].sort((a, b) => {
+                    const zIndexA = a.zIndex !== undefined ? a.zIndex : 0;
+                    const zIndexB = b.zIndex !== undefined ? b.zIndex : 0;
+                    return zIndexA - zIndexB;
+                });
+
+                sortedFrames.forEach(frame => {
                     const frameEl = document.createElement('div');
                     frameEl.className = 'frame';
 
@@ -2466,6 +2552,8 @@
                     frameEl.style.height = frame.height + 'px';
                     frameEl.style.borderColor = frame.borderColor || '#95a5a6';
                     frameEl.style.background = frame.bgColor || 'rgba(149, 165, 166, 0.1)';
+                    // Set z-index for frames (1-100 range, always below nodes which are at 101)
+                    frameEl.style.zIndex = (frame.zIndex !== undefined ? frame.zIndex : 0) + 1;
 
                     const label = document.createElement('div');
                     label.className = 'frame-label';
@@ -2505,6 +2593,8 @@
                     nodeEl.style.width = node.width + 'px';
                     nodeEl.style.height = node.height + 'px';
                     nodeEl.style.background = node.color;
+                    // Nodes always stay above frames (z-index 101+)
+                    nodeEl.style.zIndex = 101;
 
                     const content = document.createElement('div');
                     content.className = 'node-content';
