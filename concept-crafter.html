@@ -697,6 +697,9 @@
                 </li>
                 <li><strong>連結功能</strong>：
                     <ul>
+                        <li><strong>建立連結</strong>：選取要加入連結的文字，點擊工具列的「連結」按鈕，在對話框中輸入網址即可。</li>
+                        <li><strong>一般模式</strong>：自動保留選取的文字，將其轉換為超連結。</li>
+                        <li><strong>HTML 模式</strong>：可以指定連結文字，直接插入 <code>&lt;a&gt;</code> 標籤。支援 Enter 鍵快速確認。</li>
                         <li><strong>專案內 HTML</strong>：使用相對路徑的 HTML 文件（如 <code>./page.html</code>、<code>doc.htm</code>）會在同一視窗開啟，方便專案內導覽。</li>
                         <li><strong>其他連結</strong>：HTTP/HTTPS 網址、絕對路徑、圖片檔案等都會在新視窗開啟。</li>
                         <li><strong>特殊功能連結</strong>：
@@ -716,7 +719,34 @@
                 <li><strong>編輯連線</strong>：右鍵點擊連線可編輯標籤文字或更改箭頭樣式（單向/雙向/無）。</li>
             </ul>
 
-            <h3>5. Map 管理</h3>
+            <h3>5. 選取模式（多選功能）</h3>
+            <ul>
+                <li><strong>啟用選取模式</strong>：點擊工具列的「選取模式」按鈕（按鈕會變紅色），進入多選模式。</li>
+                <li><strong>選取元素</strong>：在選取模式下，點擊節點或 Frame 即可選取。選取的元素會顯示紫色高亮邊框。</li>
+                <li><strong>多選</strong>：可以點擊多個節點和 Frame，建立選取集合。</li>
+                <li><strong>取消選取</strong>：
+                    <ul>
+                        <li>點擊已選取的元素：從選取集合中移除</li>
+                        <li>點擊空白處：清除所有選取</li>
+                        <li>關閉選取模式：自動清除所有選取</li>
+                    </ul>
+                </li>
+                <li><strong>批次操作</strong>：
+                    <ul>
+                        <li><strong>批次搬移</strong>：點擊任一已選取的元素並拖動，所有選取的元素會一起移動</li>
+                        <li><strong>批次複製</strong>：選取多個元素後，右鍵點擊任一選取的元素，選擇「複製選取的元素」</li>
+                        <li><strong>批次刪除</strong>：選取多個元素後，右鍵點擊任一選取的元素，選擇「刪除選取的元素」</li>
+                    </ul>
+                </li>
+                <li><strong>注意事項</strong>：
+                    <ul>
+                        <li>在選取模式下，點擊空白處不會平移畫布（需要先關閉選取模式）</li>
+                        <li>選取模式適合處理大量元素時使用</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3>6. Map 管理</h3>
             <ul>
                 <li><strong>多 Map 支援</strong>：可以同時開啟多個 map 進行編輯，在右側面板切換。</li>
                 <li><strong>獨立視圖</strong>：每個 map 會記住自己的視圖位置和縮放級別，切換 map 時會自動恢復上次的視圖狀態。</li>
@@ -731,19 +761,19 @@
                 </li>
             </ul>
 
-            <h3>6. 分享與協作</h3>
+            <h3>7. 分享與協作</h3>
             <ul>
                 <li><strong>獨立瀏覽</strong>：儲存後的 .html 檔案包含獨立瀏覽器。您可以直接將檔案傳給他人，他們只需用瀏覽器打開即可觀看並操作縮放/平移，無需安裝任何軟體。</li>
                 <li><strong>跨 Map 複製</strong>：可以在不同 map 之間複製貼上節點和 Frame，方便重複使用內容。</li>
             </ul>
 
-            <h3>7. 鍵盤快捷鍵</h3>
+            <h3>8. 鍵盤快捷鍵</h3>
             <ul>
                 <li><strong>Ctrl+C</strong>：複製選取的節點或 Frame（需先右鍵點擊選取）</li>
                 <li><strong>Ctrl+V</strong>：貼上複製的內容</li>
             </ul>
 
-            <h3>8. 快捷提示</h3>
+            <h3>9. 快捷提示</h3>
             <ul>
                 <li><strong>組織架構</strong>：使用 Frame 來將相關的節點群組在一起，建立清晰的視覺層次。</li>
                 <li><strong>顏色管理</strong>：使用不同顏色的節點來區分不同類型的概念或狀態。</li>
