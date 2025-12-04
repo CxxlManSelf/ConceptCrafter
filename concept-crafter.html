@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 2.1.6 概念圖製造機</title>
+    <title>Concept Crafter 2.1.7 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -1114,7 +1114,8 @@
                         title: '選擇 Map 檔案',
                         filters: [
                             { name: 'HTML Files', extensions: ['html', 'htm'] }
-                        ]
+                        ],
+                        defaultPath: this.projectPath
                     });
 
                     if (!filePath) {

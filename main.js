@@ -125,13 +125,20 @@ ipcMain.handle('get-path-separator', () => {
 
 // 選擇單一檔案
 ipcMain.handle('select-file', async (event, options = {}) => {
-    const result = await dialog.showOpenDialog(mainWindow, {
+    const dialogOptions = {
         properties: ['openFile'],
         filters: options.filters || [
             { name: 'HTML Files', extensions: ['html', 'htm'] }
         ],
         title: options.title || '選擇檔案'
-    });
+    };
+
+    // 如果提供了 defaultPath，設定預設路徑
+    if (options.defaultPath) {
+        dialogOptions.defaultPath = options.defaultPath;
+    }
+
+    const result = await dialog.showOpenDialog(mainWindow, dialogOptions);
 
     if (result.canceled) {
         return null;
