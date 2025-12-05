@@ -1,6 +1,6 @@
 {
   "name": "concept-crafter",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "視覺化概念圖製作工具",
   "main": "main.js",
   "scripts": {
