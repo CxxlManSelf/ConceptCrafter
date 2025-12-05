@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 1.3.8 概念圖製造機</title>
+    <title>Concept Crafter 1.3.9 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -600,8 +600,10 @@
                         (H1/H2)</strong>、<strong>列表</strong>、<strong>粗體/斜體/底線/刪除線</strong>、<strong>顏色</strong> 以及
                     <strong>超連結</strong>。
                 </li>
+                <li><strong>HTML 原始碼</strong>：點擊「&lt; &gt; HTML」按鈕可切換至 HTML 原始碼編輯模式，直接編輯 HTML 代碼。</li>
                 <li><strong>連結功能</strong>：
                     <ul>
+                        <li><strong>建立連結</strong>：選取要加入連結的文字，點擊工具列的「連結」按鈕，在對話框中輸入網址即可。自動保留選取的文字，將其轉換為超連結。</li>
                         <li><strong>專案內 HTML</strong>：使用相對路徑的 HTML 文件（如 <code>./page.html</code>、<code>doc.htm</code>）會在同一視窗開啟，方便專案內導覽。</li>
                         <li><strong>其他連結</strong>：HTTP/HTTPS 網址、絕對路徑、圖片檔案等都會在新視窗開啟。</li>
                         <li><strong>特殊功能連結</strong>：
@@ -621,26 +623,53 @@
                 <li><strong>編輯連線</strong>：右鍵點擊連線可編輯標籤文字或更改箭頭樣式（單向/雙向/無）。</li>
             </ul>
 
-            <h3>5. Map 管理</h3>
+            <h3>5. 選取模式（多選功能）</h3>
+            <ul>
+                <li><strong>啟用選取模式</strong>：點擊工具列的「選取模式」按鈕（按鈕會變紅色），進入多選模式。</li>
+                <li><strong>選取元素</strong>：在選取模式下，點擊節點或 Frame 即可選取。選取的元素會顯示紫色高亮邊框。</li>
+                <li><strong>多選</strong>：可以點擊多個節點和 Frame，建立選取集合。</li>
+                <li><strong>取消選取</strong>：
+                    <ul>
+                        <li>點擊已選取的元素：從選取集合中移除</li>
+                        <li>點擊空白處：清除所有選取</li>
+                        <li>關閉選取模式：自動清除所有選取</li>
+                    </ul>
+                </li>
+                <li><strong>批次操作</strong>：
+                    <ul>
+                        <li><strong>批次搬移</strong>：點擊任一已選取的元素並拖動，所有選取的元素會一起移動</li>
+                        <li><strong>批次複製</strong>：選取多個元素後，右鍵點擊任一選取的元素，選擇「複製選取的元素」</li>
+                        <li><strong>批次刪除</strong>：選取多個元素後，右鍵點擊任一選取的元素，選擇「刪除選取的元素」</li>
+                    </ul>
+                </li>
+                <li><strong>注意事項</strong>：
+                    <ul>
+                        <li>在選取模式下，點擊空白處不會平移畫布（需要先關閉選取模式）</li>
+                        <li>選取模式適合處理大量元素時使用</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3>6. Map 管理</h3>
             <ul>
                 <li><strong>多 Map 支援</strong>：可以同時開啟多個 map 進行編輯，在右側面板切換。</li>
                 <li><strong>獨立視圖</strong>：每個 map 會記住自己的視圖位置和縮放級別，切換 map 時會自動恢復上次的視圖狀態。</li>
                 <li><strong>儲存</strong>：在右側面板的 Map 列表中，點擊「儲存」按鈕。有未儲存變更的 map 會顯示「儲存」按鈕。</li>
             </ul>
 
-            <h3>6. 分享與協作</h3>
+            <h3>7. 分享與協作</h3>
             <ul>
                 <li><strong>獨立瀏覽</strong>：儲存後的 .html 檔案包含獨立瀏覽器。您可以直接將檔案傳給他人，他們只需用瀏覽器打開即可觀看並操作縮放/平移，無需安裝任何軟體。</li>
                 <li><strong>跨 Map 複製</strong>：可以在不同 map 之間複製貼上節點和 Frame，方便重複使用內容。</li>
             </ul>
 
-            <h3>7. 鍵盤快捷鍵</h3>
+            <h3>8. 鍵盤快捷鍵</h3>
             <ul>
                 <li><strong>Ctrl+C</strong>：複製選取的節點或 Frame（需先右鍵點擊選取）</li>
                 <li><strong>Ctrl+V</strong>：貼上複製的內容</li>
             </ul>
 
-            <h3>8. 快捷提示</h3>
+            <h3>9. 快捷提示</h3>
             <ul>
                 <li><strong>組織架構</strong>：使用 Frame 來將相關的節點群組在一起，建立清晰的視覺層次。</li>
                 <li><strong>顏色管理</strong>：使用不同顏色的節點來區分不同類型的概念或狀態。</li>
@@ -796,43 +825,57 @@
                     let defaultUrl = '';
                     const selection = window.getSelection();
                     if (selection.rangeCount > 0) {
-                        // Find if selection is inside a link
+                        // 保存選取範圍
+                        this.savedRange = selection.getRangeAt(0).cloneRange();
+
+                        // 檢查是否選取了已有的連結
                         let node = selection.getRangeAt(0).commonAncestorContainer;
-                        if (node.nodeType === 3) node = node.parentNode; // Text node -> Element
+                        if (node.nodeType === 3) node = node.parentNode;
                         const anchor = node.closest('a');
                         if (anchor) {
                             defaultUrl = anchor.getAttribute('href');
                         }
                     }
 
+                    // 使用 prompt 獲取連結網址
                     const url = prompt('輸入連結網址:', defaultUrl);
-                    if (url) {
-                        document.execCommand('createLink', false, url);
+                    if (!url) return;
 
-                        // 只有專案內的 HTML 文件才在同一視窗開啟
-                        setTimeout(() => {
-                            const editor = document.getElementById('rte-editor');
-                            const links = editor.querySelectorAll('a');
-                            links.forEach(link => {
-                                const href = link.getAttribute('href');
-                                if (href) {
-                                    // 判斷是否為專案內的 HTML 文件
-                                    const isProjectHtml = !href.match(/^[a-zA-Z]+:\/\//) &&    // 不包含協議
-                                                          !href.match(/^\//) &&                  // 不是 Unix 絕對路徑
-                                                          !href.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
-                                                          href.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
+                    // 恢復選取範圍後使用 execCommand
+                    const editor = document.getElementById('rte-editor');
+                    editor.focus();
 
-                                    if (isProjectHtml) {
-                                        link.removeAttribute('target');
-                                        link.removeAttribute('rel');
-                                    } else {
-                                        link.setAttribute('target', '_blank');
-                                        link.setAttribute('rel', 'noopener noreferrer');
-                                    }
-                                }
-                            });
-                        }, 0);
+                    // 恢復保存的選取範圍
+                    if (this.savedRange) {
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(this.savedRange);
                     }
+
+                    document.execCommand('createLink', false, url);
+
+                    // 只有專案內的 HTML 文件才在同一視窗開啟
+                    setTimeout(() => {
+                        const links = editor.querySelectorAll('a');
+                        links.forEach(link => {
+                            const href = link.getAttribute('href');
+                            if (href) {
+                                const isProjectHtml = !href.match(/^[a-zA-Z]+:\/\//) &&
+                                                      !href.match(/^\//) &&
+                                                      !href.match(/^[a-zA-Z]:[\/\\]/) &&
+                                                      href.match(/\.html?$/i);
+
+                                if (isProjectHtml) {
+                                    link.removeAttribute('target');
+                                    link.removeAttribute('rel');
+                                } else {
+                                    link.setAttribute('target', '_blank');
+                                    link.setAttribute('rel', 'noopener noreferrer');
+                                }
+                            }
+                        });
+                        editor.focus();
+                    }, 0);
                 });
 
                 document.getElementById('rte-color').addEventListener('input', (e) => {
