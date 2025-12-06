@@ -1509,6 +1509,13 @@
                                 el.style.zIndex = 101;
                                 el.innerHTML = \`<div class="node-content">\${node.text}</div>\`;
 
+                                // Set text alignment
+                                const nodeContent = el.querySelector('.node-content');
+                                const textAlign = node.textAlign || 'center';
+                                const alignItemsMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+                                nodeContent.style.textAlign = textAlign;
+                                nodeContent.style.alignItems = alignItemsMap[textAlign];
+
                                 // 處理連結：只有專案內的 HTML 文件在同一視窗開啟
                                 const links = el.querySelectorAll('a');
                                 links.forEach(link => {
@@ -1881,7 +1888,8 @@
                     text: '新節點',
                     color: '#3498db',
                     completed: false,
-                    abandoned: false
+                    abandoned: false,
+                    textAlign: 'center'
                 };
                 this.nodes.push(node);
                 this.markModified();
@@ -2302,6 +2310,14 @@
                             <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#95a5a6')">灰色</div>
                         </div>
                     </div>
+                    <div class="context-menu-item context-menu-submenu">
+                        文字對齊
+                        <div class="submenu">
+                            <div class="context-menu-item" onclick="app.changeNodeTextAlign(${node.id}, 'left')">靠左對齊</div>
+                            <div class="context-menu-item" onclick="app.changeNodeTextAlign(${node.id}, 'center')">置中對齊</div>
+                            <div class="context-menu-item" onclick="app.changeNodeTextAlign(${node.id}, 'right')">靠右對齊</div>
+                        </div>
+                    </div>
                     <div class="context-menu-item" onclick="app.toggleNodeCompleted(${node.id})">${completedText}</div>
                     <div class="context-menu-item" onclick="app.toggleNodeAbandoned(${node.id})">${abandonedText}</div>
                     <div class="context-menu-item" onclick="app.deleteNode(${node.id})">刪除節點</div>
@@ -2401,6 +2417,15 @@
                 const node = this.nodes.find(n => n.id === nodeId);
                 if (node) {
                     node.color = color;
+                    this.markModified();
+                    this.render();
+                }
+            }
+
+            changeNodeTextAlign(nodeId, align) {
+                const node = this.nodes.find(n => n.id === nodeId);
+                if (node) {
+                    node.textAlign = align;
                     this.markModified();
                     this.render();
                 }
@@ -2966,6 +2991,13 @@
                     const content = document.createElement('div');
                     content.className = 'node-content';
                     content.innerHTML = node.text;
+
+                    // Set text alignment
+                    const textAlign = node.textAlign || 'center';
+                    const alignItemsMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+                    content.style.textAlign = textAlign;
+                    content.style.alignItems = alignItemsMap[textAlign];
+
                     nodeEl.appendChild(content);
 
                     // 處理連結：只有專案內的 HTML 文件在同一視窗開啟
