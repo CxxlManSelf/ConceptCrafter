@@ -628,12 +628,15 @@
                 <button class="rte-btn" data-cmd="italic"><i>I</i></button>
                 <button class="rte-btn" data-cmd="underline"><u>U</u></button>
                 <button class="rte-btn" data-cmd="strikeThrough"><s>S</s></button>
-                <button class="rte-btn" data-cmd="insertUnorderedList">• List</button>
-                <button class="rte-btn" data-cmd="insertOrderedList">1. List</button>
                 <button class="rte-btn" id="rte-link-btn">連結</button>
                 <input type="color" id="rte-color" title="文字顏色"
                     style="width: 30px; padding: 0; border: none; height: 26px;">
                 <button class="rte-btn" id="rte-html-btn" title="編輯 HTML 原始碼">&lt; &gt; HTML</button>
+                <div style="width: 100%; height: 0;"></div>
+                <button class="rte-btn" data-cmd="insertUnorderedList">• List</button>
+                <button class="rte-btn" data-cmd="insertOrderedList">1. List</button>
+                <button class="rte-btn" data-cmd="indent" title="增加縮排">→ 縮排</button>
+                <button class="rte-btn" data-cmd="outdent" title="減少縮排">← 減排</button>
             </div>
             <div id="rte-editor" contenteditable="true"></div>
             <textarea id="rte-html-editor" style="display: none; width: 100%; min-height: 300px; font-family: 'Courier New', monospace; font-size: 14px; padding: 10px; border: 1px solid #ccc; box-sizing: border-box;"></textarea>
