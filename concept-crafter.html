@@ -639,7 +639,8 @@
                 <button class="rte-btn" data-cmd="outdent" title="減少縮排">← 減排</button>
             </div>
             <div id="rte-editor" contenteditable="true"></div>
-            <textarea id="rte-html-editor" style="display: none; width: 100%; min-height: 300px; font-family: 'Courier New', monospace; font-size: 14px; padding: 10px; border: 1px solid #ccc; box-sizing: border-box;"></textarea>
+            <textarea id="rte-html-editor"
+                style="display: none; width: 100%; min-height: 300px; font-family: 'Courier New', monospace; font-size: 14px; padding: 10px; border: 1px solid #ccc; box-sizing: border-box;"></textarea>
             <div class="modal-buttons">
                 <button id="modal-cancel">取消</button>
                 <button id="modal-ok">確定</button>
@@ -665,7 +666,8 @@
         <div class="modal-content">
             <h2>編輯連結</h2>
             <label for="link-url-input">連結網址：</label>
-            <input type="text" id="link-url-input" placeholder="https://example.com 或 ./page.html" style="margin-bottom: 15px;">
+            <input type="text" id="link-url-input" placeholder="https://example.com 或 ./page.html"
+                style="margin-bottom: 15px;">
             <label for="link-text-input">連結文字：</label>
             <input type="text" id="link-text-input" placeholder="顯示的文字" style="margin-bottom: 15px;">
             <div class="modal-buttons">
@@ -705,7 +707,8 @@
                 <li><strong>移動</strong>：直接拖曳節點或 Frame。</li>
                 <li><strong>調整大小</strong>：拖曳節點或 Frame 右下角的調整手柄。</li>
                 <li><strong>縮放與平移</strong>：使用滑鼠滾輪縮放，按住滑鼠左鍵拖曳背景可平移畫布。即使滑鼠移出畫布區域，仍可繼續操作。</li>
-                <li><strong>複製與貼上</strong>：右鍵點擊節點或 Frame 選擇「複製」，或使用 <strong>Ctrl+C</strong>。貼上可使用 <strong>Ctrl+V</strong> 或在空白處右鍵選擇「貼上」。</li>
+                <li><strong>複製與貼上</strong>：右鍵點擊節點或 Frame 選擇「複製」，或使用 <strong>Ctrl+C</strong>。貼上可使用
+                    <strong>Ctrl+V</strong> 或在空白處右鍵選擇「貼上」。</li>
                 <li><strong>右鍵選單</strong>：在節點、Frame 或連接線上點擊右鍵，可進行編輯、複製、刪除、變更顏色、文字對齊（節點）或狀態標記（節點/Frame）。</li>
                 <li><strong>狀態標記</strong>：節點和 Frame 都支援狀態標記功能。右鍵選擇「標記為完成」或「標記為放棄」，已標記的元素會在右上角顯示徽章（✓ 完成 / ✗ 放棄）。</li>
             </ul>
@@ -714,7 +717,8 @@
             <ul>
                 <li><strong>編輯文字</strong>：右鍵點擊節點選擇「編輯文字」。</li>
                 <li><strong>富文字編輯</strong>：支援 <strong>標題
-                        (H1/H2)</strong>、<strong>列表</strong>、<strong>縮排</strong>、<strong>粗體/斜體/底線/刪除線</strong>、<strong>顏色</strong> 以及
+                        (H1/H2)</strong>、<strong>列表</strong>、<strong>縮排</strong>、<strong>粗體/斜體/底線/刪除線</strong>、<strong>顏色</strong>
+                    以及
                     <strong>超連結</strong>。
                 </li>
                 <li><strong>列表與縮排</strong>：
@@ -734,7 +738,8 @@
                             </ul>
                             如果事先選取了文字，該文字會自動填入連結文字欄位。若未選取文字且未輸入連結文字，則使用網址作為顯示文字。支援 Enter 鍵快速確認。
                         </li>
-                        <li><strong>專案內 HTML</strong>：使用相對路徑的 HTML 文件（如 <code>./page.html</code>、<code>doc.htm</code>）會在同一視窗開啟，方便專案內導覽。</li>
+                        <li><strong>專案內 HTML</strong>：使用相對路徑的 HTML 文件（如
+                            <code>./page.html</code>、<code>doc.htm</code>）會在同一視窗開啟，方便專案內導覽。</li>
                         <li><strong>其他連結</strong>：HTTP/HTTPS 網址、絕對路徑、圖片檔案等都會在新視窗開啟。</li>
                         <li><strong>特殊功能連結</strong>：
                             <ul>
@@ -1369,6 +1374,7 @@
 
                 // Minified CSS for the viewer
                 const viewerCSS = `
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
                     body { font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; background: #f0f0f0; }
                     #container { width: 100vw; height: 100vh; overflow: hidden; position: relative; cursor: grab; }
                     #container.grabbing { cursor: grabbing; }
@@ -2820,9 +2826,9 @@
                         if (href) {
                             // 判斷是否為專案內的 HTML 文件
                             const isProjectHtml = !href.match(/^[a-zA-Z]+:\/\//) &&    // 不包含協議
-                                                  !href.match(/^\//) &&                  // 不是 Unix 絕對路徑
-                                                  !href.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
-                                                  href.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
+                                !href.match(/^\//) &&                  // 不是 Unix 絕對路徑
+                                !href.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
+                                href.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
 
                             if (isProjectHtml) {
                                 link.removeAttribute('target');
@@ -3108,9 +3114,9 @@
                         if (href) {
                             // 判斷是否為專案內的 HTML 文件
                             const isProjectHtml = !href.match(/^[a-zA-Z]+:\/\//) &&    // 不包含協議
-                                                  !href.match(/^\//) &&                  // 不是 Unix 絕對路徑
-                                                  !href.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
-                                                  href.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
+                                !href.match(/^\//) &&                  // 不是 Unix 絕對路徑
+                                !href.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
+                                href.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
 
                             if (!isProjectHtml) {
                                 link.setAttribute('target', '_blank');
