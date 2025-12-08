@@ -1370,9 +1370,9 @@
                 // Minified CSS for the viewer
                 const viewerCSS = `
                     body { font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; background: #f0f0f0; }
-                    #container { width: 100vw; height: 100vh; overflow: hidden; position: relative; }
-                    #canvas { width: 100%; height: 100%; transform-origin: 0 0; cursor: grab; }
-                    #canvas.grabbing { cursor: grabbing; }
+                    #container { width: 100vw; height: 100vh; overflow: hidden; position: relative; cursor: grab; }
+                    #container.grabbing { cursor: grabbing; }
+                    #canvas { width: 100%; height: 100%; transform-origin: 0 0; }
                     svg { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 50; }
                     .node { position: absolute; background: #3498db; color: white; padding: 10px; border-radius: 8px; min-width: 100px; min-height: 60px; display: flex; align-items: center; justify-content: center; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); user-select: none; }
                     .node-content { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; }
@@ -1394,6 +1394,7 @@
                 const viewerScript = `
                     class MapViewer {
                         constructor() {
+                            this.container = document.getElementById('container');
                             this.canvas = document.getElementById('canvas');
                             this.svgLayer = document.getElementById('svg-layer');
                             this.data = JSON.parse(document.getElementById('map-data').textContent);
@@ -1415,14 +1416,14 @@
                             this.updateSVGSize();
                             window.addEventListener('resize', () => this.updateSVGSize());
                             
-                            this.canvas.addEventListener('mousedown', (e) => {
+                            this.container.addEventListener('mousedown', (e) => {
                                 if (e.button === 0) {
                                     this.isPanning = true;
                                     this.panStart = { x: e.clientX, y: e.clientY };
-                                    this.canvas.classList.add('grabbing');
+                                    this.container.classList.add('grabbing');
                                 }
                             });
-                            
+
                             window.addEventListener('mousemove', (e) => {
                                 if (this.isPanning) {
                                     this.offsetX += e.clientX - this.panStart.x;
@@ -1431,19 +1432,19 @@
                                     this.render();
                                 }
                             });
-                            
+
                             window.addEventListener('mouseup', () => {
                                 this.isPanning = false;
-                                this.canvas.classList.remove('grabbing');
+                                this.container.classList.remove('grabbing');
                             });
                             
-                            this.canvas.addEventListener('wheel', (e) => {
+                            this.container.addEventListener('wheel', (e) => {
                                 e.preventDefault();
                                 const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                                const rect = this.canvas.parentElement.getBoundingClientRect();
+                                const rect = this.container.getBoundingClientRect();
                                 const mouseX = e.clientX - rect.left;
                                 const mouseY = e.clientY - rect.top;
-                                
+
                                 this.offsetX = mouseX - (mouseX - this.offsetX) * delta;
                                 this.offsetY = mouseY - (mouseY - this.offsetY) * delta;
                                 this.scale *= delta;
