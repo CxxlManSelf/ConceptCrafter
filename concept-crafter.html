@@ -563,7 +563,8 @@
                 <button class="rte-btn" data-cmd="outdent" title="減少縮排">← 減排</button>
             </div>
             <div id="rte-editor" contenteditable="true"></div>
-            <textarea id="rte-html-editor" style="display: none; width: 100%; min-height: 300px; font-family: 'Courier New', monospace; font-size: 14px; padding: 10px; border: 1px solid #ccc; box-sizing: border-box;"></textarea>
+            <textarea id="rte-html-editor"
+                style="display: none; width: 100%; min-height: 300px; font-family: 'Courier New', monospace; font-size: 14px; padding: 10px; border: 1px solid #ccc; box-sizing: border-box;"></textarea>
             <div class="modal-buttons">
                 <button id="modal-cancel">取消</button>
                 <button id="modal-ok">確定</button>
@@ -575,9 +576,11 @@
         <div class="modal-content" style="width: 500px;">
             <h2>編輯連結</h2>
             <label for="link-url-input">連結網址：</label>
-            <input type="text" id="link-url-input" placeholder="https://example.com" style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
+            <input type="text" id="link-url-input" placeholder="https://example.com"
+                style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
             <label for="link-text-input">連結文字：</label>
-            <input type="text" id="link-text-input" placeholder="顯示的文字" style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
+            <input type="text" id="link-text-input" placeholder="顯示的文字"
+                style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
             <div class="modal-buttons">
                 <button id="link-modal-cancel">取消</button>
                 <button id="link-modal-ok">確定</button>
@@ -624,7 +627,9 @@
                 <li><strong>移動</strong>：直接拖曳節點或 Frame。</li>
                 <li><strong>調整大小</strong>：拖曳節點或 Frame 右下角的調整手柄。</li>
                 <li><strong>縮放與平移</strong>：使用滑鼠滾輪縮放，按住滑鼠左鍵拖曳背景可平移畫布。即使滑鼠移出畫布區域，仍可繼續操作。</li>
-                <li><strong>複製與貼上</strong>：右鍵點擊節點或 Frame 選擇「複製」，或使用 <strong>Ctrl+C</strong>。貼上可使用 <strong>Ctrl+V</strong> 或在空白處右鍵選擇「貼上」。</li>
+                <li><strong>複製與貼上</strong>：右鍵點擊節點或 Frame 選擇「複製」，或使用 <strong>Ctrl+C</strong>。貼上可使用
+                    <strong>Ctrl+V</strong> 或在空白處右鍵選擇「貼上」。
+                </li>
                 <li><strong>右鍵選單</strong>：在節點、Frame 或連接線上點擊右鍵，可進行編輯、複製、刪除、變更顏色、文字對齊（節點）或狀態標記（節點/Frame）。</li>
                 <li><strong>狀態標記</strong>：節點和 Frame 都支援狀態標記功能。右鍵選擇「標記為完成」或「標記為放棄」，已標記的元素會在右上角顯示徽章（✓ 完成 / ✗ 放棄）。</li>
             </ul>
@@ -633,7 +638,8 @@
             <ul>
                 <li><strong>編輯文字</strong>：右鍵點擊節點選擇「編輯文字」。</li>
                 <li><strong>富文字編輯</strong>：支援 <strong>標題
-                        (H1/H2)</strong>、<strong>列表</strong>、<strong>縮排</strong>、<strong>粗體/斜體/底線/刪除線</strong>、<strong>顏色</strong> 以及
+                        (H1/H2)</strong>、<strong>列表</strong>、<strong>縮排</strong>、<strong>粗體/斜體/底線/刪除線</strong>、<strong>顏色</strong>
+                    以及
                     <strong>超連結</strong>。
                 </li>
                 <li><strong>列表與縮排</strong>：
@@ -654,7 +660,9 @@
                             </ul>
                             如果事先選取了文字，該文字會自動填入連結文字欄位。若未選取文字且未輸入連結文字，則使用網址作為顯示文字。
                         </li>
-                        <li><strong>專案內 HTML</strong>：使用相對路徑的 HTML 文件（如 <code>./page.html</code>、<code>doc.htm</code>）會在同一視窗開啟，方便專案內導覽。</li>
+                        <li><strong>專案內 HTML</strong>：使用相對路徑的 HTML 文件（如
+                            <code>./page.html</code>、<code>doc.htm</code>）會在同一視窗開啟，方便專案內導覽。
+                        </li>
                         <li><strong>其他連結</strong>：HTTP/HTTPS 網址、絕對路徑、圖片檔案等都會在新視窗開啟。</li>
                         <li><strong>特殊功能連結</strong>：
                             <ul>
@@ -1262,6 +1270,7 @@
 
                 // Minified CSS for the viewer
                 const viewerCSS = `
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
                     body { font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; background: #f0f0f0; }
                     #container { width: 100vw; height: 100vh; overflow: hidden; position: relative; cursor: grab; }
                     #container.grabbing { cursor: grabbing; }
@@ -1506,42 +1515,75 @@
                             });
                         }
 
-                        drawConnection(from, to, conn) {
-                            const getCenter = (el) => ({ x: el.x + el.width/2, y: el.y + el.height/2 });
-                            const fromC = getCenter(from);
-                            const toC = getCenter(to);
-                            
-                            const getIntersection = (center, target, rect) => {
-                                const dx = target.x - center.x;
-                                const dy = target.y - center.y;
-                                if (dx === 0 && dy === 0) return center;
-                                
-                                const hw = rect.width / 2;
-                                const hh = rect.height / 2;
-                                
-                                if (Math.abs(dx) / hw > Math.abs(dy) / hh) {
-                                    return {
-                                        x: center.x + (dx > 0 ? hw : -hw),
-                                        y: center.y + (dy / dx) * (dx > 0 ? hw : -hw)
-                                    };
+                        getRectEdgeIntersection(centerX, centerY, targetX, targetY, rectX, rectY, rectWidth, rectHeight) {
+                            const dx = targetX - centerX;
+                            const dy = targetY - centerY;
+
+                            if (dx === 0 && dy === 0) {
+                                return { x: centerX, y: centerY };
+                            }
+
+                            const halfWidth = rectWidth / 2;
+                            const halfHeight = rectHeight / 2;
+                            const absDx = Math.abs(dx);
+                            const absDy = Math.abs(dy);
+                            let edgeX, edgeY;
+
+                            // 判斷主要沿著哪個方向
+                            if (absDx / halfWidth > absDy / halfHeight) {
+                                // 與左邊或右邊相交
+                                if (dx > 0) {
+                                    // 右邊
+                                    edgeX = centerX + halfWidth;
+                                    edgeY = centerY + (dy / dx) * halfWidth;
                                 } else {
-                                    return {
-                                        x: center.x + (dx / dy) * (dy > 0 ? hh : -hh),
-                                        y: center.y + (dy > 0 ? hh : -hh)
-                                    };
+                                    // 左邊
+                                    edgeX = centerX - halfWidth;
+                                    edgeY = centerY - (dy / dx) * halfWidth;
                                 }
-                            };
+                            } else {
+                                // 與上邊或下邊相交
+                                if (dy > 0) {
+                                    // 下邊
+                                    edgeX = centerX + (dx / dy) * halfHeight;
+                                    edgeY = centerY + halfHeight;
+                                } else {
+                                    // 上邊
+                                    edgeX = centerX - (dx / dy) * halfHeight;
+                                    edgeY = centerY - halfHeight;
+                                }
+                            }
 
-                            const start = getIntersection(fromC, toC, from);
-                            const end = getIntersection(toC, fromC, to);
+                            return { x: edgeX, y: edgeY };
+                        }
 
-                            const x1 = start.x * this.scale + this.offsetX;
-                            const y1 = start.y * this.scale + this.offsetY;
-                            const x2 = end.x * this.scale + this.offsetX;
-                            const y2 = end.y * this.scale + this.offsetY;
+                        drawConnection(from, to, conn) {
+                            // Get center points in canvas coordinates (before scaling)
+                            const fromCenterX = from.x + from.width / 2;
+                            const fromCenterY = from.y + from.height / 2;
+                            const toCenterX = to.x + to.width / 2;
+                            const toCenterY = to.y + to.height / 2;
 
+                            // Calculate edge points - 使用參考檔案的算法
+                            const fromEdge = this.getRectEdgeIntersection(
+                                fromCenterX, fromCenterY, toCenterX, toCenterY,
+                                from.x, from.y, from.width, from.height
+                            );
+                            const toEdge = this.getRectEdgeIntersection(
+                                toCenterX, toCenterY, fromCenterX, fromCenterY,
+                                to.x, to.y, to.width, to.height
+                            );
+
+                            // Apply scale and offset for rendering
+                            const x1 = fromEdge.x * this.scale + this.offsetX;
+                            const y1 = fromEdge.y * this.scale + this.offsetY;
+                            const x2 = toEdge.x * this.scale + this.offsetX;
+                            const y2 = toEdge.y * this.scale + this.offsetY;
+
+                            // Draw the line using path (like reference file)
                             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                            path.setAttribute('d', \`M \${x1} \${y1} L \${x2} \${y2}\`);
+                            const pathData = \`M \${x1} \${y1} L \${x2} \${y2}\`;
+                            path.setAttribute('d', pathData);
 
                             const lineColor = conn.color || '#2c3e50';
                             path.setAttribute('stroke', lineColor);
@@ -2588,9 +2630,9 @@
                         const href = link.getAttribute('href');
                         if (href) {
                             const isProjectHtml = !href.match(/^[a-zA-Z]+:\/\//) &&
-                                                  !href.match(/^\//) &&
-                                                  !href.match(/^[a-zA-Z]:[\/\\]/) &&
-                                                  href.match(/\.html?$/i);
+                                !href.match(/^\//) &&
+                                !href.match(/^[a-zA-Z]:[\/\\]/) &&
+                                href.match(/\.html?$/i);
 
                             if (isProjectHtml) {
                                 link.removeAttribute('target');
@@ -2876,9 +2918,9 @@
                         if (href) {
                             // 判斷是否為專案內的 HTML 文件
                             const isProjectHtml = !href.match(/^[a-zA-Z]+:\/\//) &&    // 不包含協議
-                                                  !href.match(/^\//) &&                  // 不是 Unix 絕對路徑
-                                                  !href.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
-                                                  href.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
+                                !href.match(/^\//) &&                  // 不是 Unix 絕對路徑
+                                !href.match(/^[a-zA-Z]:[\/\\]/) &&    // 不是 Windows 絕對路徑
+                                href.match(/\.html?$/i);               // 以 .html 或 .htm 結尾
 
                             if (!isProjectHtml) {
                                 link.setAttribute('target', '_blank');
