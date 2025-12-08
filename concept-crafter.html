@@ -1410,6 +1410,28 @@
                                 label.textContent = frame.label;
                                 el.appendChild(label);
 
+                                // Add status badges
+                                if (frame.completed || frame.abandoned) {
+                                    const badge = document.createElement('div');
+                                    badge.className = 'node-status-badge';
+
+                                    if (frame.completed) {
+                                        const completedSpan = document.createElement('span');
+                                        completedSpan.className = 'status-completed';
+                                        completedSpan.textContent = '✓';
+                                        badge.appendChild(completedSpan);
+                                    }
+
+                                    if (frame.abandoned) {
+                                        const abandonedSpan = document.createElement('span');
+                                        abandonedSpan.className = 'status-abandoned';
+                                        abandonedSpan.textContent = '✗';
+                                        badge.appendChild(abandonedSpan);
+                                    }
+
+                                    el.appendChild(badge);
+                                }
+
                                 this.canvas.appendChild(el);
                             });
 
@@ -1709,7 +1731,9 @@
                     label: '新 Frame',
                     borderColor: '#95a5a6',
                     bgColor: 'rgba(149, 165, 166, 0.1)',
-                    zIndex: 0
+                    zIndex: 0,
+                    completed: false,
+                    abandoned: false
                 };
                 this.frames.push(frame);
                 this.markModified();
@@ -2088,6 +2112,9 @@
             }
 
             showFrameContextMenu(x, y, frame) {
+                const completedText = frame.completed ? '取消完成' : '標記為完成';
+                const abandonedText = frame.abandoned ? '取消放棄' : '標記為放棄';
+
                 this.contextMenu.innerHTML = `
                     <div class="context-menu-item" onclick="app.editFrameLabel(${frame.id})">編輯標籤</div>
                     <div class="context-menu-item" onclick="app.copyFrame(${frame.id})">複製 Frame (Ctrl+C)</div>
@@ -2111,6 +2138,8 @@
                             <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#9b59b6', 'rgba(155, 89, 182, 0.1)')">紫色</div>
                         </div>
                     </div>
+                    <div class="context-menu-item" onclick="app.toggleFrameCompleted(${frame.id})">${completedText}</div>
+                    <div class="context-menu-item" onclick="app.toggleFrameAbandoned(${frame.id})">${abandonedText}</div>
                     <div class="context-menu-item" onclick="app.deleteFrame(${frame.id})">刪除 Frame</div>
                 `;
                 this.showContextMenuAt(x, y);
@@ -2206,6 +2235,24 @@
                 const node = this.nodes.find(n => n.id === nodeId);
                 if (node) {
                     node.abandoned = !node.abandoned;
+                    this.markModified();
+                    this.render();
+                }
+            }
+
+            toggleFrameCompleted(frameId) {
+                const frame = this.frames.find(f => f.id === frameId);
+                if (frame) {
+                    frame.completed = !frame.completed;
+                    this.markModified();
+                    this.render();
+                }
+            }
+
+            toggleFrameAbandoned(frameId) {
+                const frame = this.frames.find(f => f.id === frameId);
+                if (frame) {
+                    frame.abandoned = !frame.abandoned;
                     this.markModified();
                     this.render();
                 }
@@ -2745,6 +2792,28 @@
                     label.style.background = frame.borderColor || '#95a5a6';
                     label.innerHTML = frame.label;
                     frameEl.appendChild(label);
+
+                    // Add status badges
+                    if (frame.completed || frame.abandoned) {
+                        const badge = document.createElement('div');
+                        badge.className = 'node-status-badge';
+
+                        if (frame.completed) {
+                            const completedSpan = document.createElement('span');
+                            completedSpan.className = 'status-completed';
+                            completedSpan.textContent = '✓';
+                            badge.appendChild(completedSpan);
+                        }
+
+                        if (frame.abandoned) {
+                            const abandonedSpan = document.createElement('span');
+                            abandonedSpan.className = 'status-abandoned';
+                            abandonedSpan.textContent = '✗';
+                            badge.appendChild(abandonedSpan);
+                        }
+
+                        frameEl.appendChild(badge);
+                    }
 
                     const handle = document.createElement('div');
                     handle.className = 'resize-handle';
