@@ -32,6 +32,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // 取得路徑分隔符號
     getPathSeparator: () => ipcRenderer.invoke('get-path-separator'),
 
+    // 生成 favicon data URL (128x128)
+    generateFavicon: () => ipcRenderer.invoke('generate-favicon'),
+
     // 檢查是否在 Electron 環境中
     isElectron: true
 });

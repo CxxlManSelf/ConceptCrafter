@@ -1,6 +1,6 @@
 # 🎨 ConceptCrafter - 概念圖製造機
 
-**Version 2.5.5 Electron** | 桌面應用 | 完整檔案訪問 | 最近專案列表 | 文字對齊 | 節點灰色 | 縮排功能 | Frame 狀態標記 | 統一編輯介面 | Map Viewer 優化
+**Version 2.5.6 Electron** | 桌面應用 | 完整檔案訪問 | 最近專案列表 | 文字對齊 | 節點灰色 | 縮排功能 | Frame 狀態標記 | 統一編輯介面 | Map Viewer 優化 | Favicon 支援
 
 > **讓思維可視化，讓知識結構化，讓學習效率爆表！**
 
@@ -347,7 +347,15 @@ A: 將專案資料夾放在雲端同步服務（如 Dropbox、OneDrive、Google 
 
 ## 🌟 版本更新
 
-### v2.5.5 (Current)
+### v2.5.6 (Current)
+- 🎨 **Favicon 支援**：生成的 map 檔案自動包含應用程式圖示
+  - 使用 Electron nativeImage API 處理圖示
+  - 圖示自動轉換為 base64 格式嵌入 HTML
+  - 瀏覽器會自動縮放到適當的 favicon 大小
+  - 避免重複寫入問題
+- 📦 **打包優化**：README.md 現在會包含在打包檔案中
+
+### v2.5.5
 - 🎯 **Map Viewer 畫布優化**：Map Viewer 的畫布現在和 Concept Crafter 一樣沒有邊界限制
   - 移除畫布範圍限制，提供無限延伸的視圖空間
   - 改善視覺呈現體驗，閱讀大型概念圖更流暢

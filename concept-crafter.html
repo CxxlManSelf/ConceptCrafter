@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 2.5.5 概念圖製造機</title>
+    <title>Concept Crafter 2.5.6 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -1339,7 +1339,7 @@
                 map.data.frames = this.currentMap === map ? [...this.frames] : map.data.frames;
                 map.data.connections = this.currentMap === map ? [...this.connections] : map.data.connections;
 
-                const html = this.generateMapHTML(map);
+                const html = await this.generateMapHTML(map);
 
                 try {
                     // Use existing filePath if available, otherwise create new one in project folder
@@ -1364,13 +1364,24 @@
                 }
             }
 
-            generateMapHTML(map) {
+            async generateMapHTML(map) {
                 const mapData = {
                     title: map.title || map.name,
                     data: map.data
                 };
                 const jsonData = JSON.stringify(mapData);
                 const displayTitle = map.title || map.name;
+
+                // 使用 Electron 生成 128x128 favicon
+                let faviconTag = '';
+                try {
+                    const faviconDataURL = await window.electronAPI.generateFavicon();
+                    if (faviconDataURL) {
+                        faviconTag = `<link rel="icon" type="image/png" href="${faviconDataURL}">`;
+                    }
+                } catch (err) {
+                    console.error('生成 favicon 失敗:', err);
+                }
 
                 // Minified CSS for the viewer
                 const viewerCSS = `
@@ -1706,6 +1717,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${displayTitle} - Concept Map Viewer</title>
+    ${faviconTag}
     <style>${viewerCSS}</style>
     <script id="map-data" type="application/json">${jsonData}<` + `/script>
 </head>

@@ -163,3 +163,24 @@ ipcMain.handle('save-file-dialog', async (event, defaultPath) => {
 
     return result.filePath;
 });
+
+// 生成 favicon data URL (128x128)
+// 註：這裡直接使用原始 PNG 文件，不調整大小
+// 瀏覽器會自動縮放 favicon 到合適的大小
+ipcMain.handle('generate-favicon', async () => {
+    try {
+        const iconPath = path.join(__dirname, 'concept-crafter_icon.png');
+
+        // 讀取 PNG 文件
+        const iconBuffer = await fs.readFile(iconPath);
+
+        // 轉換為 base64 data URL
+        const base64Data = iconBuffer.toString('base64');
+        const dataURL = `data:image/png;base64,${base64Data}`;
+
+        return dataURL;
+    } catch (error) {
+        console.error('生成 favicon 失敗:', error);
+        return null;
+    }
+});
