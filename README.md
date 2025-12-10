@@ -1,6 +1,6 @@
 # 🎨 ConceptCrafter - 概念圖製造機
 
-**Version 1.5.5** | 純前端 | 免安裝 | 開箱即用 | 文字對齊 | 縮排功能 | Frame 狀態標記 | 統一編輯介面 | Map Viewer 優化
+**Version 1.5.6** | 純前端 | 免安裝 | 開箱即用 | 文字對齊 | 縮排功能 | Frame 狀態標記 | 自訂 Icon | Map Viewer 優化
 
 > **讓思維可視化，讓知識結構化，讓學習效率爆表！**
 
@@ -316,7 +316,15 @@ A: 可以！每個 HTML 檔案包含完整的程式碼，即使 ConceptCrafter �
 
 ## 🌟 版本更新
 
-### v1.5.5 (Current)
+### v1.5.6 (Current)
+- 🎨 **自訂 Icon 功能**：Concept Crafter 和所有 Map Viewer 現在都支援自訂圖標
+  - Icon 數據使用 Base64 編碼直接嵌入 HTML，無需外部圖片文件
+  - 主編輯器和所有存檔的 Map 文件都會自動包含相同的自訂 icon
+  - 完全獨立的文件格式，分享時 icon 不會遺失
+  - 建議 icon 尺寸：128×128 像素，適用於各種顯示場景
+  - 每個 map 文件僅增加約 40 KB
+
+### v1.5.5
 - 🎯 **Map Viewer 畫布優化**：Map Viewer 的畫布現在和 Concept Crafter 一樣沒有邊界限制
   - 移除畫布範圍限制，提供無限延伸的視圖空間
   - 改善視覺呈現體驗，閱讀大型概念圖更流暢
