@@ -13,7 +13,7 @@ function createWindow() {
             contextIsolation: true,
             nodeIntegration: false
         },
-        icon: path.join(__dirname, 'icon.png')
+        icon: path.join(__dirname, 'concept-crafter_icon.png')
     });
 
     mainWindow.loadFile('concept-crafter.html');
