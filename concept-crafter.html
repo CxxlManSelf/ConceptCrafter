@@ -1270,6 +1270,7 @@
                             data: mapData,
                             modified: false,
                             filePath: filePath,
+                            originalHTML: content, // 保存原始 HTML 以保留自訂樣式和程式碼
                             viewState: {
                                 offsetX: 0,
                                 offsetY: 0,
@@ -1345,7 +1346,15 @@
                 map.data.frames = this.currentMap === map ? [...this.frames] : map.data.frames;
                 map.data.connections = this.currentMap === map ? [...this.connections] : map.data.connections;
 
-                const html = await this.generateMapHTML(map);
+                let html;
+
+                // 如果有原始 HTML（讀取進來的），只更新 JSON 數據
+                if (map.originalHTML) {
+                    html = this.updateMapDataInHTML(map);
+                } else {
+                    // 新建立的 map，生成完整 HTML
+                    html = await this.generateMapHTML(map);
+                }
 
                 try {
                     // Use existing filePath if available, otherwise create new one in project folder
@@ -1368,6 +1377,23 @@
                 } catch (err) {
                     alert('儲存失敗: ' + err.message);
                 }
+            }
+
+            updateMapDataInHTML(map) {
+                // 只更新 JSON 數據，保留原始 HTML 的樣式和程式碼
+                const mapData = {
+                    title: map.title || map.name,
+                    data: map.data
+                };
+                const jsonData = JSON.stringify(mapData, null, 2);
+
+                // 使用正則表達式替換 <script id="map-data"> 標籤中的內容
+                const updatedHTML = map.originalHTML.replace(
+                    /(<script id="map-data" type="application\/json">)([\s\S]*?)(<\/script>)/,
+                    `$1\n${jsonData}\n$3`
+                );
+
+                return updatedHTML;
             }
 
             async generateMapHTML(map) {
