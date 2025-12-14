@@ -1435,6 +1435,11 @@
                             this.init();
                         }
 
+                        compareId(id1, id2) {
+                            // 使用寬鬆比較以支援數字和字串 ID 的相容性
+                            return id1 == id2;
+                        }
+
                         init() {
                             this.updateSVGSize();
                             window.addEventListener('resize', () => this.updateSVGSize());
@@ -1638,8 +1643,8 @@
 
                             // Connections
                             this.connections.forEach(conn => {
-                                const from = this.nodes.find(n => this.compareId(n.id,conn.from) || this.frames.find(f => this.compareId(f.id,conn.from);
-                                const to = this.nodes.find(n => this.compareId(n.id,conn.to) || this.frames.find(f => this.compareId(f.id,conn.to);
+                                const from = this.nodes.find(n => this.compareId(n.id, conn.from)) || this.frames.find(f => this.compareId(f.id, conn.from));
+                                const to = this.nodes.find(n => this.compareId(n.id, conn.to)) || this.frames.find(f => this.compareId(f.id, conn.to));
                                 if (from && to) this.drawConnection(from, to, conn);
                             });
                         }

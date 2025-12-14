@@ -171,16 +171,25 @@ ipcMain.handle('generate-favicon', async () => {
     try {
         const iconPath = path.join(__dirname, 'concept-crafter_icon.png');
 
-        // 讀取 PNG 文件
+        // 讀取原始 128x128 PNG 文件
         const iconBuffer = await fs.readFile(iconPath);
 
-        // 轉換為 base64 data URL
-        const base64Data = iconBuffer.toString('base64');
+        // 使用 nativeImage 創建圖像並調整大小為 32x32
+        // 這樣既保持原圖質量又大幅減小文件大小
+        const { nativeImage } = require('electron');
+        const image = nativeImage.createFromBuffer(iconBuffer);
+        const resized = image.resize({ width: 32, height: 32 });
+
+        // 轉換為 PNG buffer 並編碼為 base64
+        const resizedBuffer = resized.toPNG();
+        const base64Data = resizedBuffer.toString('base64');
         const dataURL = `data:image/png;base64,${base64Data}`;
 
         return dataURL;
     } catch (error) {
         console.error('生成 favicon 失敗:', error);
-        return null;
+        // 如果失敗，返回一個內置的小 favicon 作為備用
+        const fallbackFavicon = 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAA7AAAAOwBeShxvQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAGNSURBVFiF7ZaxSsNQFIa/k6bBVkEEBwdHJ0cHwUkXX8A36ODo6iO4+ALi4OQTODm4ODk5uDg4CIIgVkFqbY3JdTC9kJCbJE1vA/nhhJzcnPM55/6X3ID/QAvYAY6BK+ABGABDYAR8AJ/ALXAOnAFHwCGwXzWnNYhR5wU4ATqVMDOEDngEusCeJaE5zRL8CGxaklmCW4BPQfBd4MqSzBzcCL6n+HchOPxYAGu2hJQCOIC1X/gqOICNX/hx7wJscR8L3vu4ys2V58AB+0vg6cPjBbI/BNpF8nqADXwHaJnAUwS/FQ1vJcOLVsMWPke0FubwMbAn6a0gI/gEuM7TPgKa+CYziS1a9CzwE3yr6z7Q8N3l+h7wJerPh87h8FNxqDX6JPAh8FN8Y0qmY7gf/8Hb+HbO2iC9wHtAT/AtoQ9U9UKaCLxvSE4F1p3AY5y3VQrW08oW8AZcCt4RdFV8y/UEvLbw3QG7wHYO28Z3xAHgRdD3eXJfBX6qZ0LX+CpZIjZw5UG/AN5k5vcAemOvAAAAAElFTkSuQmCC';
+        return `data:image/png;base64,${fallbackFavicon}`;
     }
 });
