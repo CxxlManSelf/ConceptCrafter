@@ -1324,6 +1324,11 @@
                             this.init();
                         }
 
+                        compareId(id1, id2) {
+                            // 使用寬鬆比較以支援數字和字串 ID 的相容性
+                            return id1 == id2;
+                        }
+
                         init() {
                             this.updateSVGSize();
                             window.addEventListener('resize', () => this.updateSVGSize());
