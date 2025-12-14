@@ -1,6 +1,6 @@
 # 🎨 ConceptCrafter - 概念圖製造機
 
-**Version 1.5.6** | 純前端 | 免安裝 | 開箱即用 | 文字對齊 | 縮排功能 | Frame 狀態標記 | 自訂 Icon | Map Viewer 優化
+**Version 1.6.0** | 純前端 | 免安裝 | 開箱即用 | 文字對齊 | 縮排功能 | Frame 狀態標記 | 自訂 Icon | 智慧儲存策略
 
 > **讓思維可視化，讓知識結構化，讓學習效率爆表！**
 
@@ -316,7 +316,16 @@ A: 可以！每個 HTML 檔案包含完整的程式碼，即使 ConceptCrafter �
 
 ## 🌟 版本更新
 
-### v1.5.6 (Current)
+### v1.6.0 (Current)
+- 💾 **智慧儲存策略**：保留外部 Map 的自訂樣式和程式碼
+  - 讀取進來的 Map（如 Claude Projects 建立的）在儲存時會完整保留原始 HTML 結構
+  - 只更新 JSON 數據部分，不影響原有的 favicon、CSS 樣式、JavaScript 程式碼
+  - 新建立的 Map 仍使用 ConceptCrafter 標準模板
+  - 完美支援與其他工具的協作流程
+  - 保護您的自訂設計不被覆蓋
+- 🐛 **修正連接線語法錯誤**：修復 Electron 版本生成的 Map Viewer 中連接線查找程式碼的語法錯誤
+
+### v1.5.6
 - 🎨 **自訂 Icon 功能**：Concept Crafter 和所有 Map Viewer 現在都支援自訂圖標
   - Icon 數據使用 Base64 編碼直接嵌入 HTML，無需外部圖片文件
   - 主編輯器和所有存檔的 Map 文件都會自動包含相同的自訂 icon
