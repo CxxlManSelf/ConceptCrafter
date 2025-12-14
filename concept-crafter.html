@@ -793,6 +793,11 @@
                 window.addEventListener('resize', () => this.updateSVGSize());
             }
 
+            compareId(id1, id2) {
+                // 使用寬鬆比較以支援數字和字串 ID 的相容性
+                return id1 == id2;
+            }
+
             checkBrowserSupport() {
                 if (!window.showDirectoryPicker) {
                     const selectBtn = document.getElementById('select-folder');
@@ -1094,7 +1099,7 @@
                 }
 
                 const map = {
-                    id: Date.now(),
+                    id: 'map-' + Date.now(),
                     name: filename,
                     title: title,
                     data: {
@@ -1164,7 +1169,7 @@
                         }
 
                         const map = {
-                            id: Date.now(),
+                            id: 'map-' + Date.now(),
                             name: file.name.replace('.html', ''),
                             title: mapTitle,
                             data: mapData,
@@ -1514,8 +1519,8 @@
 
                             // Connections
                             this.connections.forEach(conn => {
-                                const from = this.nodes.find(n => n.id === conn.from) || this.frames.find(f => f.id === conn.from);
-                                const to = this.nodes.find(n => n.id === conn.to) || this.frames.find(f => f.id === conn.to);
+                                const from = this.nodes.find(n => this.compareId(n.id, conn.from)) || this.frames.find(f => this.compareId(f.id, conn.from));
+                                const to = this.nodes.find(n => this.compareId(n.id, conn.to)) || this.frames.find(f => this.compareId(f.id, conn.to));
                                 if (from && to) this.drawConnection(from, to, conn);
                             });
                         }
@@ -1750,7 +1755,7 @@
                 }
 
                 const node = {
-                    id: Date.now(),
+                    id: 'node-' + Date.now(),
                     x: 100,
                     y: 100,
                     width: 120,
@@ -1773,7 +1778,7 @@
                 }
 
                 const frame = {
-                    id: Date.now(),
+                    id: 'frame-' + Date.now(),
                     x: 150,
                     y: 150,
                     width: 300,
@@ -1834,7 +1839,7 @@
                 let found = null;
 
                 for (let item of this.selectedElements) {
-                    if (item.type === type && item.element.id === element.id) {
+                    if (item.type === type && this.compareId(item.element.id, element.id)) {
                         found = item;
                         break;
                     }
@@ -1851,7 +1856,7 @@
 
             isElementSelected(type, element) {
                 for (let item of this.selectedElements) {
-                    if (item.type === type && item.element.id === element.id) {
+                    if (item.type === type && this.compareId(item.element.id, element.id)) {
                         return true;
                     }
                 }
@@ -2133,30 +2138,30 @@
                 const abandonedText = node.abandoned ? '取消放棄' : '標記為放棄';
 
                 this.contextMenu.innerHTML = `
-                    <div class="context-menu-item" onclick="app.editNodeText(${node.id})">編輯文字</div>
-                    <div class="context-menu-item" onclick="app.copyNode(${node.id})">複製節點 (Ctrl+C)</div>
+                    <div class="context-menu-item" onclick="app.editNodeText('${node.id}')">編輯文字</div>
+                    <div class="context-menu-item" onclick="app.copyNode('${node.id}')">複製節點 (Ctrl+C)</div>
                     <div class="context-menu-item context-menu-submenu">
                         變更顏色
                         <div class="submenu">
-                            <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#3498db')">藍色</div>
-                            <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#2ecc71')">綠色</div>
-                            <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#e74c3c')">紅色</div>
-                            <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#f39c12')">橙色</div>
-                            <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#9b59b6')">紫色</div>
-                            <div class="context-menu-item" onclick="app.changeNodeColor(${node.id}, '#95a5a6')">灰色</div>
+                            <div class="context-menu-item" onclick="app.changeNodeColor('${node.id}', '#3498db')">藍色</div>
+                            <div class="context-menu-item" onclick="app.changeNodeColor('${node.id}', '#2ecc71')">綠色</div>
+                            <div class="context-menu-item" onclick="app.changeNodeColor('${node.id}', '#e74c3c')">紅色</div>
+                            <div class="context-menu-item" onclick="app.changeNodeColor('${node.id}', '#f39c12')">橙色</div>
+                            <div class="context-menu-item" onclick="app.changeNodeColor('${node.id}', '#9b59b6')">紫色</div>
+                            <div class="context-menu-item" onclick="app.changeNodeColor('${node.id}', '#95a5a6')">灰色</div>
                         </div>
                     </div>
                     <div class="context-menu-item context-menu-submenu">
                         文字對齊
                         <div class="submenu">
-                            <div class="context-menu-item" onclick="app.changeNodeTextAlign(${node.id}, 'left')">靠左對齊</div>
-                            <div class="context-menu-item" onclick="app.changeNodeTextAlign(${node.id}, 'center')">置中對齊</div>
-                            <div class="context-menu-item" onclick="app.changeNodeTextAlign(${node.id}, 'right')">靠右對齊</div>
+                            <div class="context-menu-item" onclick="app.changeNodeTextAlign('${node.id}', 'left')">靠左對齊</div>
+                            <div class="context-menu-item" onclick="app.changeNodeTextAlign('${node.id}', 'center')">置中對齊</div>
+                            <div class="context-menu-item" onclick="app.changeNodeTextAlign('${node.id}', 'right')">靠右對齊</div>
                         </div>
                     </div>
-                    <div class="context-menu-item" onclick="app.toggleNodeCompleted(${node.id})">${completedText}</div>
-                    <div class="context-menu-item" onclick="app.toggleNodeAbandoned(${node.id})">${abandonedText}</div>
-                    <div class="context-menu-item" onclick="app.deleteNode(${node.id})">刪除節點</div>
+                    <div class="context-menu-item" onclick="app.toggleNodeCompleted('${node.id}')">${completedText}</div>
+                    <div class="context-menu-item" onclick="app.toggleNodeAbandoned('${node.id}')">${abandonedText}</div>
+                    <div class="context-menu-item" onclick="app.deleteNode('${node.id}')">刪除節點</div>
                 `;
                 this.showContextMenuAt(x, y);
             }
@@ -2166,58 +2171,58 @@
                 const abandonedText = frame.abandoned ? '取消放棄' : '標記為放棄';
 
                 this.contextMenu.innerHTML = `
-                    <div class="context-menu-item" onclick="app.editFrameLabel(${frame.id})">編輯標籤</div>
-                    <div class="context-menu-item" onclick="app.copyFrame(${frame.id})">複製 Frame (Ctrl+C)</div>
+                    <div class="context-menu-item" onclick="app.editFrameLabel('${frame.id}')">編輯標籤</div>
+                    <div class="context-menu-item" onclick="app.copyFrame('${frame.id}')">複製 Frame (Ctrl+C)</div>
                     <div class="context-menu-item context-menu-submenu">
                         調整層級
                         <div class="submenu">
-                            <div class="context-menu-item" onclick="app.bringFrameToFront(${frame.id})">移到最前</div>
-                            <div class="context-menu-item" onclick="app.sendFrameToBack(${frame.id})">移到最後</div>
-                            <div class="context-menu-item" onclick="app.bringFrameForward(${frame.id})">向前一層</div>
-                            <div class="context-menu-item" onclick="app.sendFrameBackward(${frame.id})">向後一層</div>
+                            <div class="context-menu-item" onclick="app.bringFrameToFront('${frame.id}')">移到最前</div>
+                            <div class="context-menu-item" onclick="app.sendFrameToBack('${frame.id}')">移到最後</div>
+                            <div class="context-menu-item" onclick="app.bringFrameForward('${frame.id}')">向前一層</div>
+                            <div class="context-menu-item" onclick="app.sendFrameBackward('${frame.id}')">向後一層</div>
                         </div>
                     </div>
                     <div class="context-menu-item context-menu-submenu">
                         變更顏色
                         <div class="submenu">
-                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#95a5a6', 'rgba(149, 165, 166, 0.1)')">灰色</div>
-                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#3498db', 'rgba(52, 152, 219, 0.1)')">藍色</div>
-                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#2ecc71', 'rgba(46, 204, 113, 0.1)')">綠色</div>
-                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#e74c3c', 'rgba(231, 76, 60, 0.1)')">紅色</div>
-                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#f39c12', 'rgba(243, 156, 18, 0.1)')">橙色</div>
-                            <div class="context-menu-item" onclick="app.changeFrameColor(${frame.id}, '#9b59b6', 'rgba(155, 89, 182, 0.1)')">紫色</div>
+                            <div class="context-menu-item" onclick="app.changeFrameColor('${frame.id}', '#95a5a6', 'rgba(149, 165, 166, 0.1)')">灰色</div>
+                            <div class="context-menu-item" onclick="app.changeFrameColor('${frame.id}', '#3498db', 'rgba(52, 152, 219, 0.1)')">藍色</div>
+                            <div class="context-menu-item" onclick="app.changeFrameColor('${frame.id}', '#2ecc71', 'rgba(46, 204, 113, 0.1)')">綠色</div>
+                            <div class="context-menu-item" onclick="app.changeFrameColor('${frame.id}', '#e74c3c', 'rgba(231, 76, 60, 0.1)')">紅色</div>
+                            <div class="context-menu-item" onclick="app.changeFrameColor('${frame.id}', '#f39c12', 'rgba(243, 156, 18, 0.1)')">橙色</div>
+                            <div class="context-menu-item" onclick="app.changeFrameColor('${frame.id}', '#9b59b6', 'rgba(155, 89, 182, 0.1)')">紫色</div>
                         </div>
                     </div>
-                    <div class="context-menu-item" onclick="app.toggleFrameCompleted(${frame.id})">${completedText}</div>
-                    <div class="context-menu-item" onclick="app.toggleFrameAbandoned(${frame.id})">${abandonedText}</div>
-                    <div class="context-menu-item" onclick="app.deleteFrame(${frame.id})">刪除 Frame</div>
+                    <div class="context-menu-item" onclick="app.toggleFrameCompleted('${frame.id}')">${completedText}</div>
+                    <div class="context-menu-item" onclick="app.toggleFrameAbandoned('${frame.id}')">${abandonedText}</div>
+                    <div class="context-menu-item" onclick="app.deleteFrame('${frame.id}')">刪除 Frame</div>
                 `;
                 this.showContextMenuAt(x, y);
             }
 
             showConnectionContextMenu(x, y, connection) {
                 this.contextMenu.innerHTML = `
-                    <div class="context-menu-item" onclick="app.editConnectionLabel(${connection.id})">編輯標籤</div>
+                    <div class="context-menu-item" onclick="app.editConnectionLabel('${connection.id}')">編輯標籤</div>
                     <div class="context-menu-item context-menu-submenu">
                         箭頭類型
                         <div class="submenu">
-                            <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'single')">單向箭頭</div>
-                            <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'double')">雙向箭頭</div>
-                            <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'none')">無箭頭</div>
+                            <div class="context-menu-item" onclick="app.changeArrowType('${connection.id}', 'single')">單向箭頭</div>
+                            <div class="context-menu-item" onclick="app.changeArrowType('${connection.id}', 'double')">雙向箭頭</div>
+                            <div class="context-menu-item" onclick="app.changeArrowType('${connection.id}', 'none')">無箭頭</div>
                         </div>
                     </div>
                     <div class="context-menu-item context-menu-submenu">
                         變更顏色
                         <div class="submenu">
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#2c3e50')">深灰色</div>
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#3498db')">藍色</div>
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#2ecc71')">綠色</div>
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#e74c3c')">紅色</div>
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#f39c12')">橙色</div>
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#9b59b6')">紫色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#2c3e50')">深灰色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#3498db')">藍色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#2ecc71')">綠色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#e74c3c')">紅色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#f39c12')">橙色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#9b59b6')">紫色</div>
                         </div>
                     </div>
-                    <div class="context-menu-item" onclick="app.deleteConnection(${connection.id})">刪除連接線</div>
+                    <div class="context-menu-item" onclick="app.deleteConnection('${connection.id}')">刪除連接線</div>
                 `;
                 this.showContextMenuAt(x, y);
             }
@@ -2233,7 +2238,7 @@
             }
 
             editNodeText(nodeId) {
-                const node = this.nodes.find(n => n.id === nodeId);
+                const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (!node) return;
 
                 this.showModal(node.text, (newText) => {
@@ -2244,7 +2249,7 @@
             }
 
             editFrameLabel(frameId) {
-                const frame = this.frames.find(f => f.id === frameId);
+                const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (!frame) return;
 
                 this.showModal(frame.label, (newLabel) => {
@@ -2255,7 +2260,7 @@
             }
 
             changeNodeColor(nodeId, color) {
-                const node = this.nodes.find(n => n.id === nodeId);
+                const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     node.color = color;
                     this.markModified();
@@ -2264,7 +2269,7 @@
             }
 
             changeNodeTextAlign(nodeId, align) {
-                const node = this.nodes.find(n => n.id === nodeId);
+                const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     node.textAlign = align;
                     this.markModified();
@@ -2273,7 +2278,7 @@
             }
 
             toggleNodeCompleted(nodeId) {
-                const node = this.nodes.find(n => n.id === nodeId);
+                const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     node.completed = !node.completed;
                     this.markModified();
@@ -2282,7 +2287,7 @@
             }
 
             toggleNodeAbandoned(nodeId) {
-                const node = this.nodes.find(n => n.id === nodeId);
+                const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     node.abandoned = !node.abandoned;
                     this.markModified();
@@ -2291,7 +2296,7 @@
             }
 
             toggleFrameCompleted(frameId) {
-                const frame = this.frames.find(f => f.id === frameId);
+                const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (frame) {
                     frame.completed = !frame.completed;
                     this.markModified();
@@ -2300,7 +2305,7 @@
             }
 
             toggleFrameAbandoned(frameId) {
-                const frame = this.frames.find(f => f.id === frameId);
+                const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (frame) {
                     frame.abandoned = !frame.abandoned;
                     this.markModified();
@@ -2309,7 +2314,7 @@
             }
 
             changeFrameColor(frameId, borderColor, bgColor) {
-                const frame = this.frames.find(f => f.id === frameId);
+                const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (frame) {
                     frame.borderColor = borderColor;
                     frame.bgColor = bgColor;
@@ -2319,7 +2324,7 @@
             }
 
             editConnectionLabel(connectionId) {
-                const connection = this.connections.find(c => c.id === connectionId);
+                const connection = this.connections.find(c => this.compareId(c.id, connectionId));
                 if (!connection) return;
 
                 this.showModal(connection.label || '', (newLabel) => {
@@ -2330,7 +2335,7 @@
             }
 
             changeArrowType(connectionId, arrowType) {
-                const connection = this.connections.find(c => c.id === connectionId);
+                const connection = this.connections.find(c => this.compareId(c.id, connectionId));
                 if (connection) {
                     connection.arrowType = arrowType;
                     this.markModified();
@@ -2339,7 +2344,7 @@
             }
 
             changeConnectionColor(connectionId, color) {
-                const connection = this.connections.find(c => c.id === connectionId);
+                const connection = this.connections.find(c => this.compareId(c.id, connectionId));
                 if (connection) {
                     connection.color = color;
                     this.markModified();
@@ -2348,21 +2353,21 @@
             }
 
             deleteNode(nodeId) {
-                this.nodes = this.nodes.filter(n => n.id !== nodeId);
-                this.connections = this.connections.filter(c => c.from !== nodeId && c.to !== nodeId);
+                this.nodes = this.nodes.filter(n => !this.compareId(n.id, nodeId));
+                this.connections = this.connections.filter(c => !this.compareId(c.from, nodeId) && !this.compareId(c.to, nodeId));
                 this.markModified();
                 this.render();
             }
 
             deleteFrame(frameId) {
-                this.frames = this.frames.filter(f => f.id !== frameId);
-                this.connections = this.connections.filter(c => c.from !== frameId && c.to !== frameId);
+                this.frames = this.frames.filter(f => !this.compareId(f.id, frameId));
+                this.connections = this.connections.filter(c => !this.compareId(c.from, frameId) && !this.compareId(c.to, frameId));
                 this.markModified();
                 this.render();
             }
 
             bringFrameToFront(frameId) {
-                const frame = this.frames.find(f => f.id === frameId);
+                const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (!frame) return;
 
                 // Find the maximum zIndex among all frames
@@ -2374,7 +2379,7 @@
             }
 
             sendFrameToBack(frameId) {
-                const frame = this.frames.find(f => f.id === frameId);
+                const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (!frame) return;
 
                 // Find the minimum zIndex among all frames
@@ -2386,7 +2391,7 @@
             }
 
             bringFrameForward(frameId) {
-                const frame = this.frames.find(f => f.id === frameId);
+                const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (!frame) return;
 
                 const currentZIndex = frame.zIndex !== undefined ? frame.zIndex : 0;
@@ -2397,7 +2402,7 @@
             }
 
             sendFrameBackward(frameId) {
-                const frame = this.frames.find(f => f.id === frameId);
+                const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (!frame) return;
 
                 const currentZIndex = frame.zIndex !== undefined ? frame.zIndex : 0;
@@ -2408,13 +2413,13 @@
             }
 
             deleteConnection(connectionId) {
-                this.connections = this.connections.filter(c => c.id !== connectionId);
+                this.connections = this.connections.filter(c => !this.compareId(c.id, connectionId));
                 this.markModified();
                 this.render();
             }
 
             copyNode(nodeId) {
-                const node = this.nodes.find(n => n.id === nodeId);
+                const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     // 深拷貝節點資料
                     this.clipboard = {
@@ -2425,7 +2430,7 @@
             }
 
             copyFrame(frameId) {
-                const frame = this.frames.find(f => f.id === frameId);
+                const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (frame) {
                     // 深拷貝 frame 資料
                     this.clipboard = {
@@ -2480,7 +2485,7 @@
                 if (this.clipboard.type === 'node') {
                     // 複製節點
                     const newNode = { ...this.clipboard.data };
-                    newNode.id = Date.now();
+                    newNode.id = 'node-' + Date.now();
                     // 偏移位置避免重疊
                     newNode.x += 30;
                     newNode.y += 30;
@@ -2490,7 +2495,7 @@
                 } else if (this.clipboard.type === 'frame') {
                     // 複製 frame
                     const newFrame = { ...this.clipboard.data };
-                    newFrame.id = Date.now();
+                    newFrame.id = 'frame-' + Date.now();
                     // 偏移位置避免重疊
                     newFrame.x += 30;
                     newFrame.y += 30;
@@ -2503,13 +2508,13 @@
                     for (let item of this.clipboard.data) {
                         if (item.type === 'node') {
                             const newNode = { ...item.data };
-                            newNode.id = Date.now() + idOffset++;
+                            newNode.id = 'node-' + (Date.now() + idOffset++);
                             newNode.x += 30;
                             newNode.y += 30;
                             this.nodes.push(newNode);
                         } else if (item.type === 'frame') {
                             const newFrame = { ...item.data };
-                            newFrame.id = Date.now() + idOffset++;
+                            newFrame.id = 'frame-' + (Date.now() + idOffset++);
                             newFrame.x += 30;
                             newFrame.y += 30;
                             this.frames.push(newFrame);
@@ -2522,7 +2527,7 @@
 
             createConnection(fromNode, toNode) {
                 const connection = {
-                    id: Date.now(),
+                    id: 'conn-' + Date.now(),
                     from: fromNode.id,
                     to: toNode.id,
                     arrowType: 'single',
@@ -2700,8 +2705,8 @@
                 const threshold = 5;
                 for (const conn of this.connections) {
                     // Search in both nodes and frames
-                    const fromElement = this.nodes.find(n => n.id === conn.from) || this.frames.find(f => f.id === conn.from);
-                    const toElement = this.nodes.find(n => n.id === conn.to) || this.frames.find(f => f.id === conn.to);
+                    const fromElement = this.nodes.find(n => this.compareId(n.id, conn.from)) || this.frames.find(f => this.compareId(f.id, conn.from));
+                    const toElement = this.nodes.find(n => this.compareId(n.id, conn.to)) || this.frames.find(f => this.compareId(f.id, conn.to));
                     if (!fromElement || !toElement) continue;
 
                     const fromX = fromElement.x + fromElement.width / 2;
@@ -2875,8 +2880,8 @@
                 // Render connections
                 this.connections.forEach(conn => {
                     // Search in both nodes and frames
-                    const fromElement = this.nodes.find(n => n.id === conn.from) || this.frames.find(f => f.id === conn.from);
-                    const toElement = this.nodes.find(n => n.id === conn.to) || this.frames.find(f => f.id === conn.to);
+                    const fromElement = this.nodes.find(n => this.compareId(n.id, conn.from)) || this.frames.find(f => this.compareId(f.id, conn.from));
+                    const toElement = this.nodes.find(n => this.compareId(n.id, conn.to)) || this.frames.find(f => this.compareId(f.id, conn.to));
                     if (!fromElement || !toElement) return;
 
                     this.drawConnection(fromElement, toElement, conn);
