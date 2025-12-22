@@ -603,6 +603,26 @@
         </div>
     </div>
 
+    <div id="edit-map-modal" class="modal">
+        <div class="modal-content">
+            <h2>修改 Map 資訊</h2>
+            <label for="edit-map-title-input">Map 標題：</label>
+            <input type="text" id="edit-map-title-input" placeholder="輸入 Map 標題">
+            <label for="edit-map-filename-display">檔案名稱：</label>
+            <div style="position: relative; width: 100%;">
+                <input type="text" id="edit-map-filename-display" readonly
+                       style="width: 100%; background-color: #f0f0f0; cursor: text; padding: 8px; padding-right: 70px; box-sizing: border-box;"
+                       placeholder="檔案名稱">
+                <button id="copy-filename-btn"
+                        style="position: absolute; right: 8px; top: 4px; padding: 4px 10px; font-size: 12px;">複製</button>
+            </div>
+            <div class="modal-buttons">
+                <button id="edit-map-cancel">取消</button>
+                <button id="edit-map-ok">確定</button>
+            </div>
+        </div>
+    </div>
+
     <div id="help-modal" class="modal">
         <div class="modal-content">
             <h2>Concept Crafter 使用說明</h2>
@@ -881,6 +901,27 @@
                 document.getElementById('new-map-ok').addEventListener('click', () => this.newMapModalOk());
                 document.getElementById('new-map-cancel').addEventListener('click', () => this.newMapModalCancel());
 
+                // Edit Map Modal
+                document.getElementById('edit-map-ok').addEventListener('click', () => this.editMapModalOk());
+                document.getElementById('edit-map-cancel').addEventListener('click', () => this.editMapModalCancel());
+
+                // Copy filename button
+                document.getElementById('copy-filename-btn').addEventListener('click', () => {
+                    const filenameInput = document.getElementById('edit-map-filename-display');
+                    filenameInput.select();
+                    document.execCommand('copy');
+                    // Use newer API if available
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(filenameInput.value);
+                    }
+                    const btn = document.getElementById('copy-filename-btn');
+                    const originalText = btn.textContent;
+                    btn.textContent = '已複製!';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                    }, 1500);
+                });
+
                 // Enter key support for link modal
                 document.getElementById('link-url-input').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.linkModalOk();
@@ -895,6 +936,11 @@
                 });
                 document.getElementById('map-filename-input').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.newMapModalOk();
+                });
+
+                // Enter key support for edit map modal
+                document.getElementById('edit-map-title-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.editMapModalOk();
                 });
 
                 // RTE Toolbar
@@ -1102,6 +1148,8 @@
                     id: 'map-' + Date.now(),
                     name: filename,
                     title: title,
+                    titlePrefix: '',
+                    titleSuffix: ' - Concept Map Viewer',
                     data: {
                         nodes: [],
                         frames: [],
@@ -1126,6 +1174,57 @@
             newMapModalCancel() {
                 const modal = document.getElementById('new-map-modal');
                 modal.style.display = 'none';
+            }
+
+            editMapInfo(map) {
+                // Store the map being edited
+                this.editingMap = map;
+
+                // Show edit map modal
+                const modal = document.getElementById('edit-map-modal');
+                const titleInput = document.getElementById('edit-map-title-input');
+                const filenameDisplay = document.getElementById('edit-map-filename-display');
+
+                // Fill in current values
+                titleInput.value = map.title || map.name;
+                filenameDisplay.value = `${map.name}.html`;
+
+                modal.style.display = 'block';
+                titleInput.focus();
+                titleInput.select();
+            }
+
+            editMapModalOk() {
+                const titleInput = document.getElementById('edit-map-title-input');
+                const modal = document.getElementById('edit-map-modal');
+
+                const newTitle = titleInput.value.trim();
+                if (!newTitle) {
+                    alert('請輸入 Map 標題');
+                    return;
+                }
+
+                // Check if title was actually changed
+                const oldTitle = this.editingMap.title || this.editingMap.name;
+                if (newTitle !== oldTitle) {
+                    // Update the title
+                    this.editingMap.title = newTitle;
+
+                    // Mark as modified
+                    this.editingMap.modified = true;
+
+                    // Update the map list to show the new title and save button
+                    this.updateMapList();
+                }
+
+                modal.style.display = 'none';
+                this.editingMap = null;
+            }
+
+            editMapModalCancel() {
+                const modal = document.getElementById('edit-map-modal');
+                modal.style.display = 'none';
+                this.editingMap = null;
             }
 
             async loadMapFromFile() {
@@ -1157,21 +1256,60 @@
                         const jsonData = JSON.parse(dataScript.textContent);
 
                         // Support both old and new format
-                        let mapData, mapTitle;
+                        let mapData, mapTitle, titlePrefix = '', titleSuffix = '';
+
+                        // Get the HTML <title> element for analysis
+                        const titleElement = doc.querySelector('title');
+                        const htmlTitleText = titleElement ? titleElement.textContent : '';
+
                         if (jsonData.data && jsonData.title) {
-                            // New format with title
+                            // New format with title in JSON
                             mapData = jsonData.data;
                             mapTitle = jsonData.title;
+
+                            // Find where the JSON title appears in the HTML <title> and extract prefix/suffix
+                            if (htmlTitleText) {
+                                const titleIndex = htmlTitleText.indexOf(mapTitle);
+                                if (titleIndex >= 0) {
+                                    // Found the title in HTML <title>, extract prefix and suffix
+                                    titlePrefix = htmlTitleText.substring(0, titleIndex);
+                                    titleSuffix = htmlTitleText.substring(titleIndex + mapTitle.length);
+                                } else {
+                                    // Title not found in HTML <title>, use default suffix
+                                    titleSuffix = ' - Concept Map Viewer';
+                                }
+                            }
                         } else {
-                            // Old format without title
+                            // Old format without title in JSON
                             mapData = jsonData;
-                            mapTitle = file.name.replace('.html', '');
+
+                            if (htmlTitleText) {
+                                // Intelligently separate the main title from prefix/suffix
+                                // Common pattern: "Title - Tool Name"
+                                const separatorIndex = htmlTitleText.indexOf(' - ');
+                                if (separatorIndex > 0) {
+                                    // Found " - " separator
+                                    mapTitle = htmlTitleText.substring(0, separatorIndex).trim();
+                                    titleSuffix = htmlTitleText.substring(separatorIndex);
+                                } else {
+                                    // No separator, use whole text as title
+                                    mapTitle = htmlTitleText;
+                                }
+                            }
+
+                            // Fallback to filename if no title found
+                            if (!mapTitle) {
+                                mapTitle = file.name.replace('.html', '');
+                                titleSuffix = ' - Concept Map Viewer';
+                            }
                         }
 
                         const map = {
                             id: 'map-' + Date.now(),
                             name: file.name.replace('.html', ''),
                             title: mapTitle,
+                            titlePrefix: titlePrefix,
+                            titleSuffix: titleSuffix,
                             data: mapData,
                             modified: false,
                             file: fileHandle,
@@ -1280,17 +1418,37 @@
             }
 
             updateMapDataInHTML(map) {
-                // 只更新 JSON 數據，保留原始 HTML 的樣式和程式碼
+                // 更新 JSON 數據、<title> 標籤和顯示的標題，保留原始 HTML 的樣式和程式碼
                 const mapData = {
                     title: map.title || map.name,
                     data: map.data
                 };
                 const jsonData = JSON.stringify(mapData, null, 2);
+                const displayTitle = map.title || map.name;
 
-                // 使用正則表達式替換 <script id="map-data"> 標籤中的內容
-                const updatedHTML = map.originalHTML.replace(
+                // Reconstruct full HTML title using saved prefix and suffix
+                const titlePrefix = map.titlePrefix || '';
+                const titleSuffix = map.titleSuffix || ' - Concept Map Viewer';
+                const fullHtmlTitle = titlePrefix + displayTitle + titleSuffix;
+
+                let updatedHTML = map.originalHTML;
+
+                // 1. 替換 <script id="map-data"> 標籤中的 JSON 內容
+                updatedHTML = updatedHTML.replace(
                     /(<script id="map-data" type="application\/json">)([\s\S]*?)(<\/script>)/,
                     `$1\n${jsonData}\n$3`
+                );
+
+                // 2. 替換 <title> 標籤的內容 - 使用原始格式的 prefix 和 suffix
+                updatedHTML = updatedHTML.replace(
+                    /(<title>)([^<]*)(<\/title>)/,
+                    `$1${fullHtmlTitle}$3`
+                );
+
+                // 3. 替換 <div id="map-title"> 的內容 - 只顯示標題本身
+                updatedHTML = updatedHTML.replace(
+                    /(<div id="map-title">)([^<]*)(<\/div>)/,
+                    `$1${displayTitle}$3`
                 );
 
                 return updatedHTML;
@@ -1749,6 +1907,14 @@
                         };
                         buttons.appendChild(saveBtn);
                     }
+
+                    const editBtn = document.createElement('button');
+                    editBtn.textContent = '修改';
+                    editBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        this.editMapInfo(map);
+                    };
+                    buttons.appendChild(editBtn);
 
                     const removeBtn = document.createElement('button');
                     removeBtn.textContent = '移除';
