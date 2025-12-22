@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 2.6.0 概念圖製造機</title>
+    <title>Concept Crafter 2.6.1 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -811,6 +811,7 @@
                 <li><strong>獨立視圖</strong>：每個 map 會記住自己的視圖位置和縮放級別，切換 map 時會自動恢復上次的視圖狀態。</li>
                 <li><strong>新增 Map</strong>：點擊工具列「新增 Map」按鈕，輸入標題和檔名（可選），新 Map 會自動儲存到專案資料夾。</li>
                 <li><strong>載入 Map</strong>：點擊「載入 Map」按鈕，選擇要開啟的 .html 檔案。Map 列表只顯示本次建立或載入的檔案。</li>
+                <li><strong>修改 Map 資訊</strong>：在右側面板的 Map 列表中，點擊「修改」按鈕可編輯 Map 標題。檔案名稱欄位可複製但不可修改，確保檔案完整性。修改標題後需儲存才會更新。</li>
                 <li><strong>儲存</strong>：在右側面板的 Map 列表中，點擊「儲存」按鈕。有未儲存變更的 map 會顯示「儲存」按鈕。</li>
                 <li><strong>移除/刪除</strong>：
                     <ul>
@@ -818,6 +819,7 @@
                         <li><strong>刪除</strong>：從列表移除並刪除檔案（不可復原）</li>
                     </ul>
                 </li>
+                <li><strong>標題格式保留</strong>：系統會智能保留第三方工具建立的 Map 檔案標題格式，確保相容性。</li>
             </ul>
 
             <h3>7. 分享與協作</h3>
@@ -839,6 +841,18 @@
                 <li><strong>文字對齊</strong>：節點支援靠左、置中、靠右三種文字對齊方式，可透過右鍵選單設定。</li>
                 <li><strong>連接線標籤</strong>：為連接線添加標籤可以說明節點之間的關係（例如：「繼承自」、「依賴於」等）。</li>
                 <li><strong>流暢操作</strong>：平移和縮放時，即使滑鼠移出畫布區域也能繼續操作，不會中斷。</li>
+            </ul>
+
+            <h3>版本更新記錄</h3>
+            <ul>
+                <li><strong>v2.6.1</strong>
+                    <ul>
+                        <li>新增 Map 資訊修改功能：可在 Map 列表中編輯標題</li>
+                        <li>檔案名稱欄位提供複製功能，確保檔案完整性</li>
+                        <li>智能保留第三方工具建立的 Map 標題格式</li>
+                        <li>修改標題後自動標記為需儲存狀態</li>
+                    </ul>
+                </li>
             </ul>
 
             <div class="modal-buttons">
