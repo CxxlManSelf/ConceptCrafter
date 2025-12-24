@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git log:*)",
+      "Bash(cat:*)",
+      "Bash(identify -verbose:*)",
+      "Bash(xxd:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(ls:*)",
+      "Bash(echo:*)",
+      "Bash(dir /s /b .claude*.md .claude*.txt)",
+      "Bash(where convert magick python python3 node)",
+      "Bash(grep:*)"
+    ]
+  }
+}
