@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 2.6.1 概念圖製造機</title>
+    <title>Concept Crafter 2.6.2 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -1695,7 +1695,7 @@
                             const markerSize = 6 * this.scale;
 
                             // Collect all unique connection colors
-                            const colors = new Set(['#2c3e50']); // Default color
+                            const colors = new Set(['#2c3e50', '#9b59b6']); // Default color + selection color
                             this.connections.forEach(conn => {
                                 if (conn.color) colors.add(conn.color);
                             });
@@ -3212,7 +3212,7 @@
                 const markerSize = 6 * this.scale;
 
                 // Collect all unique connection colors
-                const colors = new Set(['#2c3e50']); // Default color
+                const colors = new Set(['#2c3e50', '#9b59b6']); // Default color + selection color
                 this.connections.forEach(conn => {
                     if (conn.color) colors.add(conn.color);
                 });
