@@ -781,8 +781,8 @@
             <h3>5. 選取模式（多選功能）</h3>
             <ul>
                 <li><strong>啟用選取模式</strong>：點擊工具列的「選取模式」按鈕（按鈕會變紅色），進入多選模式。</li>
-                <li><strong>選取元素</strong>：在選取模式下，點擊節點或 Frame 即可選取。選取的元素會顯示紫色高亮邊框。</li>
-                <li><strong>多選</strong>：可以點擊多個節點和 Frame，建立選取集合。</li>
+                <li><strong>選取元素</strong>：在選取模式下，點擊節點、Frame 或連接線即可選取。選取的節點和 Frame 會顯示紫色高亮邊框，選取的連接線會以紫色粗線顯示。</li>
+                <li><strong>多選</strong>：可以點擊多個節點、Frame 和連接線，建立選取集合。</li>
                 <li><strong>取消選取</strong>：
                     <ul>
                         <li>點擊已選取的元素：從選取集合中移除</li>
@@ -792,8 +792,8 @@
                 </li>
                 <li><strong>批次操作</strong>：
                     <ul>
-                        <li><strong>批次搬移</strong>：點擊任一已選取的元素並拖動，所有選取的元素會一起移動</li>
-                        <li><strong>批次複製</strong>：選取多個元素後，右鍵點擊任一選取的元素，選擇「複製選取的元素」</li>
+                        <li><strong>批次搬移</strong>：點擊任一已選取的節點或 Frame 並拖動，所有選取的節點和 Frame 會一起移動（連接線不支援搬移）</li>
+                        <li><strong>批次複製</strong>：選取多個元素後，右鍵點擊任一選取的元素，選擇「複製選取的元素」。若同時選取了連接線和其連接的節點/Frame，連接關係會被保留。</li>
                         <li><strong>批次刪除</strong>：選取多個元素後，右鍵點擊任一選取的元素，選擇「刪除選取的元素」</li>
                     </ul>
                 </li>
@@ -2307,6 +2307,8 @@
                         this.deleteNode(item.element.id);
                     } else if (item.type === 'frame') {
                         this.deleteFrame(item.element.id);
+                    } else if (item.type === 'connection') {
+                        this.deleteConnection(item.element.id);
                     }
                 }
 
@@ -2431,6 +2433,16 @@
                         }
                     }
                     return;
+                }
+
+                // Check for connections (only in select mode)
+                if (this.selectMode) {
+                    const clickedConnection = this.findConnectionAtPoint(x, y);
+                    if (clickedConnection) {
+                        // 切換連接線的選取狀態
+                        this.toggleElementSelection('connection', clickedConnection);
+                        return;
+                    }
                 }
 
                 // Pan canvas or clear selection
@@ -2652,27 +2664,27 @@
 
             showConnectionContextMenu(x, y, connection) {
                 this.contextMenu.innerHTML = `
-                    <div class="context-menu-item" onclick="app.editConnectionLabel(${connection.id})">編輯標籤</div>
+                    <div class="context-menu-item" onclick="app.editConnectionLabel('${connection.id}')">編輯標籤</div>
                     <div class="context-menu-item context-menu-submenu">
                         箭頭類型
                         <div class="submenu">
-                            <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'single')">單向箭頭</div>
-                            <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'double')">雙向箭頭</div>
-                            <div class="context-menu-item" onclick="app.changeArrowType(${connection.id}, 'none')">無箭頭</div>
+                            <div class="context-menu-item" onclick="app.changeArrowType('${connection.id}', 'single')">單向箭頭</div>
+                            <div class="context-menu-item" onclick="app.changeArrowType('${connection.id}', 'double')">雙向箭頭</div>
+                            <div class="context-menu-item" onclick="app.changeArrowType('${connection.id}', 'none')">無箭頭</div>
                         </div>
                     </div>
                     <div class="context-menu-item context-menu-submenu">
                         變更顏色
                         <div class="submenu">
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#2c3e50')">深灰色</div>
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#3498db')">藍色</div>
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#2ecc71')">綠色</div>
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#e74c3c')">紅色</div>
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#f39c12')">橙色</div>
-                            <div class="context-menu-item" onclick="app.changeConnectionColor(${connection.id}, '#9b59b6')">紫色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#2c3e50')">深灰色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#3498db')">藍色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#2ecc71')">綠色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#e74c3c')">紅色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#f39c12')">橙色</div>
+                            <div class="context-menu-item" onclick="app.changeConnectionColor('${connection.id}', '#9b59b6')">紫色</div>
                         </div>
                     </div>
-                    <div class="context-menu-item" onclick="app.deleteConnection(${connection.id})">刪除連接線</div>
+                    <div class="context-menu-item" onclick="app.deleteConnection('${connection.id}')">刪除連接線</div>
                 `;
                 this.showContextMenuAt(x, y);
             }
@@ -2918,21 +2930,43 @@
                 } else if (this.clipboard.type === 'multiple') {
                     // 複製多個元素
                     let idOffset = 0;
+                    const idMapping = {}; // 舊 ID 到新 ID 的映射
+
+                    // 第一階段：複製節點和 frame，建立 ID 映射
                     for (let item of this.clipboard.data) {
                         if (item.type === 'node') {
+                            const oldId = item.data.id;
                             const newNode = { ...item.data };
                             newNode.id = 'node-' + (Date.now() + idOffset++);
                             newNode.x += 30;
                             newNode.y += 30;
                             this.nodes.push(newNode);
+                            idMapping[oldId] = newNode.id;
                         } else if (item.type === 'frame') {
+                            const oldId = item.data.id;
                             const newFrame = { ...item.data };
                             newFrame.id = 'frame-' + (Date.now() + idOffset++);
                             newFrame.x += 30;
                             newFrame.y += 30;
                             this.frames.push(newFrame);
+                            idMapping[oldId] = newFrame.id;
                         }
                     }
+
+                    // 第二階段：複製連接線，更新 ID 引用
+                    for (let item of this.clipboard.data) {
+                        if (item.type === 'connection') {
+                            // 只複製兩端都在選取集合中的連接線
+                            if (idMapping[item.data.from] && idMapping[item.data.to]) {
+                                const newConnection = { ...item.data };
+                                newConnection.id = 'conn-' + (Date.now() + idOffset++);
+                                newConnection.from = idMapping[item.data.from];
+                                newConnection.to = idMapping[item.data.to];
+                                this.connections.push(newConnection);
+                            }
+                        }
+                    }
+
                     this.markModified();
                     this.render();
                 }
@@ -3452,15 +3486,19 @@
                 const toX = toEdge.x * this.scale + this.offsetX;
                 const toY = toEdge.y * this.scale + this.offsetY;
 
+                // Check if this connection is selected
+                const isSelected = this.isElementSelected('connection', connection);
+
                 // Draw the line using path (like reference file)
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 line.setAttribute('class', 'connection');
                 const pathData = `M ${fromX} ${fromY} L ${toX} ${toY}`;
                 line.setAttribute('d', pathData);
 
-                const lineColor = connection.color || '#2c3e50';
+                const lineColor = isSelected ? '#9b59b6' : (connection.color || '#2c3e50');
+                const lineWidth = isSelected ? '4' : '2';
                 line.setAttribute('stroke', lineColor);
-                line.setAttribute('stroke-width', '2');
+                line.setAttribute('stroke-width', lineWidth);
                 line.setAttribute('fill', 'none');
 
                 // Add arrow markers based on arrowType with matching color
