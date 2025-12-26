@@ -13,7 +13,9 @@
       "Bash(echo:*)",
       "Bash(dir /s /b .claude*.md .claude*.txt)",
       "Bash(where convert magick python python3 node)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(test -f:*)",
+      "Bash(test:*)"
     ]
   }
 }

@@ -115,10 +115,9 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
     pointer-events: none;
     overflow: visible;
+    z-index: 999;
 }
 
 /* 節點樣式 */
@@ -280,6 +279,7 @@ class MapViewer {
 class MapViewer {
     // 初始化
     init() {
+        this.updateSVGSize();
         this.render();
         this.updateConnections();
         this.setupEventListeners();
@@ -364,54 +364,115 @@ class MapViewer {
 
         // 定義箭頭標記
         const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const markerSize = 6 * this.scale;
 
-        // 單向箭頭
-        const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-        marker.setAttribute('id', 'arrowhead');
-        marker.setAttribute('markerWidth', '10');
-        marker.setAttribute('markerHeight', '10');
-        marker.setAttribute('refX', '9');
-        marker.setAttribute('refY', '3');
-        marker.setAttribute('orient', 'auto');
-        const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        polygon.setAttribute('points', '0 0, 10 3, 0 6');
-        marker.appendChild(polygon);
-        defs.appendChild(marker);
+        // 收集所有使用的顏色
+        const colors = new Set(['#2c3e50']);
+        this.connections.forEach(conn => {
+            if (conn.color) colors.add(conn.color);
+        });
+
+        // 為每種顏色創建箭頭
+        const createMarker = (id, d, refX, color) => {
+            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            marker.setAttribute('id', id);
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', refX);
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', markerSize);
+            marker.setAttribute('markerHeight', markerSize);
+            marker.setAttribute('orient', 'auto');
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            path.setAttribute('fill', color);
+            marker.appendChild(path);
+            return marker;
+        };
+
+        colors.forEach(color => {
+            const colorId = color.replace('#', '');
+            defs.appendChild(createMarker(`arrowhead-${colorId}`, 'M 0 0 L 10 5 L 0 10 z', '9', color));
+            defs.appendChild(createMarker(`arrowhead-double-${colorId}`, 'M 10 0 L 0 5 L 10 10 z', '1', color));
+        });
 
         this.svgLayer.appendChild(defs);
 
         // 繪製每條連接線
         this.connections.forEach(conn => {
-            const fromEl = this.getElementByDataId(conn.from);
-            const toEl = this.getElementByDataId(conn.to);
+            const fromNode = this.nodes.find(n => n.id === conn.from);
+            const toNode = this.nodes.find(n => n.id === conn.to);
 
-            if (!fromEl || !toEl) return;
+            if (!fromNode || !toNode) return;
 
-            const from = this.getCenter(fromEl);
-            const to = this.getCenter(toEl);
+            // 計算節點中心（原始座標）
+            const fromCenter = {
+                x: fromNode.x + fromNode.width / 2,
+                y: fromNode.y + fromNode.height / 2
+            };
+            const toCenter = {
+                x: toNode.x + toNode.width / 2,
+                y: toNode.y + toNode.height / 2
+            };
+
+            // 計算與節點邊界的交點
+            const getIntersection = (center, target, rect) => {
+                const dx = target.x - center.x;
+                const dy = target.y - center.y;
+                if (dx === 0 && dy === 0) return center;
+
+                const hw = rect.width / 2;
+                const hh = rect.height / 2;
+
+                if (Math.abs(dx) / hw > Math.abs(dy) / hh) {
+                    return {
+                        x: center.x + (dx > 0 ? hw : -hw),
+                        y: center.y + (dy / dx) * (dx > 0 ? hw : -hw)
+                    };
+                } else {
+                    return {
+                        x: center.x + (dx / dy) * (dy > 0 ? hh : -hh),
+                        y: center.y + (dy > 0 ? hh : -hh)
+                    };
+                }
+            };
+
+            const start = getIntersection(fromCenter, toCenter, fromNode);
+            const end = getIntersection(toCenter, fromCenter, toNode);
+
+            // 轉換為視口座標（應用縮放和偏移）
+            // 重要：SVG 層不應用 transform，而是手動計算座標
+            const x1 = start.x * this.scale + this.offsetX;
+            const y1 = start.y * this.scale + this.offsetY;
+            const x2 = end.x * this.scale + this.offsetX;
+            const y2 = end.y * this.scale + this.offsetY;
 
             // 創建路徑
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', `M ${from.x} ${from.y} L ${to.x} ${to.y}`);
-            path.setAttribute('stroke', conn.color || '#2c3e50');
-            path.setAttribute('stroke-width', '2');
-            path.setAttribute('fill', 'none');
+            const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            pathEl.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
 
-            // 箭頭類型
+            const lineColor = conn.color || '#2c3e50';
+            pathEl.setAttribute('stroke', lineColor);
+            pathEl.setAttribute('stroke-width', '2');
+            pathEl.setAttribute('fill', 'none');
+
+            // 箭頭類型（使用對應顏色的marker）
+            const colorId = lineColor.replace('#', '');
             if (conn.arrowType === 'single') {
-                path.setAttribute('marker-end', 'url(#arrowhead)');
+                pathEl.setAttribute('marker-end', `url(#arrowhead-${colorId})`);
             } else if (conn.arrowType === 'double') {
-                path.setAttribute('marker-start', 'url(#arrowhead)');
-                path.setAttribute('marker-end', 'url(#arrowhead)');
+                pathEl.setAttribute('marker-start', `url(#arrowhead-double-${colorId})`);
+                pathEl.setAttribute('marker-end', `url(#arrowhead-${colorId})`);
             }
 
-            this.svgLayer.appendChild(path);
+            this.svgLayer.appendChild(pathEl);
 
             // 標籤
             if (conn.label) {
                 const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                text.setAttribute('x', (from.x + to.x) / 2);
-                text.setAttribute('y', (from.y + to.y) / 2);
+                text.setAttribute('x', (x1 + x2) / 2);
+                text.setAttribute('y', (y1 + y2) / 2 - 5);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('font-size', 12 * this.scale);
                 text.setAttribute('class', 'connection-label');
                 text.textContent = conn.label;
                 this.svgLayer.appendChild(text);
@@ -423,17 +484,15 @@ class MapViewer {
     applyTransform() {
         this.canvas.style.transform =
             `translate(${this.offsetX}px, ${this.offsetY}px) scale(${this.scale})`;
-        this.updateSVGTransform();
+        this.updateSVGSize();
+        this.updateConnections();
     }
 
-    // 更新 SVG 變換
-    updateSVGTransform() {
+    // 更新 SVG 尺寸
+    updateSVGSize() {
         const containerRect = this.container.getBoundingClientRect();
         this.svgLayer.setAttribute('width', containerRect.width);
         this.svgLayer.setAttribute('height', containerRect.height);
-        this.svgLayer.style.transform =
-            `translate(${this.offsetX}px, ${this.offsetY}px) scale(${this.scale})`;
-        this.updateConnections();
     }
 
     // 處理滾輪縮放
@@ -478,25 +537,8 @@ class MapViewer {
 
     // 視窗調整
     handleResize() {
-        this.updateSVGTransform();
-    }
-
-    // 輔助方法
-    getElementByDataId(id) {
-        return this.canvas.querySelector(`[data-id="${id}"]`) ||
-               Array.from(this.canvas.children).find((el, idx) => {
-                   const allItems = [...this.frames, ...this.nodes];
-                   return allItems[idx]?.id === id;
-               });
-    }
-
-    getCenter(el) {
-        const rect = el.getBoundingClientRect();
-        const canvasRect = this.canvas.getBoundingClientRect();
-        return {
-            x: (rect.left + rect.width / 2 - canvasRect.left) / this.scale,
-            y: (rect.top + rect.height / 2 - canvasRect.top) / this.scale
-        };
+        this.updateSVGSize();
+        this.updateConnections();
     }
 }
 ```
