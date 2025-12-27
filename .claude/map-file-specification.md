@@ -1,5 +1,26 @@
 # Map 檔完整規範
 
+## 🚨 重要提醒：JSON 格式錯誤預防
+
+**最常見的致命錯誤：數字後多了雙引號** ⚠️
+
+這種錯誤會導致整個 Map 無法顯示，但很難用肉眼發現：
+
+```json
+// ❌ 錯誤 - 會導致整個地圖無法顯示
+"y": 440",    // ← 數字 440 後面多了雙引號！
+
+// ✅ 正確
+"y": 440,     // ← 數字後只有逗號
+```
+
+**防範措施（生成後必須執行）：**
+1. 使用正則表達式搜尋 `\d+"` → **必須沒有任何結果**
+2. 執行預檢腳本 `preCheckJSON()` （見 JSON 驗證章節）
+3. 在瀏覽器中測試，檢查 Console 是否有錯誤
+
+---
+
 ## 📄 檔案結構
 
 一個完整的 Map 檔是**單一的 HTML 文件**，包含以下部分：
@@ -192,7 +213,47 @@ body {
 
 ## 📊 數據格式規範
 
-### JSON 結構
+### ⚠️ 重要：JSON 數字格式規則
+
+**數字值絕對不可使用引號！** 這是最常見的錯誤來源。
+
+```json
+// ✅ 正確 - 數字不加引號
+{
+  "x": 100,
+  "y": 200,
+  "width": 150,
+  "height": 80,
+  "zIndex": 0,
+  "completed": false
+}
+
+// ❌ 錯誤 - 數字加了引號會導致解析失敗
+{
+  "x": "100",      // 錯誤！
+  "y": "200",      // 錯誤！
+  "width": "150",  // 錯誤！
+  "height": "80",  // 錯誤！
+  "zIndex": "0",   // 錯誤！
+  "completed": "false"  // 錯誤！
+}
+```
+
+### 數據類型對照表
+
+| 屬性 | 類型 | 範例 | 說明 |
+|------|------|------|------|
+| `id` | string | `"node-123"` | 字符串，需要引號 |
+| `x`, `y` | number | `100` | 數字，**不要引號** |
+| `width`, `height` | number | `200` | 數字，**不要引號** |
+| `text` | string | `"文字"` | 字符串，需要引號 |
+| `color` | string | `"#3498db"` | 字符串，需要引號 |
+| `textAlign` | string | `"center"` | 字符串，需要引號 |
+| `completed` | boolean | `false` | 布林值，**不要引號** |
+| `zIndex` | number | `0` | 數字，**不要引號** |
+| `link` | string | `"file.html"` | 字符串，需要引號 |
+
+### JSON 結構範例
 
 ```json
 {
@@ -209,7 +270,8 @@ body {
         "color": "#3498db",
         "textAlign": "center",
         "completed": false,
-        "abandoned": false
+        "abandoned": false,
+        "link": "other-map.html"
       }
     ],
     "frames": [
@@ -628,20 +690,188 @@ resize_icon('concept-crafter_icon.png')
 
 **注意：** 縮放非必需，瀏覽器會自動調整 favicon 尺寸。
 
+## 🔍 JSON 驗證
+
+生成 Map 檔後，**必須**執行以下三個層級的 JSON 驗證：
+
+### 第一層：正則表達式預檢（生成後立即執行）
+
+在生成的 JSON 文本中搜尋以下錯誤模式，**應該沒有任何結果**：
+
+#### 檢查項目：
+```javascript
+// 檢查 1: 數字後是否有多餘的雙引號
+// 搜尋模式: \d+"
+// 範例錯誤: "y": 440",
+// 應該是: "y": 440,
+
+// 檢查 2: 數字是否被引號包住（排除 ID）
+// 搜尋模式: :\s*"\d+"
+// 範例錯誤: "x": "100",
+// 應該是: "x": 100,
+
+// 檢查 3: 布林值是否被引號包住
+// 搜尋模式: "(true|false)"
+// 範例錯誤: "completed": "false",
+// 應該是: "completed": false,
+```
+
+#### 快速檢查腳本：
+```javascript
+// 在瀏覽器控制台執行此腳本進行預檢
+function preCheckJSON() {
+    const mapDataEl = document.getElementById('map-data');
+    if (!mapDataEl) {
+        console.error('❌ 找不到 map-data 元素');
+        return false;
+    }
+
+    const jsonText = mapDataEl.textContent;
+    let hasError = false;
+
+    // 檢查 1: 數字後多雙引號 (如: 440")
+    const pattern1 = /:\s*\d+"/g;
+    const matches1 = jsonText.match(pattern1);
+    if (matches1) {
+        console.error('❌ 發現數字後有多餘雙引號:', matches1);
+        console.error('   這些位置需要移除雙引號，改為: "y": 440,');
+        hasError = true;
+    }
+
+    // 檢查 2: 數字被引號包住 (如: "100")
+    // 排除 ID 欄位 (ID 應該要有引號)
+    const pattern2 = /(?<!"id":\s*):\s*"\d+"/g;
+    const matches2 = jsonText.match(pattern2);
+    if (matches2) {
+        console.error('❌ 發現數字被引號包住:', matches2);
+        console.error('   這些位置需要移除引號，改為: "x": 100,');
+        hasError = true;
+    }
+
+    // 檢查 3: 布林值被引號包住
+    const pattern3 = /"(true|false)"/g;
+    const matches3 = jsonText.match(pattern3);
+    if (matches3) {
+        console.error('❌ 發現布林值被引號包住:', matches3);
+        console.error('   這些位置需要移除引號，改為: "completed": false,');
+        hasError = true;
+    }
+
+    if (!hasError) {
+        console.log('✅ 預檢通過：未發現常見格式錯誤');
+        return true;
+    }
+
+    return false;
+}
+
+// 執行預檢
+preCheckJSON();
+```
+
+### 第二層：自動驗證腳本
+
+生成 Map 檔後，**必須**執行此腳本驗證數據類型：
+
+```javascript
+// JSON 驗證腳本（在瀏覽器控制台執行）
+function validateMapJSON() {
+    try {
+        const mapDataEl = document.getElementById('map-data');
+        if (!mapDataEl) {
+            console.error('❌ 找不到 map-data 元素');
+            return false;
+        }
+
+        const data = JSON.parse(mapDataEl.textContent);
+
+        // 檢查數字類型
+        let errors = [];
+
+        data.data.nodes?.forEach((node, i) => {
+            if (typeof node.x !== 'number') errors.push(`節點 ${i}: x 應為數字，實際為 ${typeof node.x}`);
+            if (typeof node.y !== 'number') errors.push(`節點 ${i}: y 應為數字，實際為 ${typeof node.y}`);
+            if (typeof node.width !== 'number') errors.push(`節點 ${i}: width 應為數字，實際為 ${typeof node.width}`);
+            if (typeof node.height !== 'number') errors.push(`節點 ${i}: height 應為數字，實際為 ${typeof node.height}`);
+            if (node.completed !== undefined && typeof node.completed !== 'boolean') {
+                errors.push(`節點 ${i}: completed 應為布林值，實際為 ${typeof node.completed}`);
+            }
+        });
+
+        data.data.frames?.forEach((frame, i) => {
+            if (typeof frame.x !== 'number') errors.push(`框架 ${i}: x 應為數字，實際為 ${typeof frame.x}`);
+            if (typeof frame.y !== 'number') errors.push(`框架 ${i}: y 應為數字，實際為 ${typeof frame.y}`);
+            if (typeof frame.width !== 'number') errors.push(`框架 ${i}: width 應為數字，實際為 ${typeof frame.width}`);
+            if (typeof frame.height !== 'number') errors.push(`框架 ${i}: height 應為數字，實際為 ${typeof frame.height}`);
+            if (frame.zIndex !== undefined && typeof frame.zIndex !== 'number') {
+                errors.push(`框架 ${i}: zIndex 應為數字，實際為 ${typeof frame.zIndex}`);
+            }
+        });
+
+        if (errors.length > 0) {
+            console.error('❌ JSON 驗證失敗：');
+            errors.forEach(err => console.error('  - ' + err));
+            return false;
+        }
+
+        console.log('✅ JSON 驗證通過');
+        return true;
+    } catch (e) {
+        console.error('❌ JSON 解析失敗：', e.message);
+        return false;
+    }
+}
+
+// 執行驗證
+validateMapJSON();
+```
+
+### 快速驗證命令
+
+```bash
+# 在專案目錄執行
+node -e "const data = JSON.parse(require('fs').readFileSync('map-file.html', 'utf8').match(/<script id=\"map-data\"[^>]*>([\s\S]*?)<\/script>/)[1]); console.log(typeof data.data.nodes[0].x === 'number' ? '✅ JSON 格式正確' : '❌ 數字格式錯誤')"
+```
+
 ## ✅ 驗證清單
 
 生成的 Map 檔必須滿足：
 
+### 📄 基本結構
 - [ ] 是單一的 HTML 檔案
 - [ ] 包含完整的 CSS（含 `box-sizing: border-box`）
-- [ ] 包含 base64 編碼的 favicon
+- [ ] 包含 favicon 引用（`<link rel="icon" href="./concept-crafter_icon.png">`）
+- [ ] `concept-crafter_icon.png` 與 Map 檔在同一目錄
 - [ ] 包含 `<script id="map-data">` 數據區塊
 - [ ] 包含完整的 MapViewer 類實現
-- [ ] 可在瀏覽器中獨立運行
-- [ ] 支援平移和縮放
-- [ ] 正確渲染節點、框架、連接線
+
+### 🔢 JSON 格式檢查（關鍵！必須優先檢查）
+
+**第一層檢查 - 正則表達式預檢：**
+- [ ] 搜尋 `\d+"` → **必須沒有任何結果**（數字後不應有引號）
+- [ ] 搜尋 `:\s*"\d+"` → **必須沒有任何結果**（數字不應被引號包住，ID 除外）
+- [ ] 搜尋 `"(true|false)"` → **必須沒有任何結果**（布林值不應有引號）
+- [ ] 執行預檢腳本 `preCheckJSON()` 通過
+
+**第二層檢查 - 數據類型驗證：**
+- [ ] **所有數字值都不使用引號**（x, y, width, height, zIndex）
+- [ ] **所有布林值都不使用引號**（completed, abandoned）
+- [ ] 字符串值正確使用引號（id, text, color, link）
+- [ ] 執行驗證腳本 `validateMapJSON()` 通過
+
+**第三層檢查 - JSON 語法：**
+- [ ] JSON 可以被正確解析（無語法錯誤）
+- [ ] 可以在 jsonlint.com 成功驗證
+
+### 🌐 瀏覽器測試（必須！）
+- [ ] **在瀏覽器中打開檔案測試**
+- [ ] 地圖正確顯示（節點、框架、連接線）
+- [ ] 可以正常平移（拖曳畫布）
+- [ ] 可以正常縮放（滾輪）
 - [ ] 連接線不會深入節點內部
-- [ ] 無 JavaScript 錯誤
+- [ ] 箭頭正確顯示且顏色正確
+- [ ] 無 JavaScript 錯誤（檢查控制台）
+- [ ] 導航連結可以正常點擊跳轉（如果有）
 
 ## 📏 建議的預設值
 

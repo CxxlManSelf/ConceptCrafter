@@ -15,7 +15,9 @@
       "Bash(where convert magick python python3 node)",
       "Bash(grep:*)",
       "Bash(test -f:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(mkdir:*)",
+      "Bash(dir /b:*)"
     ]
   }
 }
