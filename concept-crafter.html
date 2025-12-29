@@ -778,6 +778,141 @@
     </div>
 
     <script>
+        class HistoryEntry {
+            constructor(snapshot, description) {
+                this.timestamp = Date.now();
+                this.snapshot = snapshot;
+                this.description = description;
+            }
+        }
+
+        class HistoryManager {
+            constructor(app) {
+                this.app = app;
+                this.undoStack = [];
+                this.redoStack = [];
+                this.maxSize = 50;
+                this.isApplying = false;
+                this.pendingGroup = null;
+            }
+
+            recordState(snapshot, description) {
+                // 批量操作中不記錄
+                if (this.pendingGroup) {
+                    return;
+                }
+
+                // undo/redo 執行中不記錄
+                if (this.isApplying) {
+                    return;
+                }
+
+                const entry = new HistoryEntry(snapshot, description);
+
+                // 限制棧大小
+                if (this.undoStack.length >= this.maxSize) {
+                    this.undoStack.shift();
+                }
+
+                this.undoStack.push(entry);
+                this.redoStack = [];  // 新操作清空 redo 棧
+            }
+
+            beginGroup(description) {
+                // 如果已有待處理的組，先結束它
+                if (this.pendingGroup) {
+                    this.endGroup();
+                }
+
+                // 記錄操作前的狀態
+                this.pendingGroup = {
+                    description,
+                    startTime: Date.now(),
+                    snapshot: this.app.getStateSnapshot()
+                };
+            }
+
+            endGroup() {
+                if (this.pendingGroup) {
+                    // 先保存必要的信息
+                    const snapshot = this.pendingGroup.snapshot;
+                    const description = this.pendingGroup.description;
+
+                    // 清空 pendingGroup（這樣 recordState 才不會被阻止）
+                    this.pendingGroup = null;
+
+                    // 記錄歷史
+                    this.recordState(snapshot, description);
+
+                    // 標記為已修改
+                    if (this.app.currentMap) {
+                        this.app.currentMap.modified = true;
+                        this.app.updateMapList();
+                    }
+                }
+            }
+
+            undo() {
+                if (!this.canUndo()) {
+                    return false;
+                }
+
+                this.isApplying = true;
+
+                try {
+                    // 保存當前狀態到 redo 棧
+                    const currentState = this.app.getStateSnapshot();
+                    const currentEntry = new HistoryEntry(currentState, '重做點');
+                    this.redoStack.push(currentEntry);
+
+                    // 恢復上一個狀態
+                    const previousEntry = this.undoStack.pop();
+                    this.app.restoreStateSnapshot(previousEntry.snapshot);
+
+                    return true;
+                } finally {
+                    this.isApplying = false;
+                }
+            }
+
+            redo() {
+                if (!this.canRedo()) {
+                    return false;
+                }
+
+                this.isApplying = true;
+
+                try {
+                    // 保存當前狀態到 undo 棧
+                    const currentState = this.app.getStateSnapshot();
+                    const currentEntry = new HistoryEntry(currentState, '復原點');
+                    this.undoStack.push(currentEntry);
+
+                    // 恢復下一個狀態
+                    const nextEntry = this.redoStack.pop();
+                    this.app.restoreStateSnapshot(nextEntry.snapshot);
+
+                    return true;
+                } finally {
+                    this.isApplying = false;
+                }
+            }
+
+            canUndo() {
+                return this.undoStack.length > 0;
+            }
+
+            canRedo() {
+                return this.redoStack.length > 0;
+            }
+
+            clear() {
+                this.undoStack = [];
+                this.redoStack = [];
+                this.pendingGroup = null;
+            }
+        }
+
         class ConceptCrafter {
             constructor() {
                 this.canvas = document.getElementById('canvas');
@@ -815,6 +950,9 @@
                 const iconLink = document.querySelector('link[rel="icon"]');
                 this.iconDataUrl = iconLink ? iconLink.getAttribute('href') : '';
 
+                // 初始化歷史管理器
+                this.historyManager = new HistoryManager(this);
+
                 this.init();
             }
 
@@ -825,6 +963,61 @@
                 this.updateSVGSize();
                 this.updateButtonStates();
                 window.addEventListener('resize', () => this.updateSVGSize());
+            }
+
+            // 獲取當前狀態快照
+            getStateSnapshot() {
+                return {
+                    nodes: JSON.parse(JSON.stringify(this.nodes)),
+                    frames: JSON.parse(JSON.stringify(this.frames)),
+                    connections: JSON.parse(JSON.stringify(this.connections))
+                };
+            }
+
+            // 恢復狀態快照
+            restoreStateSnapshot(snapshot) {
+                this.nodes = JSON.parse(JSON.stringify(snapshot.nodes));
+                this.frames = JSON.parse(JSON.stringify(snapshot.frames));
+                this.connections = JSON.parse(JSON.stringify(snapshot.connections));
+
+                if (this.currentMap) {
+                    this.currentMap.modified = true;
+                    this.updateMapList();
+                }
+            }
+
+            // Undo 方法
+            undo() {
+                if (this.historyManager.undo()) {
+                    this.clearSelection();
+                    this.render();
+                }
+            }
+
+            // Redo 方法
+            redo() {
+                if (this.historyManager.redo()) {
+                    this.clearSelection();
+                    this.render();
+                }
+            }
+
+            // 在操作前記錄當前狀態（用於 undo）
+            recordBeforeModify(description = '修改') {
+                if (!this.historyManager.isApplying && !this.historyManager.pendingGroup && this.currentMap) {
+                    this.historyManager.recordState(
+                        this.getStateSnapshot(),
+                        description
+                    );
+                }
+            }
+
+            // 標記為已修改（在操作後調用）
+            markAsModified() {
+                if (this.currentMap) {
+                    this.currentMap.modified = true;
+                    this.updateMapList();
+                }
             }
 
             compareId(id1, id2) {
@@ -1054,6 +1247,16 @@
                         e.preventDefault();
                         this.paste();
                     }
+                    // Ctrl+Z - Undo
+                    if (e.ctrlKey && e.key === 'z' && !e.target.matches('input, textarea, [contenteditable]')) {
+                        e.preventDefault();
+                        this.undo();
+                    }
+                    // Ctrl+Y - Redo
+                    if (e.ctrlKey && e.key === 'y' && !e.target.matches('input, textarea, [contenteditable]')) {
+                        e.preventDefault();
+                        this.redo();
+                    }
                 });
             }
 
@@ -1175,7 +1378,8 @@
                         offsetX: 0,
                         offsetY: 0,
                         scale: 1
-                    }
+                    },
+                    historyManager: new HistoryManager(this)
                 };
 
                 this.maps.push(map);
@@ -1332,7 +1536,8 @@
                                 offsetX: 0,
                                 offsetY: 0,
                                 scale: 1
-                            }
+                            },
+                            historyManager: new HistoryManager(this)
                         };
 
                         // Check for duplicate in map list
@@ -1363,6 +1568,9 @@
                     this.currentMap.data.frames = [...this.frames];
                     this.currentMap.data.connections = [...this.connections];
 
+                    // 保存歷史記錄
+                    this.currentMap.historyManager = this.historyManager;
+
                     // 保存視圖狀態
                     if (!this.currentMap.viewState) {
                         this.currentMap.viewState = {};
@@ -1377,6 +1585,14 @@
                 this.nodes = [...map.data.nodes];
                 this.frames = [...map.data.frames];
                 this.connections = [...map.data.connections];
+
+                // 恢復或創建歷史管理器
+                if (map.historyManager) {
+                    this.historyManager = map.historyManager;
+                } else {
+                    this.historyManager = new HistoryManager(this);
+                    map.historyManager = this.historyManager;
+                }
 
                 // 恢復新 map 的視圖狀態
                 if (map.viewState) {
@@ -1969,6 +2185,9 @@
                     return;
                 }
 
+                // 在操作前記錄狀態
+                this.recordBeforeModify('新增節點');
+
                 const node = {
                     id: 'node-' + Date.now(),
                     x: 100,
@@ -1982,11 +2201,12 @@
                     textAlign: 'center'
                 };
                 this.nodes.push(node);
-                this.markModified();
+                this.markAsModified();
                 this.render();
             }
 
             addFrame() {
+        this.recordBeforeModify('新增框架');
                 if (!this.currentMap) {
                     alert('請先建立或載入一個 Map');
                     return;
@@ -2006,7 +2226,7 @@
                     abandoned: false
                 };
                 this.frames.push(frame);
-                this.markModified();
+                this.markAsModified();
                 this.render();
             }
 
@@ -2105,6 +2325,7 @@
                 if (resizeNode) {
                     this.resizeElement = { type: 'node', element: resizeNode };
                     this.dragOffset = { x: resizeNode.width, y: resizeNode.height };
+                    this.historyManager.beginGroup('調整大小');
                     return;
                 }
 
@@ -2119,6 +2340,7 @@
                 if (resizeFrame) {
                     this.resizeElement = { type: 'frame', element: resizeFrame };
                     this.dragOffset = { x: resizeFrame.width, y: resizeFrame.height };
+                    this.historyManager.beginGroup('調整大小');
                     return;
                 }
 
@@ -2131,6 +2353,7 @@
                             // 已選取，準備拖動所有選取的元素
                             this.dragElement = { type: 'multiple', element: null };
                             this.dragOffset = { x: x, y: y };
+                            this.historyManager.beginGroup('移動多個元素');
                         } else {
                             // 未選取，切換選取狀態
                             this.toggleElementSelection('node', clickedNode);
@@ -2151,10 +2374,12 @@
                             // 如果點擊的是已選取的元素之一，準備拖動所有選取的元素
                             this.dragElement = { type: 'multiple', element: null };
                             this.dragOffset = { x: x, y: y };
+                            this.historyManager.beginGroup('移動多個元素');
                         } else {
                             // 否則只拖動單一元素
                             this.dragElement = { type: 'node', element: clickedNode };
                             this.dragOffset = { x: x - clickedNode.x, y: y - clickedNode.y };
+                            this.historyManager.beginGroup('移動節點');
                         }
                     }
                     return;
@@ -2169,6 +2394,7 @@
                             // 已選取，準備拖動所有選取的元素
                             this.dragElement = { type: 'multiple', element: null };
                             this.dragOffset = { x: x, y: y };
+                            this.historyManager.beginGroup('移動多個元素');
                         } else {
                             // 未選取，切換選取狀態
                             this.toggleElementSelection('frame', clickedFrame);
@@ -2189,10 +2415,12 @@
                             // 如果點擊的是已選取的元素之一，準備拖動所有選取的元素
                             this.dragElement = { type: 'multiple', element: null };
                             this.dragOffset = { x: x, y: y };
+                            this.historyManager.beginGroup('移動多個元素');
                         } else {
                             // 否則只拖動單一元素
                             this.dragElement = { type: 'frame', element: clickedFrame };
                             this.dragOffset = { x: x - clickedFrame.x, y: y - clickedFrame.y };
+                            this.historyManager.beginGroup('移動框架');
                         }
                     }
                     return;
@@ -2229,7 +2457,6 @@
                     const elem = this.resizeElement.element;
                     elem.width = Math.max(50, x - elem.x);
                     elem.height = Math.max(30, y - elem.y);
-                    this.markModified();
                     this.render();
                     return;
                 }
@@ -2251,7 +2478,6 @@
                         elem.x = x - this.dragOffset.x;
                         elem.y = y - this.dragOffset.y;
                     }
-                    this.markModified();
                     this.render();
                     return;
                 }
@@ -2265,6 +2491,11 @@
             }
 
             onCanvasMouseUp(e) {
+                // 結束批量操作
+                if (this.dragElement || this.resizeElement) {
+                    this.historyManager.endGroup();
+                }
+
                 this.isPanning = false;
                 this.dragElement = null;
                 this.resizeElement = null;
@@ -2463,135 +2694,165 @@
             }
 
             editNodeText(nodeId) {
+        this.recordBeforeModify('編輯節點文字');
                 const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (!node) return;
 
                 this.showModal(node.text, (newText) => {
-                    node.text = newText;
-                    this.markModified();
+                    try {
+                        node.text = newText;
+                    this.markAsModified();
                     this.render();
+                    } catch (error) {
+                        console.error('編輯節點文字時發生錯誤:', error);
+                        alert('編輯節點文字失敗: ' + error.message);
+                    }
                 });
             }
 
             editFrameLabel(frameId) {
+        this.recordBeforeModify('編輯框架標籤');
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (!frame) return;
 
                 this.showModal(frame.label, (newLabel) => {
-                    frame.label = newLabel;
-                    this.markModified();
+                    try {
+                        frame.label = newLabel;
+                    this.markAsModified();
                     this.render();
+                    } catch (error) {
+                        console.error('編輯框架標籤時發生錯誤:', error);
+                        alert('編輯框架標籤失敗: ' + error.message);
+                    }
                 }, 'plain');
             }
 
             changeNodeColor(nodeId, color) {
+        this.recordBeforeModify('變更節點顏色');
                 const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     node.color = color;
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 }
             }
 
             changeNodeTextAlign(nodeId, align) {
+        this.recordBeforeModify('變更節點文字對齊');
                 const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     node.textAlign = align;
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 }
             }
 
             toggleNodeCompleted(nodeId) {
+        this.recordBeforeModify('切換節點完成狀態');
                 const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     node.completed = !node.completed;
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 }
             }
 
             toggleNodeAbandoned(nodeId) {
+        this.recordBeforeModify('切換節點放棄狀態');
                 const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     node.abandoned = !node.abandoned;
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 }
             }
 
             toggleFrameCompleted(frameId) {
+        this.recordBeforeModify('切換框架完成狀態');
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (frame) {
                     frame.completed = !frame.completed;
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 }
             }
 
             toggleFrameAbandoned(frameId) {
+        this.recordBeforeModify('切換框架放棄狀態');
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (frame) {
                     frame.abandoned = !frame.abandoned;
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 }
             }
 
             changeFrameColor(frameId, borderColor, bgColor) {
+        this.recordBeforeModify('變更框架顏色');
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (frame) {
                     frame.borderColor = borderColor;
                     frame.bgColor = bgColor;
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 }
             }
 
             editConnectionLabel(connectionId) {
+        this.recordBeforeModify('編輯連接線標籤');
                 const connection = this.connections.find(c => this.compareId(c.id, connectionId));
                 if (!connection) return;
 
                 this.showModal(connection.label || '', (newLabel) => {
-                    connection.label = newLabel;
-                    this.markModified();
+                    try {
+                        connection.label = newLabel;
+                    this.markAsModified();
                     this.render();
+                    } catch (error) {
+                        console.error('編輯連接線標籤時發生錯誤:', error);
+                        alert('編輯連接線標籤失敗: ' + error.message);
+                    }
                 }, 'plain');
             }
 
             changeArrowType(connectionId, arrowType) {
+        this.recordBeforeModify('變更箭頭類型');
                 const connection = this.connections.find(c => this.compareId(c.id, connectionId));
                 if (connection) {
                     connection.arrowType = arrowType;
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 }
             }
 
             changeConnectionColor(connectionId, color) {
+        this.recordBeforeModify('變更連接線顏色');
                 const connection = this.connections.find(c => this.compareId(c.id, connectionId));
                 if (connection) {
                     connection.color = color;
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 }
             }
 
             deleteNode(nodeId) {
+        this.recordBeforeModify('刪除節點');
                 this.nodes = this.nodes.filter(n => !this.compareId(n.id, nodeId));
                 this.connections = this.connections.filter(c => !this.compareId(c.from, nodeId) && !this.compareId(c.to, nodeId));
-                this.markModified();
+                this.markAsModified();
                 this.render();
             }
 
             deleteFrame(frameId) {
+        this.recordBeforeModify('刪除框架');
                 this.frames = this.frames.filter(f => !this.compareId(f.id, frameId));
                 this.connections = this.connections.filter(c => !this.compareId(c.from, frameId) && !this.compareId(c.to, frameId));
-                this.markModified();
+                this.markAsModified();
                 this.render();
             }
 
             bringFrameToFront(frameId) {
+        this.recordBeforeModify('將框架移到最前');
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (!frame) return;
 
@@ -2599,11 +2860,12 @@
                 const maxZIndex = Math.max(...this.frames.map(f => f.zIndex !== undefined ? f.zIndex : 0));
                 frame.zIndex = maxZIndex + 1;
 
-                this.markModified();
+                this.markAsModified();
                 this.render();
             }
 
             sendFrameToBack(frameId) {
+        this.recordBeforeModify('將框架移到最後');
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (!frame) return;
 
@@ -2611,35 +2873,38 @@
                 const minZIndex = Math.min(...this.frames.map(f => f.zIndex !== undefined ? f.zIndex : 0));
                 frame.zIndex = minZIndex - 1;
 
-                this.markModified();
+                this.markAsModified();
                 this.render();
             }
 
             bringFrameForward(frameId) {
+        this.recordBeforeModify('將框架向前移');
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (!frame) return;
 
                 const currentZIndex = frame.zIndex !== undefined ? frame.zIndex : 0;
                 frame.zIndex = currentZIndex + 1;
 
-                this.markModified();
+                this.markAsModified();
                 this.render();
             }
 
             sendFrameBackward(frameId) {
+        this.recordBeforeModify('將框架向後移');
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (!frame) return;
 
                 const currentZIndex = frame.zIndex !== undefined ? frame.zIndex : 0;
                 frame.zIndex = currentZIndex - 1;
 
-                this.markModified();
+                this.markAsModified();
                 this.render();
             }
 
             deleteConnection(connectionId) {
+        this.recordBeforeModify('刪除連接線');
                 this.connections = this.connections.filter(c => !this.compareId(c.id, connectionId));
-                this.markModified();
+                this.markAsModified();
                 this.render();
             }
 
@@ -2686,6 +2951,7 @@
             }
 
             deleteSelectedElements() {
+        this.recordBeforeModify('刪除選取的元素');
                 if (this.selectedElements.size === 0) {
                     return;
                 }
@@ -2705,6 +2971,7 @@
             }
 
             paste() {
+        this.recordBeforeModify('貼上元素');
                 if (!this.clipboard || !this.currentMap) {
                     return;
                 }
@@ -2717,7 +2984,7 @@
                     newNode.x += 30;
                     newNode.y += 30;
                     this.nodes.push(newNode);
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 } else if (this.clipboard.type === 'frame') {
                     // 複製 frame
@@ -2727,7 +2994,7 @@
                     newFrame.x += 30;
                     newFrame.y += 30;
                     this.frames.push(newFrame);
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 } else if (this.clipboard.type === 'multiple') {
                     // 複製多個元素
@@ -2769,12 +3036,13 @@
                         }
                     }
 
-                    this.markModified();
+                    this.markAsModified();
                     this.render();
                 }
             }
 
             createConnection(fromNode, toNode) {
+        this.recordBeforeModify('建立連接線');
                 const connection = {
                     id: 'conn-' + Date.now(),
                     from: fromNode.id,
@@ -2784,7 +3052,7 @@
                     color: '#2c3e50'
                 };
                 this.connections.push(connection);
-                this.markModified();
+                this.markAsModified();
                 this.render();
             }
 
@@ -2795,6 +3063,9 @@
 
                 this.modalMode = mode;
 
+                // 確保編輯器可編輯
+                editor.contentEditable = 'true';
+
                 if (mode === 'plain') {
                     toolbar.style.display = 'none';
                     editor.innerText = currentText;
@@ -2804,7 +3075,11 @@
                 }
 
                 modal.style.display = 'block';
-                editor.focus();
+
+                // 延遲 focus 以確保編輯器已準備好
+                setTimeout(() => {
+                    editor.focus();
+                }, 0);
 
                 this.modalCallback = callback;
             }
