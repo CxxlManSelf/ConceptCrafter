@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 2.6.2 概念圖製造機</title>
+    <title>Concept Crafter 2.6.3 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -832,6 +832,8 @@
             <ul>
                 <li><strong>Ctrl+C</strong>：複製選取的節點或 Frame（需先右鍵點擊選取）</li>
                 <li><strong>Ctrl+V</strong>：貼上複製的內容</li>
+                <li><strong>Ctrl+Z</strong>：撤銷上一步操作</li>
+                <li><strong>Ctrl+Y</strong>：重做已撤銷的操作</li>
             </ul>
 
             <h3>9. 快捷提示</h3>
@@ -845,6 +847,15 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.6.3</strong>
+                    <ul>
+                        <li>🔄 新增 Undo/Redo 功能：支援 Ctrl+Z 撤銷、Ctrl+Y 重做</li>
+                        <li>📚 每個 Map 獨立的歷史記錄堆棧（50 步）</li>
+                        <li>🎯 智能批量操作：拖動和調整大小視為單一操作</li>
+                        <li>✨ 完整支援所有編輯操作的撤銷/重做</li>
+                        <li>🐛 修復編輯對話框無法輸入的問題</li>
+                    </ul>
+                </li>
                 <li><strong>v2.6.1</strong>
                     <ul>
                         <li>新增 Map 資訊修改功能：可在 Map 列表中編輯標題</li>
