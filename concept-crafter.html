@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 2.6.3 概念圖製造機</title>
+    <title>Concept Crafter 2.6.4 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -847,6 +847,14 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.6.4</strong>
+                    <ul>
+                        <li>🔗 新增連接線驗證功能：防止建立無效的自我連接</li>
+                        <li>✅ 起點和終點不能是同一個節點或 Frame</li>
+                        <li>💡 嘗試建立自我連接時會顯示提示訊息</li>
+                        <li>🎯 提升概念圖的邏輯正確性</li>
+                    </ul>
+                </li>
                 <li><strong>v2.6.3</strong>
                     <ul>
                         <li>🔄 新增 Undo/Redo 功能：支援 Ctrl+Z 撤銷、Ctrl+Y 重做</li>
@@ -3255,6 +3263,12 @@
             }
 
             createConnection(fromNode, toNode) {
+                // 驗證起點和終點不能是同一個元素
+                if (fromNode.id === toNode.id) {
+                    alert('連接線的起點和終點不能是同一個節點或框架');
+                    return;
+                }
+
                 this.recordBeforeModify('建立連接線');
                 const connection = {
                     id: 'conn-' + Date.now(),
