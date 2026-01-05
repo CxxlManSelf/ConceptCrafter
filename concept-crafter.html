@@ -589,6 +589,22 @@
         </div>
     </div>
 
+    <div id="node-link-modal" class="modal">
+        <div class="modal-content">
+            <h2>編輯節點連結</h2>
+            <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                設定節點的超連結，在生成的 map 檔案中點擊節點即可導航到此連結。
+            </p>
+            <label for="node-link-url-input">連結網址：</label>
+            <input type="text" id="node-link-url-input" placeholder="https://example.com 或 ./page.html"
+                style="margin-bottom: 15px;">
+            <div class="modal-buttons">
+                <button id="node-link-cancel">取消</button>
+                <button id="node-link-ok">確定</button>
+            </div>
+        </div>
+    </div>
+
     <div id="new-map-modal" class="modal">
         <div class="modal-content">
             <h2>建立新 Map</h2>
@@ -964,6 +980,7 @@
 
                 this.clipboard = null; // 用於複製貼上功能
                 this.isHtmlMode = false; // 富文本編輯器的 HTML 模式狀態
+                this.currentEditingNodeId = null; // 用於節點連結編輯
 
                 // 讀取當前頁面的 icon data URL
                 const iconLink = document.querySelector('link[rel="icon"]');
@@ -1122,6 +1139,10 @@
                 // Link Modal
                 document.getElementById('link-modal-ok').addEventListener('click', () => this.linkModalOk());
                 document.getElementById('link-modal-cancel').addEventListener('click', () => this.linkModalCancel());
+
+                // Node Link Modal
+                document.getElementById('node-link-ok').addEventListener('click', () => this.nodeLinkModalOk());
+                document.getElementById('node-link-cancel').addEventListener('click', () => this.nodeLinkModalCancel());
 
                 // New Map Modal
                 document.getElementById('new-map-ok').addEventListener('click', () => this.newMapModalOk());
@@ -1952,6 +1973,28 @@
                                     el.appendChild(badge);
                                 }
 
+                                // 節點連結功能：如果節點有連結，點擊節點就導航
+                                if (node.link && node.link.trim()) {
+                                    el.style.cursor = 'pointer';
+                                    el.addEventListener('click', (e) => {
+                                        // 如果點擊的是文字中的連結，不要導航節點連結
+                                        if (e.target.closest && e.target.closest('a')) return;
+
+                                        const link = node.link.trim();
+                                        // 判斷是否為專案內的 HTML 文件
+                                        const isProjectHtml = !link.match(/^[a-zA-Z]+:\\/\\//) &&
+                                                              !link.match(/^\\//) &&
+                                                              !link.match(/^[a-zA-Z]:[\\//\\\\]/) &&
+                                                              link.match(/\\.html?$/i);
+
+                                        if (isProjectHtml) {
+                                            window.location.href = link;
+                                        } else {
+                                            window.open(link, '_blank', 'noopener,noreferrer');
+                                        }
+                                    });
+                                }
+
                                 this.canvas.appendChild(el);
                             });
 
@@ -2217,7 +2260,8 @@
                     color: '#3498db',
                     completed: false,
                     abandoned: false,
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    link: ''
                 };
                 this.nodes.push(node);
                 this.markAsModified();
@@ -2614,6 +2658,7 @@
 
                 this.contextMenu.innerHTML = `
                     <div class="context-menu-item" onclick="app.editNodeText('${node.id}')">編輯文字</div>
+                    <div class="context-menu-item" onclick="app.editNodeLink('${node.id}')">編輯連結</div>
                     <div class="context-menu-item" onclick="app.copyNode('${node.id}')">複製節點 (Ctrl+C)</div>
                     <div class="context-menu-item context-menu-submenu">
                         變更顏色
@@ -2727,6 +2772,23 @@
                         alert('編輯節點文字失敗: ' + error.message);
                     }
                 });
+            }
+
+            editNodeLink(nodeId) {
+                const node = this.nodes.find(n => this.compareId(n.id, nodeId));
+                if (!node) return;
+
+                this.currentEditingNodeId = nodeId;
+                const modal = document.getElementById('node-link-modal');
+                const urlInput = document.getElementById('node-link-url-input');
+
+                urlInput.value = node.link || '';
+                modal.style.display = 'block';
+
+                setTimeout(() => {
+                    urlInput.focus();
+                    urlInput.select();
+                }, 100);
             }
 
             editFrameLabel(frameId) {
@@ -3211,6 +3273,29 @@
 
             linkModalCancel() {
                 document.getElementById('link-modal').style.display = 'none';
+            }
+
+            nodeLinkModalOk() {
+                const urlInput = document.getElementById('node-link-url-input');
+                const url = urlInput.value.trim();
+
+                if (!this.currentEditingNodeId) return;
+
+                const node = this.nodes.find(n => this.compareId(n.id, this.currentEditingNodeId));
+                if (node) {
+                    this.recordBeforeModify('編輯節點連結');
+                    node.link = url;
+                    this.markAsModified();
+                    this.render();
+                }
+
+                document.getElementById('node-link-modal').style.display = 'none';
+                this.currentEditingNodeId = null;
+            }
+
+            nodeLinkModalCancel() {
+                document.getElementById('node-link-modal').style.display = 'none';
+                this.currentEditingNodeId = null;
             }
 
             resetHtmlMode() {
