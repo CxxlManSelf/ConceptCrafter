@@ -697,6 +697,32 @@
         </div>
     </div>
 
+    <div id="node-link-modal" class="modal">
+        <div class="modal-content">
+            <h2>編輯節點連結</h2>
+            <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                設定節點的超連結，在生成的 map 檔案中點擊節點即可導航到此連結。
+            </p>
+            <label for="node-link-url-input">連結網址：</label>
+            <input type="text" id="node-link-url-input" placeholder="https://example.com 或 ./page.html"
+                style="margin-bottom: 15px;">
+            <div class="modal-buttons">
+                <button id="node-link-cancel">取消</button>
+                <button id="node-link-ok">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h2 style="color: #e74c3c;">⚠️ 錯誤</h2>
+            <p id="error-message" style="margin: 20px 0; font-size: 16px;"></p>
+            <div class="modal-buttons">
+                <button id="error-ok" style="background: #3498db;">確定</button>
+            </div>
+        </div>
+    </div>
+
     <div id="help-modal" class="modal">
         <div class="modal-content">
             <h2>Concept Crafter 使用說明</h2>
@@ -1061,6 +1087,7 @@
                 this.dragOffset = { x: 0, y: 0 };
 
                 this.clipboard = null; // 用於複製貼上功能
+                this.currentEditingNodeId = null; // 用於節點連結編輯
                 this.isHtmlMode = false; // 富文本編輯器的 HTML 模式狀態
 
                 // 初始化歷史管理器
@@ -1237,6 +1264,15 @@
                     if (e.key === 'Enter') this.linkModalOk();
                 });
 
+                // Node Link Modal
+                document.getElementById('node-link-ok').addEventListener('click', () => this.nodeLinkModalOk());
+                document.getElementById('node-link-cancel').addEventListener('click', () => this.nodeLinkModalCancel());
+
+                // Error Modal
+                document.getElementById('error-ok').addEventListener('click', () => {
+                    document.getElementById('error-modal').style.display = 'none';
+                });
+
                 // Recent Projects Modal
                 document.getElementById('recent-projects-browse').addEventListener('click', () => this.browseForFolder());
                 document.getElementById('recent-projects-cancel').addEventListener('click', () => {
@@ -1409,9 +1445,29 @@
                 this.updateButtonStates();
             }
 
+            showError(message, callback) {
+                const modal = document.getElementById('error-modal');
+                const messageEl = document.getElementById('error-message');
+                const okBtn = document.getElementById('error-ok');
+
+                messageEl.textContent = message;
+                modal.style.display = 'block';
+
+                if (callback) {
+                    const handler = () => {
+                        modal.style.display = 'none';
+                        okBtn.removeEventListener('click', handler);
+                        callback();
+                    };
+                    okBtn.addEventListener('click', handler);
+                }
+
+                setTimeout(() => okBtn.focus(), 100);
+            }
+
             createNewMap() {
                 if (!this.projectPath) {
-                    alert('請先選擇專案資料夾');
+                    this.showError('請先選擇專案資料夾');
                     return;
                 }
 
@@ -1433,7 +1489,10 @@
 
                 const title = titleInput.value.trim();
                 if (!title) {
-                    alert('請輸入 Map 標題');
+                    this.showError('請輸入 Map 標題', () => {
+                        titleInput.focus();
+                        titleInput.select();
+                    });
                     return;
                 }
 
@@ -1441,7 +1500,10 @@
 
                 // Check for duplicate in map list
                 if (this.maps.some(m => m.name === filename)) {
-                    alert(`Map "${filename}" 已經在列表中。請使用不同的檔案名稱。`);
+                    this.showError(`Map "${filename}" 已經在列表中。請使用不同的檔案名稱。`, () => {
+                        filenameInput.focus();
+                        filenameInput.select();
+                    });
                     return;
                 }
 
@@ -1451,7 +1513,10 @@
                     const filePath = `${this.projectPath}${separator}${filename}.html`;
                     const exists = await window.electronAPI.fileExists(filePath);
                     if (exists) {
-                        alert(`檔案 "${filename}.html" 已存在於專案資料夾中。請使用不同的檔案名稱。`);
+                        this.showError(`檔案 "${filename}.html" 已存在於專案資料夾中。請使用不同的檔案名稱。`, () => {
+                            filenameInput.focus();
+                            filenameInput.select();
+                        });
                         return;
                     }
                 }
@@ -2033,6 +2098,28 @@
                                     }
                                 });
 
+                                // 節點連結功能：如果節點有連結，點擊節點就導航
+                                if (node.link && node.link.trim()) {
+                                    el.style.cursor = 'pointer';
+                                    el.addEventListener('click', (e) => {
+                                        // 如果點擊的是文字中的連結，不要導航節點連結
+                                        if (e.target.closest && e.target.closest('a')) return;
+
+                                        const link = node.link.trim();
+                                        // 判斷是否為專案內的 HTML 文件
+                                        const isProjectHtml = !link.match(/^[a-zA-Z]+:\\/\\//) &&
+                                                              !link.match(/^\\//) &&
+                                                              !link.match(/^[a-zA-Z]:[\\//\\\\]/) &&
+                                                              link.match(/\\.html?$/i);
+
+                                        if (isProjectHtml) {
+                                            window.location.href = link;
+                                        } else {
+                                            window.open(link, '_blank', 'noopener,noreferrer');
+                                        }
+                                    });
+                                }
+
                                 // Add status badges
                                 if (node.completed || node.abandoned) {
                                     const badge = document.createElement('div');
@@ -2400,7 +2487,8 @@
                     color: '#3498db',
                     completed: false,
                     abandoned: false,
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    link: ''
                 };
                 this.nodes.push(node);
                 this.markAsModified();
@@ -2859,6 +2947,7 @@
 
                 this.contextMenu.innerHTML = `
                     <div class="context-menu-item" onclick="app.editNodeText('${node.id}')">編輯文字</div>
+                    <div class="context-menu-item" onclick="app.editNodeLink('${node.id}')">編輯連結</div>
                     <div class="context-menu-item" onclick="app.copyNode('${node.id}')">複製節點 (Ctrl+C)</div>
                     <div class="context-menu-item context-menu-submenu">
                         變更顏色
@@ -2967,6 +3056,46 @@
                     this.markAsModified();
                     this.render();
                 });
+            }
+
+            editNodeLink(nodeId) {
+                const node = this.nodes.find(n => this.compareId(n.id, nodeId));
+                if (!node) return;
+
+                this.currentEditingNodeId = nodeId;
+                const modal = document.getElementById('node-link-modal');
+                const urlInput = document.getElementById('node-link-url-input');
+
+                urlInput.value = node.link || '';
+                modal.style.display = 'block';
+
+                setTimeout(() => {
+                    urlInput.focus();
+                    urlInput.select();
+                }, 100);
+            }
+
+            nodeLinkModalOk() {
+                const urlInput = document.getElementById('node-link-url-input');
+                const url = urlInput.value.trim();
+
+                if (!this.currentEditingNodeId) return;
+
+                const node = this.nodes.find(n => this.compareId(n.id, this.currentEditingNodeId));
+                if (node) {
+                    this.recordBeforeModify('編輯節點連結');
+                    node.link = url;
+                    this.markAsModified();
+                    this.render();
+                }
+
+                document.getElementById('node-link-modal').style.display = 'none';
+                this.currentEditingNodeId = null;
+            }
+
+            nodeLinkModalCancel() {
+                document.getElementById('node-link-modal').style.display = 'none';
+                this.currentEditingNodeId = null;
             }
 
             editFrameLabel(frameId) {
