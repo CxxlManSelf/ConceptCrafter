@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 2.6.4 概念圖製造機</title>
+    <title>Concept Crafter 2.6.5 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -796,6 +796,16 @@
                         </li>
                     </ul>
                 </li>
+                <li><strong>節點連結功能</strong>：
+                    <ul>
+                        <li><strong>設定節點連結</strong>：右鍵點擊節點，選擇「編輯連結」選項，即可為節點設定超連結。</li>
+                        <li><strong>連結網址</strong>：輸入目標網址或路徑，例如 <code>https://example.com</code> 或 <code>./page.html</code>。</li>
+                        <li><strong>點擊導航</strong>：在生成的 map 檔案中，點擊設有連結的節點即可導航到該連結。</li>
+                        <li><strong>專案內 HTML</strong>：使用相對路徑的 HTML 文件（如 <code>./page.html</code>）會在同一視窗開啟，方便專案內導覽。</li>
+                        <li><strong>外部連結</strong>：HTTP/HTTPS 網址、絕對路徑等會在新視窗開啟。</li>
+                        <li><strong>智能避免衝突</strong>：如果節點文字中包含超連結，點擊文字中的連結會正常跳轉，不會觸發節點連結。</li>
+                    </ul>
+                </li>
             </ul>
 
             <h3>4. 連接與關聯</h3>
@@ -873,6 +883,15 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.6.5</strong>
+                    <ul>
+                        <li>🔗 新增節點超連結功能：節點可設定超連結，點擊節點即可導航</li>
+                        <li>📝 右鍵選單新增「編輯連結」選項</li>
+                        <li>🌐 自動區分專案內部 HTML（同視窗）與外部連結（新視窗）</li>
+                        <li>🎯 避免與節點文字中的超連結衝突</li>
+                        <li>📄 生成的 map 檔案完整支援節點連結功能</li>
+                    </ul>
+                </li>
                 <li><strong>v2.6.4</strong>
                     <ul>
                         <li>🔗 新增連接線驗證功能：防止建立無效的自我連接</li>
