@@ -767,6 +767,37 @@
             background: #c0392b;
         }
 
+        /* ==================== 選擇 Map 項目樣式 ==================== */
+        .select-map-item {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .select-map-item:hover {
+            border-color: var(--primary-color);
+            background: #e3f2fd;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+        }
+
+        .select-map-item-title {
+            font-weight: 600;
+            color: var(--secondary-color);
+            font-size: 16px;
+        }
+
+        .select-map-item-filename {
+            font-size: 12px;
+            color: var(--gray-color);
+        }
+
         /* ==================== 載入動畫 ==================== */
         .loading {
             display: none;
@@ -975,6 +1006,21 @@
         </div>
     </div>
 
+    <!-- 選擇要載入的 Map 對話框 -->
+    <div class="modal" id="modal-select-map">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">選擇要載入的 Map</div>
+            <div style="max-height: 400px; overflow-y: auto; margin: 20px 0;">
+                <div id="select-map-list" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Map 選項會動態插入 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal secondary" id="btn-cancel-select-map">取消</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 載入動畫 -->
     <div class="loading" id="loading">
         <div class="spinner"></div>
@@ -1087,10 +1133,7 @@
             }
 
             if (btnLoadMap) {
-                btnLoadMap.addEventListener('click', async () => {
-                    await loadProjectMapList();
-                    alert('已載入資料夾中的 Map 列表');
-                });
+                btnLoadMap.addEventListener('click', showSelectMapModal);
                 console.log('✓ 載入 Map 按鈕監聽器已綁定');
             }
 
@@ -1105,6 +1148,9 @@
             // 修改 Map 資訊對話框
             document.getElementById('btn-cancel-edit-map').addEventListener('click', hideEditMapModal);
             document.getElementById('btn-confirm-edit-map').addEventListener('click', confirmEditMap);
+
+            // 選擇 Map 對話框
+            document.getElementById('btn-cancel-select-map').addEventListener('click', hideSelectMapModal);
 
             // 工具按鈕
             document.getElementById('btn-add-node').addEventListener('click', addNode);
@@ -1200,6 +1246,97 @@
             document.getElementById('modal-edit-map').classList.remove('active');
             document.getElementById('input-edit-map-title').value = '';
             document.getElementById('input-edit-file-name').value = '';
+        }
+
+        async function showSelectMapModal() {
+            if (!currentProjectHandle) {
+                alert('請先選擇專案資料夾');
+                return;
+            }
+
+            const selectMapList = document.getElementById('select-map-list');
+            selectMapList.innerHTML = '<div style="text-align: center; color: var(--gray-color); padding: 20px;">正在掃描 Map 檔案...</div>';
+
+            // 顯示對話框
+            document.getElementById('modal-select-map').classList.add('active');
+
+            try {
+                const mapFiles = [];
+
+                // 掃描資料夾中的所有 HTML 檔案
+                for await (const entry of currentProjectHandle.values()) {
+                    if (entry.kind === 'file' && entry.name.endsWith('.html')) {
+                        // 讀取檔案以獲取標題
+                        try {
+                            const fileHandle = await currentProjectHandle.getFileHandle(entry.name);
+                            const file = await fileHandle.getFile();
+                            const content = await file.text();
+
+                            // 解析 HTML 中的 JSON 數據
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(content, 'text/html');
+                            const dataScript = doc.getElementById('map-data');
+
+                            let title = entry.name.replace('.html', '');
+                            if (dataScript) {
+                                try {
+                                    const mapData = JSON.parse(dataScript.textContent);
+                                    title = mapData.title || title;
+                                } catch (e) {
+                                    // 如果無法解析,使用檔案名稱
+                                }
+                            }
+
+                            mapFiles.push({
+                                fileName: entry.name,
+                                title: title
+                            });
+                        } catch (err) {
+                            console.error(`讀取檔案 ${entry.name} 失敗:`, err);
+                        }
+                    }
+                }
+
+                if (mapFiles.length === 0) {
+                    selectMapList.innerHTML = `
+                        <div style="text-align: center; color: var(--gray-color); padding: 40px;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">📭</div>
+                            <div>資料夾中沒有 Map 檔案</div>
+                            <div style="font-size: 12px; margin-top: 10px;">請先建立新的概念圖</div>
+                        </div>
+                    `;
+                } else {
+                    // 顯示 Map 列表
+                    selectMapList.innerHTML = '';
+                    mapFiles.forEach(mapFile => {
+                        const item = document.createElement('div');
+                        item.className = 'select-map-item';
+                        item.innerHTML = `
+                            <div class="select-map-item-title">${mapFile.title}</div>
+                            <div class="select-map-item-filename">📄 ${mapFile.fileName}</div>
+                        `;
+                        item.addEventListener('click', () => {
+                            loadMap(mapFile.fileName);
+                            hideSelectMapModal();
+                        });
+                        selectMapList.appendChild(item);
+                    });
+                }
+            } catch (err) {
+                console.error('掃描 Map 檔案失敗:', err);
+                selectMapList.innerHTML = `
+                    <div style="text-align: center; color: var(--accent-color); padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+                        <div>讀取檔案失敗</div>
+                        <div style="font-size: 12px; margin-top: 10px;">${err.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function hideSelectMapModal() {
+            document.getElementById('modal-select-map').classList.remove('active');
+            document.getElementById('select-map-list').innerHTML = '';
         }
 
         async function confirmEditMap() {
@@ -1542,8 +1679,34 @@
                     // 清除變動狀態
                     delete mapModifiedStatus[fileName];
 
-                    // 更新列表
-                    await loadProjectMapList();
+                    // 檢查該 Map 是否已在列表中
+                    const mapList = document.getElementById('map-list');
+                    const existingItem = mapList.querySelector(`[data-filename="${fileName}"]`);
+
+                    if (!existingItem) {
+                        // 如果列表為空(有空白訊息),先清除
+                        const emptyMsg = mapList.querySelector('.map-list-empty');
+                        if (emptyMsg) {
+                            mapList.innerHTML = '';
+                        }
+
+                        // 添加到列表中
+                        const newItem = createMapListItem(fileName);
+                        mapList.appendChild(newItem);
+                    } else {
+                        // 更新所有項目的 active 狀態
+                        document.querySelectorAll('.map-item').forEach(item => {
+                            const itemFileName = item.querySelector('[data-filename]').dataset.filename;
+                            if (itemFileName === fileName) {
+                                item.classList.add('active');
+                            } else {
+                                item.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    // 切換到編輯標籤
+                    switchTab('edit');
 
                     console.log('載入成功:', fileName);
                 } else {
@@ -1591,8 +1754,16 @@
                 // 清除變動狀態
                 delete mapModifiedStatus[fileName];
 
-                // 更新列表
-                await loadProjectMapList();
+                // 更新列表顯示(只更新該項目的顯示狀態)
+                const mapItem = document.querySelector(`[data-filename="${fileName}"]`);
+                if (mapItem) {
+                    const parentItem = mapItem.closest('.map-item');
+                    if (parentItem) {
+                        // 重新創建列表項以移除「儲存」按鈕和「已修改」標籤
+                        const newItem = createMapListItem(fileName);
+                        parentItem.replaceWith(newItem);
+                    }
+                }
 
                 console.log('儲存成功:', fileName);
                 alert('儲存成功！');
@@ -1619,8 +1790,25 @@
             // 從狀態中移除
             delete mapModifiedStatus[fileName];
 
-            // 重新載入列表
-            loadProjectMapList();
+            // 從 DOM 中移除該項目
+            const mapItem = document.querySelector(`[data-filename="${fileName}"]`);
+            if (mapItem) {
+                const parentItem = mapItem.closest('.map-item');
+                if (parentItem) {
+                    parentItem.remove();
+                }
+            }
+
+            // 如果列表為空,顯示空白訊息
+            const mapList = document.getElementById('map-list');
+            if (mapList.children.length === 0) {
+                mapList.innerHTML = `
+                    <div class="map-list-empty">
+                        資料夾中沒有 Map 檔案<br><br>
+                        請點擊「新增 Map」建立新的概念圖
+                    </div>
+                `;
+            }
         }
 
         async function confirmDelete() {
@@ -1645,11 +1833,28 @@
                 // 從狀態中移除
                 delete mapModifiedStatus[deleteTargetFileName];
 
+                // 從 DOM 中移除該項目
+                const mapItem = document.querySelector(`[data-filename="${deleteTargetFileName}"]`);
+                if (mapItem) {
+                    const parentItem = mapItem.closest('.map-item');
+                    if (parentItem) {
+                        parentItem.remove();
+                    }
+                }
+
+                // 如果列表為空,顯示空白訊息
+                const mapList = document.getElementById('map-list');
+                if (mapList.children.length === 0) {
+                    mapList.innerHTML = `
+                        <div class="map-list-empty">
+                            資料夾中沒有 Map 檔案<br><br>
+                            請點擊「新增 Map」建立新的概念圖
+                        </div>
+                    `;
+                }
+
                 console.log('刪除成功:', deleteTargetFileName);
                 alert('刪除成功！');
-
-                // 重新載入列表
-                await loadProjectMapList();
             } catch (err) {
                 console.error('刪除失敗:', err);
                 alert('刪除失敗，請重試');
@@ -1873,7 +2078,17 @@
         function markMapAsModified() {
             if (currentFileName) {
                 mapModifiedStatus[currentFileName] = true;
-                loadProjectMapList(); // 更新列表顯示
+
+                // 只更新該項目的顯示狀態
+                const mapItem = document.querySelector(`[data-filename="${currentFileName}"]`);
+                if (mapItem) {
+                    const parentItem = mapItem.closest('.map-item');
+                    if (parentItem) {
+                        // 重新創建列表項以顯示「儲存」按鈕和「已修改」標籤
+                        const newItem = createMapListItem(currentFileName);
+                        parentItem.replaceWith(newItem);
+                    }
+                }
             }
         }
 
