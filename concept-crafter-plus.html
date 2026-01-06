@@ -1,0 +1,2339 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept-Crafter Plus v1.0</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --purple-color: #9b59b6;
+            --gray-color: #95a5a6;
+            --bg-color: #f0f0f0;
+            --sidebar-width: 380px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
+            background: var(--bg-color);
+        }
+
+        /* ==================== 主容器 ==================== */
+        #app {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* ==================== 側邊欄 ==================== */
+        #sidebar {
+            width: var(--sidebar-width);
+            background: white;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        #sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        /* 側邊欄標題 */
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .version-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .menu-toggle-sidebar {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+
+        .menu-toggle-sidebar:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 標籤頁 */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e0e0e0;
+            background: #fafafa;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--gray-color);
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab:hover {
+            background: #f0f0f0;
+        }
+
+        .tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            background: white;
+        }
+
+        .tab-icon {
+            margin-right: 5px;
+        }
+
+        /* 標籤內容 */
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ==================== 列表標籤 ==================== */
+        .list-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .list-actions-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .list-actions-row .btn-action {
+            flex: 1;
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-action.primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-action.primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-action.success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-action.success:hover {
+            background: #229954;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+
+        .btn-action.secondary {
+            background: white;
+            color: var(--secondary-color);
+            border: 2px solid #e0e0e0;
+        }
+
+        .btn-action.secondary:hover {
+            background: #f9f9f9;
+            border-color: var(--primary-color);
+        }
+
+        .btn-action:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .btn-action.primary:disabled,
+        .btn-action.success:disabled,
+        .btn-action.secondary:disabled {
+            background: #e0e0e0;
+            color: #95a5a6;
+            border-color: #e0e0e0;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* 專案資料夾顯示 */
+        .project-folder-info {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            border: 2px solid var(--primary-color);
+            display: none;
+        }
+
+        .project-folder-info.active {
+            display: block;
+        }
+
+        .project-folder-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .project-folder-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--secondary-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-change-folder {
+            margin-left: auto;
+            padding: 4px 12px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-change-folder:hover {
+            background: #2980b9;
+        }
+
+        /* Map 列表 */
+        .map-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .map-list-empty {
+            text-align: center;
+            color: var(--gray-color);
+            margin-top: 40px;
+            padding: 20px;
+        }
+
+        .map-item {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+            overflow: hidden;
+        }
+
+        .map-item:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+        }
+
+        .map-item.active {
+            border-color: var(--primary-color);
+            background: #e3f2fd;
+        }
+
+        .map-item-header {
+            padding: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .map-item-info {
+            flex: 1;
+        }
+
+        .map-item-title {
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+
+        .map-item-meta {
+            font-size: 12px;
+            color: var(--gray-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .map-item-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .map-item-status.modified {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .map-item-actions {
+            display: flex;
+            gap: 8px;
+            padding: 0 15px 15px 15px;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 10px;
+            margin-top: -5px;
+        }
+
+        .map-item-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .map-item-btn.save {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .map-item-btn.save:hover {
+            background: #229954;
+        }
+
+        .map-item-btn.remove {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .map-item-btn.remove:hover {
+            background: #e67e22;
+        }
+
+        .map-item-btn.delete {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .map-item-btn.delete:hover {
+            background: #c0392b;
+        }
+
+        /* ==================== 編輯標籤 ==================== */
+        .toolbar-section {
+            margin-bottom: 20px;
+        }
+
+        .toolbar-section h3 {
+            font-size: 14px;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .toolbar-btn {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .toolbar-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .toolbar-btn.primary {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .toolbar-btn.primary:hover {
+            background: #2980b9;
+        }
+
+        .toolbar-btn.purple {
+            background: var(--purple-color);
+            color: white;
+            border-color: var(--purple-color);
+        }
+
+        .toolbar-btn.orange {
+            background: var(--warning-color);
+            color: white;
+            border-color: var(--warning-color);
+        }
+
+        .toolbar-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* 屬性編輯器 */
+        .property-editor {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .property-editor-empty {
+            text-align: center;
+            color: var(--gray-color);
+            padding: 20px;
+        }
+
+        .property-group {
+            margin-bottom: 15px;
+        }
+
+        .property-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+        }
+
+        .property-input,
+        .property-select,
+        .property-textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .property-input:focus,
+        .property-select:focus,
+        .property-textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .property-textarea {
+            min-height: 80px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .color-picker-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .color-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+        }
+
+        /* ==================== 主畫布區域 ==================== */
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* 畫布容器 */
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+            background:
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 19px,
+                    rgba(0, 0, 0, 0.03) 19px,
+                    rgba(0, 0, 0, 0.03) 20px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 19px,
+                    rgba(0, 0, 0, 0.03) 19px,
+                    rgba(0, 0, 0, 0.03) 20px
+                );
+        }
+
+        #canvas-container.grabbing {
+            cursor: grabbing;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+            position: relative;
+        }
+
+        /* SVG 連接線層 */
+        #svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 50;
+            overflow: visible;
+        }
+
+        /* 畫布標題顯示 */
+        .canvas-title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--secondary-color);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* 節點 */
+        .node {
+            position: absolute;
+            background: var(--primary-color);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            user-select: none;
+            cursor: move;
+            transition: box-shadow 0.3s;
+            min-width: 100px;
+            min-height: 50px;
+        }
+
+        .node:hover {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        .node.selected {
+            box-shadow: 0 0 0 3px var(--warning-color);
+        }
+
+        /* 框架 */
+        .frame {
+            position: absolute;
+            border: 2px dashed var(--gray-color);
+            background: rgba(149, 165, 166, 0.1);
+            border-radius: 4px;
+            cursor: move;
+            user-select: none;
+        }
+
+        .frame:hover {
+            border-color: var(--primary-color);
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        .frame.selected {
+            border-color: var(--warning-color);
+            border-width: 3px;
+        }
+
+        .frame-label {
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--secondary-color);
+            pointer-events: none;
+        }
+
+        /* 狀態徽章 */
+        .status-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+
+        .status-completed {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .status-abandoned {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        /* ==================== 響應式設計 ==================== */
+        @media (max-width: 768px) {
+            #sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100vh;
+                z-index: 200;
+            }
+
+            #sidebar.hidden {
+                transform: translateX(-100%);
+            }
+
+            .canvas-title {
+                font-size: 14px;
+                padding: 8px 12px;
+            }
+        }
+
+        /* ==================== 對話框 ==================== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .btn-modal {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-modal.primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-modal.primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-modal.secondary {
+            background: #e0e0e0;
+            color: var(--secondary-color);
+        }
+
+        .btn-modal.secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-modal.danger {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-modal.danger:hover {
+            background: #c0392b;
+        }
+
+        /* ==================== 載入動畫 ==================== */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 側邊欄 -->
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">
+                    <h1>Concept-Crafter Plus</h1>
+                    <span class="version-badge">v1.0</span>
+                </div>
+                <button class="menu-toggle-sidebar" id="menu-toggle-sidebar">☰</button>
+            </div>
+
+            <!-- 標籤頁 -->
+            <div class="tabs">
+                <div class="tab active" data-tab="list">
+                    <span class="tab-icon">📁</span> 列表
+                </div>
+                <div class="tab" data-tab="edit">
+                    <span class="tab-icon">🛠️</span> 編輯
+                </div>
+            </div>
+
+            <!-- 列表標籤內容 -->
+            <div class="tab-content active" id="list-tab">
+                <!-- 專案資料夾資訊 -->
+                <div class="project-folder-info" id="project-folder-info">
+                    <div class="project-folder-label">📂 當前專案資料夾</div>
+                    <div class="project-folder-name">
+                        <span id="project-folder-name">未選擇</span>
+                        <button class="btn-change-folder" id="btn-change-folder">更換</button>
+                    </div>
+                </div>
+
+                <div class="list-actions">
+                    <button class="btn-action primary" id="btn-select-folder">
+                        <span>📂</span> 選擇專案資料夾
+                    </button>
+                    <div class="list-actions-row">
+                        <button class="btn-action success" id="btn-new-map" disabled>
+                            <span>➕</span> 新增 Map
+                        </button>
+                        <button class="btn-action secondary" id="btn-load-map" disabled>
+                            <span>📥</span> 載入 Map
+                        </button>
+                    </div>
+                </div>
+
+                <div class="map-list" id="map-list">
+                    <div class="map-list-empty">
+                        尚未選擇專案資料夾<br><br>
+                        請點擊「選擇專案資料夾」開始使用
+                    </div>
+                </div>
+            </div>
+
+            <!-- 編輯標籤內容 -->
+            <div class="tab-content" id="edit-tab">
+                <!-- 復原/重做 -->
+                <div class="toolbar-section">
+                    <div class="toolbar-buttons">
+                        <button class="toolbar-btn" id="btn-undo">
+                            <span>↶</span> 復原
+                        </button>
+                        <button class="toolbar-btn" id="btn-redo">
+                            <span>↷</span> 重做
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 新增/操作 -->
+                <div class="toolbar-section">
+                    <h3><span>🎨</span> 新增/操作</h3>
+                    <div class="toolbar-buttons">
+                        <button class="toolbar-btn primary" id="btn-add-node">
+                            <span>➕</span> 節點
+                        </button>
+                        <button class="toolbar-btn primary" id="btn-add-frame">
+                            <span>➕</span> 框架
+                        </button>
+                        <button class="toolbar-btn purple" id="btn-add-connection">
+                            <span>🔗</span> 連接
+                        </button>
+                        <button class="toolbar-btn orange" id="btn-multi-select">
+                            <span>⬚</span> 多選
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 複製/貼上 -->
+                <div class="toolbar-section">
+                    <div class="toolbar-buttons">
+                        <button class="toolbar-btn disabled" id="btn-copy">
+                            <span>📋</span> 複製
+                        </button>
+                        <button class="toolbar-btn disabled" id="btn-paste">
+                            <span>📄</span> 貼上
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 屬性編輯 -->
+                <div class="toolbar-section">
+                    <h3><span>✏️</span> 屬性編輯</h3>
+                    <div class="property-editor" id="property-editor">
+                        <div class="property-editor-empty">
+                            請選擇一個元素來編輯屬性
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主內容區 -->
+        <main id="main-content">
+            <!-- 畫布容器 -->
+            <div id="canvas-container">
+                <div class="canvas-title" id="canvas-title">未載入概念圖</div>
+                <svg id="svg-layer"></svg>
+                <div id="canvas"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 新增概念圖對話框 -->
+    <div class="modal" id="modal-new-map">
+        <div class="modal-content">
+            <div class="modal-header">建立新的概念圖</div>
+            <div class="property-group">
+                <label class="property-label">概念圖標題：</label>
+                <input type="text" class="property-input" id="input-map-title" placeholder="輸入概念圖標題">
+            </div>
+            <div class="property-group">
+                <label class="property-label">檔案名稱（選填）：</label>
+                <input type="text" class="property-input" id="input-file-name" placeholder="留空則自動生成">
+                <small style="color: var(--gray-color); font-size: 12px;">例如：my-map.html</small>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal secondary" id="btn-cancel-new-map">取消</button>
+                <button class="btn-modal primary" id="btn-confirm-new-map">建立</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 確認刪除對話框 -->
+    <div class="modal" id="modal-confirm-delete">
+        <div class="modal-content">
+            <div class="modal-header">確認刪除</div>
+            <p style="color: var(--secondary-color); margin-bottom: 20px;">
+                確定要永久刪除這個 Map 檔案嗎？<br>
+                <strong id="delete-file-name" style="color: var(--accent-color);"></strong><br><br>
+                此操作無法復原！
+            </p>
+            <div class="modal-footer">
+                <button class="btn-modal secondary" id="btn-cancel-delete">取消</button>
+                <button class="btn-modal danger" id="btn-confirm-delete">刪除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改 Map 資訊對話框 -->
+    <div class="modal" id="modal-edit-map">
+        <div class="modal-content">
+            <div class="modal-header">修改 Map 資訊</div>
+            <div class="property-group">
+                <label class="property-label">概念圖標題：</label>
+                <input type="text" class="property-input" id="input-edit-map-title" placeholder="輸入概念圖標題">
+            </div>
+            <div class="property-group">
+                <label class="property-label">檔案名稱：</label>
+                <input type="text" class="property-input" id="input-edit-file-name" placeholder="檔案名稱" readonly>
+                <small style="color: var(--gray-color); font-size: 12px;">檔案名稱不可修改，但可以複製</small>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal secondary" id="btn-cancel-edit-map">取消</button>
+                <button class="btn-modal primary" id="btn-confirm-edit-map">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 載入動畫 -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- 主應用程式腳本 -->
+    <script>
+        // ==================== 全局變數 ====================
+        let currentProjectHandle = null; // 專案資料夾 Handle
+        let currentMapData = null; // 當前 Map 數據
+        let currentFileName = null; // 當前檔案名稱
+        let selectedElement = null; // 當前選中的元素
+        let history = []; // 歷史記錄
+        let historyIndex = -1; // 歷史記錄索引
+        let clipboard = null; // 剪貼簿
+        let mapModifiedStatus = {}; // 追蹤每個 Map 的變動狀態
+        let deleteTargetFileName = null; // 待刪除的檔案名稱
+        let editTargetFileName = null; // 待修改的檔案名稱
+
+        // 畫布狀態
+        let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isPanning = false;
+        let panStart = { x: 0, y: 0 };
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+        });
+
+        function initApp() {
+            console.log('🚀 Concept-Crafter Plus 啟動中...');
+            console.log('📍 當前 URL:', window.location.href);
+            console.log('🌐 User Agent:', navigator.userAgent);
+
+            // 檢查瀏覽器支援
+            const isSupported = checkBrowserSupport();
+            if (!isSupported) {
+                console.warn('⚠️ 瀏覽器不支援必要的 API');
+            }
+
+            // 初始化事件監聽器
+            initEventListeners();
+
+            // 初始化畫布
+            initCanvas();
+
+            console.log('✅ 應用程式已準備就緒');
+            console.log('💡 提示：打開瀏覽器開發者工具 (F12) 查看詳細日誌');
+        }
+
+        // ==================== 瀏覽器支援檢查 ====================
+        function checkBrowserSupport() {
+            if (!window.showDirectoryPicker) {
+                console.error('❌ File System Access API not supported');
+                console.log('當前瀏覽器:', navigator.userAgent);
+                console.log('當前協議:', window.location.protocol);
+                return false;
+            }
+            console.log('✓ File System Access API supported');
+            return true;
+        }
+
+        // ==================== 事件監聽器 ====================
+        function initEventListeners() {
+            console.log('🔧 正在初始化事件監聽器...');
+
+            // 標籤切換
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+
+            // 選單切換
+            const menuToggle = document.getElementById('menu-toggle-sidebar');
+            if (menuToggle) {
+                menuToggle.addEventListener('click', toggleSidebar);
+                console.log('✓ 選單切換監聽器已綁定');
+            }
+
+            // 專案管理
+            const btnSelectFolder = document.getElementById('btn-select-folder');
+            const btnChangeFolder = document.getElementById('btn-change-folder');
+            const btnNewMap = document.getElementById('btn-new-map');
+            const btnLoadMap = document.getElementById('btn-load-map');
+
+            if (btnSelectFolder) {
+                btnSelectFolder.addEventListener('click', (e) => {
+                    console.log('🖱️ 點擊了「選擇專案資料夾」按鈕');
+                    e.preventDefault();
+                    selectProjectFolder();
+                });
+                console.log('✓ 選擇資料夾按鈕監聽器已綁定');
+            } else {
+                console.error('❌ 找不到 btn-select-folder 元素');
+            }
+
+            if (btnChangeFolder) {
+                btnChangeFolder.addEventListener('click', (e) => {
+                    console.log('🖱️ 點擊了「更換」按鈕');
+                    e.preventDefault();
+                    selectProjectFolder();
+                });
+                console.log('✓ 更換資料夾按鈕監聽器已綁定');
+            }
+
+            if (btnNewMap) {
+                btnNewMap.addEventListener('click', showNewMapModal);
+                console.log('✓ 新增 Map 按鈕監聽器已綁定');
+            }
+
+            if (btnLoadMap) {
+                btnLoadMap.addEventListener('click', async () => {
+                    await loadProjectMapList();
+                    alert('已載入資料夾中的 Map 列表');
+                });
+                console.log('✓ 載入 Map 按鈕監聽器已綁定');
+            }
+
+            // 新增概念圖對話框
+            document.getElementById('btn-cancel-new-map').addEventListener('click', hideNewMapModal);
+            document.getElementById('btn-confirm-new-map').addEventListener('click', createNewMap);
+
+            // 刪除確認對話框
+            document.getElementById('btn-cancel-delete').addEventListener('click', hideDeleteModal);
+            document.getElementById('btn-confirm-delete').addEventListener('click', confirmDelete);
+
+            // 修改 Map 資訊對話框
+            document.getElementById('btn-cancel-edit-map').addEventListener('click', hideEditMapModal);
+            document.getElementById('btn-confirm-edit-map').addEventListener('click', confirmEditMap);
+
+            // 工具按鈕
+            document.getElementById('btn-add-node').addEventListener('click', addNode);
+            document.getElementById('btn-add-frame').addEventListener('click', addFrame);
+            document.getElementById('btn-undo').addEventListener('click', undo);
+            document.getElementById('btn-redo').addEventListener('click', redo);
+        }
+
+        // ==================== UI 控制 ====================
+        function switchTab(tabName) {
+            // 更新標籤樣式
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.tab === tabName);
+            });
+
+            // 更新內容顯示
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.toggle('active', content.id === `${tabName}-tab`);
+            });
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('hidden');
+        }
+
+        function showNewMapModal() {
+            // 這個檢查已經不需要，因為按鈕在未選擇資料夾時是 disabled 的
+            document.getElementById('modal-new-map').classList.add('active');
+            document.getElementById('input-map-title').focus();
+        }
+
+        function hideNewMapModal() {
+            document.getElementById('modal-new-map').classList.remove('active');
+            document.getElementById('input-map-title').value = '';
+            document.getElementById('input-file-name').value = '';
+        }
+
+        function showDeleteModal(fileName) {
+            deleteTargetFileName = fileName;
+            document.getElementById('delete-file-name').textContent = fileName;
+            document.getElementById('modal-confirm-delete').classList.add('active');
+        }
+
+        function hideDeleteModal() {
+            deleteTargetFileName = null;
+            document.getElementById('modal-confirm-delete').classList.remove('active');
+        }
+
+        async function showEditMapModal(fileName) {
+            editTargetFileName = fileName;
+
+            // 如果是當前正在編輯的 Map，直接從記憶體取得標題
+            if (currentFileName === fileName && currentMapData) {
+                document.getElementById('input-edit-map-title').value = currentMapData.title || '';
+            } else {
+                // 否則從檔案讀取
+                try {
+                    const fileHandle = await currentProjectHandle.getFileHandle(fileName);
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
+
+                    // 解析 HTML 中的 JSON 數據
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(content, 'text/html');
+                    const dataScript = doc.getElementById('map-data');
+
+                    if (dataScript) {
+                        const mapData = JSON.parse(dataScript.textContent);
+                        document.getElementById('input-edit-map-title').value = mapData.title || '';
+                    } else {
+                        // 如果無法解析，使用檔案名稱（去掉 .html）作為預設標題
+                        document.getElementById('input-edit-map-title').value = fileName.replace('.html', '');
+                    }
+                } catch (err) {
+                    console.error('讀取 Map 檔案失敗:', err);
+                    // 使用檔案名稱作為預設標題
+                    document.getElementById('input-edit-map-title').value = fileName.replace('.html', '');
+                }
+            }
+
+            // 設置檔案名稱（唯讀）
+            document.getElementById('input-edit-file-name').value = fileName;
+
+            // 顯示對話框
+            document.getElementById('modal-edit-map').classList.add('active');
+            document.getElementById('input-edit-map-title').focus();
+            // 選取標題文字，方便使用者修改
+            document.getElementById('input-edit-map-title').select();
+        }
+
+        function hideEditMapModal() {
+            editTargetFileName = null;
+            document.getElementById('modal-edit-map').classList.remove('active');
+            document.getElementById('input-edit-map-title').value = '';
+            document.getElementById('input-edit-file-name').value = '';
+        }
+
+        async function confirmEditMap() {
+            if (!editTargetFileName) return;
+
+            const newTitle = document.getElementById('input-edit-map-title').value.trim();
+            if (!newTitle) {
+                alert('請輸入概念圖標題');
+                return;
+            }
+
+            try {
+                // 檢查檔案是否存在
+                let fileExists = true;
+                try {
+                    await currentProjectHandle.getFileHandle(editTargetFileName, { create: false });
+                } catch (err) {
+                    if (err.name === 'NotFoundError') {
+                        fileExists = false;
+                    } else {
+                        throw err;
+                    }
+                }
+
+                if (!fileExists) {
+                    // 檔案不存在（新創建但未儲存的 Map）
+                    if (currentFileName === editTargetFileName && currentMapData) {
+                        // 直接更新記憶體中的數據
+                        currentMapData.title = newTitle;
+                        document.getElementById('canvas-title').textContent = newTitle;
+
+                        console.log(`✓ Map 標題已更新（記憶體）：${newTitle}`);
+                        alert('Map 標題已更新！\n\n注意：此 Map 尚未儲存到檔案系統，請記得儲存。');
+                    } else {
+                        alert('無法更新：檔案不存在且不在編輯狀態中。');
+                    }
+                } else {
+                    // 檔案存在，從檔案讀取並更新
+                    const fileHandle = await currentProjectHandle.getFileHandle(editTargetFileName);
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
+
+                    // 解析並更新標題
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(content, 'text/html');
+                    const dataScript = doc.getElementById('map-data');
+
+                    if (dataScript) {
+                        const mapData = JSON.parse(dataScript.textContent);
+                        mapData.title = newTitle;
+
+                        // 生成新的 HTML 內容
+                        const newHtml = generateMapHTML(mapData);
+
+                        // 寫入檔案
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(newHtml);
+                        await writable.close();
+
+                        // 如果當前正在編輯此 Map，更新記憶體中的數據
+                        if (currentFileName === editTargetFileName) {
+                            currentMapData.title = newTitle;
+                            document.getElementById('canvas-title').textContent = newTitle;
+                        }
+
+                        console.log(`✓ Map 標題已更新（檔案）：${newTitle}`);
+                        alert('Map 資訊已成功更新！');
+                    } else {
+                        alert('無法解析 Map 檔案');
+                    }
+                }
+            } catch (err) {
+                console.error('更新 Map 失敗:', err);
+                alert('更新失敗：' + err.message);
+            }
+
+            hideEditMapModal();
+        }
+
+        // ==================== 專案管理 ====================
+        async function selectProjectFolder() {
+            console.log('🔍 selectProjectFolder() 被調用');
+
+            // 檢查瀏覽器支援
+            if (!window.showDirectoryPicker) {
+                alert('您的瀏覽器不支援 File System Access API\n\n請使用：\n- Chrome 86+\n- Edge 86+\n- Opera 72+\n\n或確認：\n1. 使用 HTTPS 或 localhost\n2. 允許網頁存取檔案系統');
+                return;
+            }
+
+            try {
+                console.log('📂 正在打開資料夾選擇對話框...');
+
+                // 參考 concept-crafter.html 的做法：不傳入 options
+                currentProjectHandle = await window.showDirectoryPicker();
+
+                console.log('✓ 已選擇資料夾:', currentProjectHandle.name);
+
+                // 更新 UI：顯示資料夾資訊
+                document.getElementById('project-folder-info').classList.add('active');
+                document.getElementById('project-folder-name').textContent = currentProjectHandle.name;
+                document.getElementById('btn-select-folder').style.display = 'none';
+
+                // 啟用「新增 Map」和「載入 Map」按鈕
+                document.getElementById('btn-new-map').disabled = false;
+                document.getElementById('btn-load-map').disabled = false;
+
+                console.log('✓ 資料夾選擇完成，可以開始使用');
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    console.log('ℹ️ 使用者取消選擇資料夾');
+                } else if (err.name === 'SecurityError') {
+                    console.error('❌ 安全錯誤:', err);
+                    alert('無法訪問檔案系統。\n\n請確認：\n1. 使用 HTTPS 或 localhost\n2. 瀏覽器已允許存取權限');
+                } else {
+                    console.error('❌ 選擇資料夾失敗:', err);
+                    alert('選擇資料夾失敗：' + err.message + '\n\n請重試或查看控制台了解詳情。');
+                }
+            }
+        }
+
+        async function createNewMap() {
+            const title = document.getElementById('input-map-title').value.trim();
+            let fileName = document.getElementById('input-file-name').value.trim();
+
+            if (!title) {
+                alert('請輸入概念圖標題');
+                return;
+            }
+
+            // 自動生成檔案名稱
+            if (!fileName) {
+                fileName = `${title.replace(/\s+/g, '-').toLowerCase()}.html`;
+            }
+
+            // 確保副檔名為 .html
+            if (!fileName.endsWith('.html')) {
+                fileName += '.html';
+            }
+
+            // 檢查 Map 列表中是否已存在
+            const mapList = document.getElementById('map-list');
+            const existingItem = mapList.querySelector(`[data-filename="${fileName}"]`);
+            if (existingItem) {
+                alert(`列表中已存在檔案「${fileName}」！\n\n請使用不同的檔案名稱。`);
+                return;
+            }
+
+            // 檢查資料夾中檔案是否已存在
+            try {
+                const existingFile = await currentProjectHandle.getFileHandle(fileName, { create: false });
+                if (existingFile) {
+                    alert(`資料夾中已存在檔案「${fileName}」！\n\n請使用不同的檔案名稱，或從列表中載入現有檔案進行編輯。`);
+                    return;
+                }
+            } catch (err) {
+                // 如果檔案不存在，會拋出 NotFoundError，這是預期的
+                if (err.name !== 'NotFoundError') {
+                    console.error('檢查檔案時發生錯誤:', err);
+                    alert('檢查檔案時發生錯誤：' + err.message);
+                    return;
+                }
+                // 檔案不存在，可以繼續創建
+            }
+
+            // 建立新的 Map 數據
+            currentMapData = {
+                title: title,
+                data: {
+                    nodes: [],
+                    frames: [],
+                    connections: []
+                }
+            };
+
+            currentFileName = fileName;
+
+            // 標記為已修改（新增的 Map 需要儲存）
+            mapModifiedStatus[fileName] = true;
+
+            // 更新 UI
+            document.getElementById('canvas-title').textContent = title;
+            hideNewMapModal();
+
+            // 清空畫布
+            renderCanvas();
+
+            // 初始化歷史記錄
+            history = [JSON.stringify(currentMapData)];
+            historyIndex = 0;
+
+            // 添加到列表中（使用之前已聲明的 mapList 變量）
+            // 如果列表中有空白提示訊息，先清除
+            const emptyMsg = mapList.querySelector('.map-list-empty');
+            if (emptyMsg) {
+                mapList.innerHTML = '';
+            }
+            // 創建並添加新的列表項（會顯示儲存按鈕，因為已標記為已修改）
+            const newItem = createMapListItem(fileName);
+            mapList.appendChild(newItem);
+
+            // 切換到編輯標籤
+            switchTab('edit');
+
+            console.log('✓ 新 Map 已創建，可以開始編輯');
+        }
+
+        async function loadProjectMapList() {
+            if (!currentProjectHandle) return;
+
+            const mapList = document.getElementById('map-list');
+            mapList.innerHTML = '';
+
+            const mapFiles = [];
+
+            try {
+                for await (const entry of currentProjectHandle.values()) {
+                    if (entry.kind === 'file' && entry.name.endsWith('.html')) {
+                        mapFiles.push(entry.name);
+                    }
+                }
+
+                if (mapFiles.length === 0) {
+                    mapList.innerHTML = `
+                        <div class="map-list-empty">
+                            資料夾中沒有 Map 檔案<br><br>
+                            請點擊「新增 Map」建立新的概念圖
+                        </div>
+                    `;
+                } else {
+                    mapFiles.forEach(fileName => {
+                        const mapItem = createMapListItem(fileName);
+                        mapList.appendChild(mapItem);
+                    });
+                }
+            } catch (err) {
+                console.error('讀取專案列表失敗:', err);
+            }
+        }
+
+        function createMapListItem(fileName) {
+            const div = document.createElement('div');
+            div.className = 'map-item';
+            if (fileName === currentFileName) {
+                div.classList.add('active');
+            }
+
+            const title = fileName.replace('.html', '');
+            const isModified = mapModifiedStatus[fileName] || false;
+
+            div.innerHTML = `
+                <div class="map-item-header" data-filename="${fileName}">
+                    <div class="map-item-info">
+                        <div class="map-item-title">${title}</div>
+                        <div class="map-item-meta">
+                            <span>${fileName}</span>
+                            ${isModified ? '<span class="map-item-status modified">● 已修改</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="map-item-actions">
+                    ${isModified ? `<button class="map-item-btn save" data-action="save" data-filename="${fileName}">
+                        <span>💾</span> 儲存
+                    </button>` : ''}
+                    <button class="map-item-btn edit" data-action="edit" data-filename="${fileName}">
+                        <span>✏️</span> 修改
+                    </button>
+                    <button class="map-item-btn remove" data-action="remove" data-filename="${fileName}">
+                        <span>✖</span> 移除
+                    </button>
+                    <button class="map-item-btn delete" data-action="delete" data-filename="${fileName}">
+                        <span>🗑️</span> 刪除
+                    </button>
+                </div>
+            `;
+
+            // 點擊標題載入 Map
+            div.querySelector('.map-item-header').addEventListener('click', () => {
+                loadMap(fileName);
+            });
+
+            // 操作按鈕事件
+            div.querySelectorAll('[data-action]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const action = btn.dataset.action;
+                    const file = btn.dataset.filename;
+
+                    if (action === 'save') {
+                        saveSpecificMap(file);
+                    } else if (action === 'edit') {
+                        showEditMapModal(file);
+                    } else if (action === 'remove') {
+                        removeMapFromList(file);
+                    } else if (action === 'delete') {
+                        showDeleteModal(file);
+                    }
+                });
+            });
+
+            return div;
+        }
+
+        async function loadMap(fileName) {
+            if (!currentProjectHandle) return;
+
+            // 如果當前 Map 有變動，提示保存
+            if (currentFileName && mapModifiedStatus[currentFileName]) {
+                const shouldSave = confirm(`當前 Map "${currentFileName}" 尚未儲存，是否要先儲存？`);
+                if (shouldSave) {
+                    await saveCurrentMap();
+                }
+            }
+
+            showLoading();
+
+            try {
+                const fileHandle = await currentProjectHandle.getFileHandle(fileName);
+                const file = await fileHandle.getFile();
+                const content = await file.text();
+
+                // 解析 HTML 中的 JSON 數據
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(content, 'text/html');
+                const dataScript = doc.getElementById('map-data');
+
+                if (dataScript) {
+                    currentMapData = JSON.parse(dataScript.textContent);
+                    currentFileName = fileName;
+
+                    // 更新 UI
+                    document.getElementById('canvas-title').textContent = currentMapData.title;
+
+                    // 重新渲染畫布
+                    renderCanvas();
+
+                    // 重置歷史記錄
+                    history = [JSON.stringify(currentMapData)];
+                    historyIndex = 0;
+
+                    // 清除變動狀態
+                    delete mapModifiedStatus[fileName];
+
+                    // 更新列表
+                    await loadProjectMapList();
+
+                    console.log('載入成功:', fileName);
+                } else {
+                    alert('無法解析 Map 數據，檔案格式可能不正確');
+                }
+            } catch (err) {
+                console.error('載入 Map 失敗:', err);
+                alert('載入失敗，請重試');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function saveCurrentMap() {
+            if (!currentProjectHandle || !currentMapData || !currentFileName) {
+                alert('沒有可儲存的內容');
+                return;
+            }
+
+            return await saveMapToFile(currentFileName, currentMapData);
+        }
+
+        async function saveSpecificMap(fileName) {
+            if (fileName === currentFileName) {
+                await saveCurrentMap();
+            } else {
+                alert('只能儲存當前載入的 Map');
+            }
+        }
+
+        async function saveMapToFile(fileName, mapData) {
+            showLoading();
+
+            try {
+                const fileHandle = await currentProjectHandle.getFileHandle(fileName, {
+                    create: true
+                });
+
+                const writable = await fileHandle.createWritable();
+                const htmlContent = generateMapHTML(mapData);
+
+                await writable.write(htmlContent);
+                await writable.close();
+
+                // 清除變動狀態
+                delete mapModifiedStatus[fileName];
+
+                // 更新列表
+                await loadProjectMapList();
+
+                console.log('儲存成功:', fileName);
+                alert('儲存成功！');
+            } catch (err) {
+                console.error('儲存失敗:', err);
+                alert('儲存失敗，請重試');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function removeMapFromList(fileName) {
+            if (fileName === currentFileName) {
+                const shouldClose = confirm(`"${fileName}" 是當前載入的 Map，確定要移除嗎？\n\n移除後將清空畫布（檔案不會被刪除）`);
+                if (!shouldClose) return;
+
+                // 清空當前狀態
+                currentMapData = null;
+                currentFileName = null;
+                document.getElementById('canvas-title').textContent = '未載入概念圖';
+                renderCanvas();
+            }
+
+            // 從狀態中移除
+            delete mapModifiedStatus[fileName];
+
+            // 重新載入列表
+            loadProjectMapList();
+        }
+
+        async function confirmDelete() {
+            if (!deleteTargetFileName || !currentProjectHandle) {
+                hideDeleteModal();
+                return;
+            }
+
+            showLoading();
+
+            try {
+                await currentProjectHandle.removeEntry(deleteTargetFileName);
+
+                // 如果刪除的是當前 Map，清空畫布
+                if (deleteTargetFileName === currentFileName) {
+                    currentMapData = null;
+                    currentFileName = null;
+                    document.getElementById('canvas-title').textContent = '未載入概念圖';
+                    renderCanvas();
+                }
+
+                // 從狀態中移除
+                delete mapModifiedStatus[deleteTargetFileName];
+
+                console.log('刪除成功:', deleteTargetFileName);
+                alert('刪除成功！');
+
+                // 重新載入列表
+                await loadProjectMapList();
+            } catch (err) {
+                console.error('刪除失敗:', err);
+                alert('刪除失敗，請重試');
+            } finally {
+                hideLoading();
+                hideDeleteModal();
+            }
+        }
+
+        // ==================== 畫布管理 ====================
+        function initCanvas() {
+            const container = document.getElementById('canvas-container');
+            const canvas = document.getElementById('canvas');
+
+            // 平移事件
+            container.addEventListener('mousedown', (e) => {
+                if (e.target === container || e.target === canvas) {
+                    isPanning = true;
+                    panStart = { x: e.clientX, y: e.clientY };
+                    container.classList.add('grabbing');
+                }
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (isPanning) {
+                    offsetX += e.clientX - panStart.x;
+                    offsetY += e.clientY - panStart.y;
+                    panStart = { x: e.clientX, y: e.clientY };
+                    renderCanvas();
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                isPanning = false;
+                container.classList.remove('grabbing');
+            });
+
+            // 縮放事件
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                const rect = container.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                offsetX = mouseX - (mouseX - offsetX) * delta;
+                offsetY = mouseY - (mouseY - offsetY) * delta;
+                scale *= delta;
+                scale = Math.max(0.1, Math.min(5, scale));
+                renderCanvas();
+            });
+
+            // 初始化 SVG 尺寸
+            updateSVGSize();
+            window.addEventListener('resize', updateSVGSize);
+        }
+
+        function updateSVGSize() {
+            const container = document.getElementById('canvas-container');
+            const svg = document.getElementById('svg-layer');
+            const rect = container.getBoundingClientRect();
+            svg.setAttribute('width', rect.width);
+            svg.setAttribute('height', rect.height);
+        }
+
+        function renderCanvas() {
+            const canvas = document.getElementById('canvas');
+            const svg = document.getElementById('svg-layer');
+
+            canvas.innerHTML = '';
+            svg.innerHTML = '';
+
+            if (!currentMapData) return;
+
+            // 應用變換
+            canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+
+            // 渲染框架
+            currentMapData.data.frames.forEach(frame => renderFrame(frame));
+
+            // 渲染節點
+            currentMapData.data.nodes.forEach(node => renderNode(node));
+
+            // 渲染連接線
+            renderConnections();
+        }
+
+        function renderNode(node) {
+            const canvas = document.getElementById('canvas');
+            const nodeEl = document.createElement('div');
+            nodeEl.className = 'node';
+            nodeEl.dataset.id = node.id;
+            nodeEl.style.left = node.x + 'px';
+            nodeEl.style.top = node.y + 'px';
+            nodeEl.style.width = node.width + 'px';
+            nodeEl.style.height = node.height + 'px';
+            nodeEl.style.background = node.color || '#3498db';
+            nodeEl.style.textAlign = node.textAlign || 'center';
+            nodeEl.innerHTML = node.text || '';
+
+            canvas.appendChild(nodeEl);
+        }
+
+        function renderFrame(frame) {
+            const canvas = document.getElementById('canvas');
+            const frameEl = document.createElement('div');
+            frameEl.className = 'frame';
+            frameEl.dataset.id = frame.id;
+            frameEl.style.left = frame.x + 'px';
+            frameEl.style.top = frame.y + 'px';
+            frameEl.style.width = frame.width + 'px';
+            frameEl.style.height = frame.height + 'px';
+            frameEl.style.borderColor = frame.borderColor || '#95a5a6';
+            frameEl.style.background = frame.bgColor || 'rgba(149, 165, 166, 0.1)';
+            frameEl.style.zIndex = frame.zIndex || 0;
+
+            if (frame.label) {
+                const label = document.createElement('div');
+                label.className = 'frame-label';
+                label.textContent = frame.label;
+                frameEl.appendChild(label);
+            }
+
+            canvas.appendChild(frameEl);
+        }
+
+        function renderConnections() {
+            // 後續實現連接線繪製
+        }
+
+        // ==================== 元素操作 ====================
+        function addNode() {
+            if (!currentMapData) {
+                alert('請先建立或開啟一個概念圖');
+                return;
+            }
+
+            const node = {
+                id: 'node-' + Date.now(),
+                x: Math.max(0, (window.innerWidth / 2 - offsetX) / scale - 100),
+                y: Math.max(0, (window.innerHeight / 2 - offsetY) / scale - 50),
+                width: 200,
+                height: 100,
+                text: '新節點',
+                color: '#3498db',
+                textAlign: 'center',
+                completed: false,
+                abandoned: false,
+                link: ''
+            };
+
+            currentMapData.data.nodes.push(node);
+            renderCanvas();
+            saveHistory();
+            markMapAsModified();
+        }
+
+        function addFrame() {
+            if (!currentMapData) {
+                alert('請先建立或開啟一個概念圖');
+                return;
+            }
+
+            const frame = {
+                id: 'frame-' + Date.now(),
+                x: Math.max(0, (window.innerWidth / 2 - offsetX) / scale - 200),
+                y: Math.max(0, (window.innerHeight / 2 - offsetY) / scale - 150),
+                width: 400,
+                height: 300,
+                label: '新框架',
+                borderColor: '#95a5a6',
+                bgColor: 'rgba(149, 165, 166, 0.1)',
+                zIndex: 0,
+                completed: false,
+                abandoned: false
+            };
+
+            currentMapData.data.frames.push(frame);
+            renderCanvas();
+            saveHistory();
+            markMapAsModified();
+        }
+
+        // ==================== 歷史記錄 ====================
+        function saveHistory() {
+            if (!currentMapData) return;
+
+            // 移除當前索引之後的歷史
+            history = history.slice(0, historyIndex + 1);
+
+            // 添加新的歷史記錄
+            history.push(JSON.stringify(currentMapData));
+            historyIndex++;
+
+            // 限制歷史記錄數量
+            if (history.length > 50) {
+                history.shift();
+                historyIndex--;
+            }
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                currentMapData = JSON.parse(history[historyIndex]);
+                renderCanvas();
+                markMapAsModified();
+            }
+        }
+
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                currentMapData = JSON.parse(history[historyIndex]);
+                renderCanvas();
+                markMapAsModified();
+            }
+        }
+
+        // ==================== 變動追蹤 ====================
+        function markMapAsModified() {
+            if (currentFileName) {
+                mapModifiedStatus[currentFileName] = true;
+                loadProjectMapList(); // 更新列表顯示
+            }
+        }
+
+        // ==================== 匯出功能 ====================
+        function generateMapHTML(mapData) {
+            // ⚠️ 重要：確保所有元素包含所有必須的屬性
+            const normalizedData = {
+                title: mapData.title,
+                data: {
+                    nodes: (mapData.data.nodes || []).map(node => ({
+                        id: node.id,
+                        x: node.x,
+                        y: node.y,
+                        width: node.width,
+                        height: node.height,
+                        text: node.text || '',
+                        color: node.color || '#3498db',
+                        textAlign: node.textAlign || 'center',
+                        completed: node.completed || false,
+                        abandoned: node.abandoned || false,
+                        link: node.link || ''
+                    })),
+                    frames: (mapData.data.frames || []).map(frame => ({
+                        id: frame.id,
+                        x: frame.x,
+                        y: frame.y,
+                        width: frame.width,
+                        height: frame.height,
+                        label: frame.label || '',
+                        borderColor: frame.borderColor || '#95a5a6',
+                        bgColor: frame.bgColor || 'rgba(149, 165, 166, 0.1)',
+                        zIndex: frame.zIndex || 0,
+                        completed: frame.completed || false,
+                        abandoned: frame.abandoned || false
+                    })),
+                    connections: (mapData.data.connections || []).map(conn => ({
+                        id: conn.id,
+                        from: conn.from,
+                        to: conn.to,
+                        arrowType: conn.arrowType || 'single',
+                        label: conn.label || '',
+                        color: conn.color || '#2c3e50'
+                    }))
+                }
+            };
+
+            // 使用 JSON.stringify 生成數據（符合規範）
+            const jsonString = JSON.stringify(normalizedData, null, 4);
+
+            // 注意：必須拆分 <script> 標籤，避免瀏覽器 HTML 解析器混淆
+            const scriptOpen = '<' + 'script';
+            const scriptClose = '</' + 'script>';
+
+            return `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>${normalizedData.title} - Concept Map Viewer</title>
+    <link rel="icon" type="image/png" href="./concept-crafter_icon.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+
+        #map-title {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            z-index: 1000;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            cursor: grab;
+        }
+
+        #container.grabbing {
+            cursor: grabbing;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+            position: relative;
+        }
+
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 50;
+            overflow: visible;
+        }
+
+        .node {
+            position: absolute;
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .frame {
+            position: absolute;
+            border: 2px dashed #95a5a6;
+            background: rgba(149, 165, 166, 0.1);
+            border-radius: 4px;
+        }
+
+        .frame-label {
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #7f8c8d;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .status-completed {
+            background: #27ae60;
+            color: white;
+        }
+
+        .status-abandoned {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .connection-label {
+            fill: #2c3e50;
+            font-weight: 600;
+            pointer-events: none;
+        }
+    </style>
+    ${scriptOpen} id="map-data" type="application/json">
+    ${jsonString}
+    ${scriptClose}>
+</head>
+<body>
+    <div id="map-title">${normalizedData.title}</div>
+    <div id="container">
+        <svg id="svg-layer"></svg>
+        <div id="canvas"></div>
+    </div>
+    ${scriptOpen}>
+        class MapViewer {
+            constructor() {
+                this.container = document.getElementById('container');
+                this.canvas = document.getElementById('canvas');
+                this.svgLayer = document.getElementById('svg-layer');
+
+                this.data = JSON.parse(document.getElementById('map-data').textContent);
+                this.nodes = this.data.data.nodes || [];
+                this.frames = this.data.data.frames || [];
+                this.connections = this.data.data.connections || [];
+
+                this.scale = 1;
+                this.offsetX = 0;
+                this.offsetY = 0;
+                this.isPanning = false;
+
+                this.init();
+            }
+
+            init() {
+                this.updateSVGSize();
+                this.setupEventListeners();
+                this.render();
+            }
+
+            setupEventListeners() {
+                this.container.addEventListener('mousedown', (e) => {
+                    this.isPanning = true;
+                    this.panStart = { x: e.clientX, y: e.clientY };
+                    this.container.classList.add('grabbing');
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    if (this.isPanning) {
+                        this.offsetX += e.clientX - this.panStart.x;
+                        this.offsetY += e.clientY - this.panStart.y;
+                        this.panStart = { x: e.clientX, y: e.clientY };
+                        this.render();
+                    }
+                });
+
+                window.addEventListener('mouseup', () => {
+                    this.isPanning = false;
+                    this.container.classList.remove('grabbing');
+                });
+
+                this.container.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                    const rect = this.container.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+
+                    this.offsetX = mouseX - (mouseX - this.offsetX) * delta;
+                    this.offsetY = mouseY - (mouseY - this.offsetY) * delta;
+                    this.scale *= delta;
+                    this.scale = Math.max(0.1, Math.min(5, this.scale));
+                    this.render();
+                });
+
+                window.addEventListener('resize', () => this.updateSVGSize());
+            }
+
+            render() {
+                this.canvas.innerHTML = '';
+                this.svgLayer.innerHTML = '';
+
+                const sortedFrames = [...this.frames].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+                sortedFrames.forEach(frame => this.renderFrame(frame));
+
+                this.nodes.forEach(node => this.renderNode(node));
+
+                this.updateConnections();
+
+                this.canvas.style.transform = \`translate(\${this.offsetX}px, \${this.offsetY}px) scale(\${this.scale})\`;
+            }
+
+            renderNode(node) {
+                const nodeEl = document.createElement('div');
+                nodeEl.className = 'node';
+                nodeEl.style.left = node.x + 'px';
+                nodeEl.style.top = node.y + 'px';
+                nodeEl.style.width = node.width + 'px';
+                nodeEl.style.height = node.height + 'px';
+                nodeEl.style.background = node.color || '#3498db';
+                nodeEl.style.textAlign = node.textAlign || 'center';
+                nodeEl.innerHTML = node.text || '';
+
+                if (node.completed || node.abandoned) {
+                    const badge = document.createElement('div');
+                    badge.className = \`status-badge \${node.completed ? 'status-completed' : 'status-abandoned'}\`;
+                    badge.textContent = node.completed ? '✓' : '✗';
+                    nodeEl.appendChild(badge);
+                }
+
+                this.canvas.appendChild(nodeEl);
+            }
+
+            renderFrame(frame) {
+                const frameEl = document.createElement('div');
+                frameEl.className = 'frame';
+                frameEl.style.left = frame.x + 'px';
+                frameEl.style.top = frame.y + 'px';
+                frameEl.style.width = frame.width + 'px';
+                frameEl.style.height = frame.height + 'px';
+                frameEl.style.borderColor = frame.borderColor || '#95a5a6';
+                frameEl.style.background = frame.bgColor || 'rgba(149, 165, 166, 0.1)';
+                frameEl.style.zIndex = frame.zIndex || 0;
+
+                if (frame.label) {
+                    const label = document.createElement('div');
+                    label.className = 'frame-label';
+                    label.textContent = frame.label;
+                    frameEl.appendChild(label);
+                }
+
+                if (frame.completed || frame.abandoned) {
+                    const badge = document.createElement('div');
+                    badge.className = \`status-badge \${frame.completed ? 'status-completed' : 'status-abandoned'}\`;
+                    badge.textContent = frame.completed ? '✓' : '✗';
+                    frameEl.appendChild(badge);
+                }
+
+                this.canvas.appendChild(frameEl);
+            }
+
+            updateConnections() {
+                const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+
+                const colors = new Set();
+                this.connections.forEach(conn => {
+                    colors.add(conn.color || '#2c3e50');
+                });
+
+                colors.forEach(color => {
+                    const colorId = color.replace('#', '');
+
+                    const markerSingle = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                    markerSingle.setAttribute('id', \`arrowhead-single-\${colorId}\`);
+                    markerSingle.setAttribute('markerWidth', '10');
+                    markerSingle.setAttribute('markerHeight', '10');
+                    markerSingle.setAttribute('refX', '9');
+                    markerSingle.setAttribute('refY', '3');
+                    markerSingle.setAttribute('orient', 'auto');
+                    const pathSingle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    pathSingle.setAttribute('d', 'M0,0 L0,6 L9,3 z');
+                    pathSingle.setAttribute('fill', color);
+                    markerSingle.appendChild(pathSingle);
+                    defs.appendChild(markerSingle);
+
+                    const markerDouble = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                    markerDouble.setAttribute('id', \`arrowhead-double-\${colorId}\`);
+                    markerDouble.setAttribute('markerWidth', '10');
+                    markerDouble.setAttribute('markerHeight', '10');
+                    markerDouble.setAttribute('refX', '0');
+                    markerDouble.setAttribute('refY', '3');
+                    markerDouble.setAttribute('orient', 'auto');
+                    const pathDouble = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    pathDouble.setAttribute('d', 'M9,0 L9,6 L0,3 z');
+                    pathDouble.setAttribute('fill', color);
+                    markerDouble.appendChild(pathDouble);
+                    defs.appendChild(markerDouble);
+                });
+
+                this.svgLayer.appendChild(defs);
+
+                this.connections.forEach(conn => {
+                    const fromNode = this.nodes.find(n => n.id === conn.from) ||
+                                     this.frames.find(f => f.id === conn.from);
+                    const toNode = this.nodes.find(n => n.id === conn.to) ||
+                                   this.frames.find(f => f.id === conn.to);
+                    if (!fromNode || !toNode) return;
+
+                    const fromCenter = {
+                        x: fromNode.x + fromNode.width / 2,
+                        y: fromNode.y + fromNode.height / 2
+                    };
+                    const toCenter = {
+                        x: toNode.x + toNode.width / 2,
+                        y: toNode.y + toNode.height / 2
+                    };
+
+                    const fromEdge = this.getEdgePoint(fromNode, fromCenter, toCenter);
+                    const toEdge = this.getEdgePoint(toNode, toCenter, fromCenter);
+
+                    const x1 = fromEdge.x * this.scale + this.offsetX;
+                    const y1 = fromEdge.y * this.scale + this.offsetY;
+                    const x2 = toEdge.x * this.scale + this.offsetX;
+                    const y2 = toEdge.y * this.scale + this.offsetY;
+
+                    const lineColor = conn.color || '#2c3e50';
+                    const colorId = lineColor.replace('#', '');
+
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', x1);
+                    line.setAttribute('y1', y1);
+                    line.setAttribute('x2', x2);
+                    line.setAttribute('y2', y2);
+                    line.setAttribute('stroke', lineColor);
+                    line.setAttribute('stroke-width', '2');
+
+                    if (conn.arrowType === 'single') {
+                        line.setAttribute('marker-end', \`url(#arrowhead-single-\${colorId})\`);
+                    } else if (conn.arrowType === 'double') {
+                        line.setAttribute('marker-start', \`url(#arrowhead-double-\${colorId})\`);
+                        line.setAttribute('marker-end', \`url(#arrowhead-single-\${colorId})\`);
+                    }
+
+                    this.svgLayer.appendChild(line);
+
+                    if (conn.label) {
+                        const midX = (x1 + x2) / 2;
+                        const midY = (y1 + y2) / 2;
+                        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        text.setAttribute('x', midX);
+                        text.setAttribute('y', midY - 5);
+                        text.setAttribute('text-anchor', 'middle');
+                        text.setAttribute('font-size', '12');
+                        text.setAttribute('class', 'connection-label');
+                        text.textContent = conn.label;
+                        this.svgLayer.appendChild(text);
+                    }
+                });
+            }
+
+            getEdgePoint(element, center, targetCenter) {
+                const dx = targetCenter.x - center.x;
+                const dy = targetCenter.y - center.y;
+
+                const halfWidth = element.width / 2;
+                const halfHeight = element.height / 2;
+
+                const angle = Math.atan2(dy, dx);
+
+                const corners = [
+                    { x: halfWidth, y: halfHeight },
+                    { x: -halfWidth, y: halfHeight },
+                    { x: -halfWidth, y: -halfHeight },
+                    { x: halfWidth, y: -halfHeight }
+                ];
+
+                const edgeAngles = corners.map((corner, i) => {
+                    const nextCorner = corners[(i + 1) % 4];
+                    return Math.atan2(corner.y, corner.x);
+                });
+
+                let edgeX, edgeY;
+
+                if (Math.abs(dx) / halfWidth > Math.abs(dy) / halfHeight) {
+                    edgeX = center.x + (dx > 0 ? halfWidth : -halfWidth);
+                    edgeY = center.y + (edgeX - center.x) * dy / dx;
+                } else {
+                    edgeY = center.y + (dy > 0 ? halfHeight : -halfHeight);
+                    edgeX = center.x + (edgeY - center.y) * dx / dy;
+                }
+
+                return { x: edgeX, y: edgeY };
+            }
+
+            updateSVGSize() {
+                const rect = this.container.getBoundingClientRect();
+                this.svgLayer.setAttribute('width', rect.width);
+                this.svgLayer.setAttribute('height', rect.height);
+            }
+        }
+
+        new MapViewer();
+    ${scriptClose}>
+</body>
+</html>`;
+        }
+
+        // ==================== 工具函數 ====================
+        function showLoading() {
+            document.getElementById('loading').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
