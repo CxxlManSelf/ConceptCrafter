@@ -31,14 +31,18 @@
 
         /* ==================== 主容器 ==================== */
         #app {
-            display: flex;
             width: 100vw;
             height: 100vh;
+            position: relative;
         }
 
         /* ==================== 側邊欄 ==================== */
         #sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
             width: var(--sidebar-width);
+            height: 100vh;
             background: white;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             display: flex;
@@ -49,6 +53,36 @@
 
         #sidebar.hidden {
             transform: translateX(-100%);
+        }
+
+        /* 浮動的側邊欄切換按鈕（當側邊欄隱藏時顯示） */
+        .floating-sidebar-toggle {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            z-index: 1000;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .floating-sidebar-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .floating-sidebar-toggle.show {
+            display: flex;
         }
 
         /* 側邊欄標題 */
@@ -528,7 +562,8 @@
 
         /* ==================== 主畫布區域 ==================== */
         #main-content {
-            flex: 1;
+            width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             position: relative;
@@ -582,7 +617,8 @@
         .canvas-title {
             position: absolute;
             top: 20px;
-            left: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             background: white;
             padding: 12px 20px;
             border-radius: 8px;
@@ -607,6 +643,9 @@
             transition: box-shadow 0.3s;
             min-width: 100px;
             min-height: 50px;
+            display: flex;
+            align-items: center;
+            /* justify-content 由 JavaScript 動態設置 */
         }
 
         .node:hover {
@@ -615,6 +654,12 @@
 
         .node.selected {
             box-shadow: 0 0 0 3px var(--warning-color);
+        }
+
+        /* 節點內的超連結不可點擊 */
+        .node a {
+            pointer-events: none;
+            cursor: default;
         }
 
         /* 框架 */
@@ -798,6 +843,135 @@
             color: var(--gray-color);
         }
 
+        /* ==================== 進階文字編輯器 ==================== */
+        .editor-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 8px 8px 0 0;
+            border-bottom: 2px solid #e0e0e0;
+            align-items: center;
+        }
+
+        .editor-btn {
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            min-width: 36px;
+        }
+
+        .editor-btn:hover {
+            background: #e8f4fd;
+            border-color: var(--primary-color);
+        }
+
+        .editor-btn:active,
+        .editor-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .editor-btn:disabled,
+        .editor-btn.disabled {
+            background: #f0f0f0;
+            color: #b0b0b0;
+            border-color: #e0e0e0;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .editor-btn:disabled:hover,
+        .editor-btn.disabled:hover {
+            background: #f0f0f0;
+            border-color: #e0e0e0;
+        }
+
+        .editor-select {
+            padding: 8px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .editor-select:disabled {
+            background: #f0f0f0;
+            color: #b0b0b0;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .editor-color {
+            width: 40px;
+            height: 36px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .editor-color:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .editor-divider {
+            width: 1px;
+            height: 24px;
+            background: #d0d0d0;
+            margin: 0 5px;
+        }
+
+        .editor-content {
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 0 0 8px 8px;
+            margin: 0;
+            font-size: 16px;
+            line-height: 1.6;
+            outline: none;
+        }
+
+        .editor-content:focus {
+            border-color: var(--primary-color);
+        }
+
+        .editor-content p {
+            margin: 0 0 10px 0;
+        }
+
+        .editor-content ul,
+        .editor-content ol {
+            margin: 10px 0;
+            padding-left: 30px;
+        }
+
+        .editor-content a {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+
+        /* HTML 模式樣式 */
+        .editor-content.html-mode {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            background: #f8f8f8;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
         /* ==================== 載入動畫 ==================== */
         .loading {
             display: none;
@@ -828,6 +1002,9 @@
     </style>
 </head>
 <body>
+    <!-- 浮動的側邊欄切換按鈕 -->
+    <button class="floating-sidebar-toggle" id="floating-sidebar-toggle">☰</button>
+
     <div id="app">
         <!-- 側邊欄 -->
         <aside id="sidebar">
@@ -1021,6 +1198,72 @@
         </div>
     </div>
 
+    <!-- 進階文字編輯對話框 -->
+    <div class="modal" id="modal-advanced-editor">
+        <div class="modal-content" style="max-width: 750px;">
+            <div class="modal-header">編輯文字內容</div>
+
+            <!-- 工具列 -->
+            <div class="editor-toolbar">
+                <button class="editor-btn format-btn" data-command="bold" title="粗體"><b>B</b></button>
+                <button class="editor-btn format-btn" data-command="italic" title="斜體"><i>I</i></button>
+                <button class="editor-btn format-btn" data-command="underline" title="底線"><u>U</u></button>
+                <button class="editor-btn format-btn" data-command="strikethrough" title="刪除線"><s>S</s></button>
+
+                <div class="editor-divider"></div>
+
+                <select class="editor-select format-btn" id="editor-font-size">
+                    <option value="1">最小</option>
+                    <option value="2">較小</option>
+                    <option value="3" selected>標準</option>
+                    <option value="4">較大</option>
+                    <option value="5">大</option>
+                    <option value="6">很大</option>
+                    <option value="7">最大</option>
+                </select>
+
+                <input type="color" class="editor-color format-btn" id="editor-text-color" title="文字顏色" value="#000000">
+
+                <div class="editor-divider"></div>
+
+                <button class="editor-btn format-btn" data-command="justifyLeft" title="靠左對齊">≡</button>
+                <button class="editor-btn format-btn" data-command="justifyCenter" title="置中對齊">≡</button>
+                <button class="editor-btn format-btn" data-command="justifyRight" title="靠右對齊">≡</button>
+
+                <div class="editor-divider"></div>
+
+                <button class="editor-btn format-btn" data-command="insertUnorderedList" title="無序列表">• 列表</button>
+                <button class="editor-btn format-btn" data-command="insertOrderedList" title="有序列表">1. 列表</button>
+
+                <div class="editor-divider"></div>
+
+                <button class="editor-btn format-btn" data-command="indent" title="增加縮排">→ 縮排</button>
+                <button class="editor-btn format-btn" data-command="outdent" title="減少縮排">← 減排</button>
+
+                <div class="editor-divider"></div>
+
+                <button class="editor-btn format-btn" id="btn-insert-link" title="插入連結">🔗 連結</button>
+
+                <div class="editor-divider"></div>
+
+                <button class="editor-btn format-btn" id="btn-clear-format" title="清除格式">清除格式</button>
+
+                <div class="editor-divider"></div>
+
+                <button class="editor-btn" id="btn-toggle-html" title="切換 HTML 編輯">&lt;/&gt; HTML</button>
+            </div>
+
+            <!-- 編輯區域 -->
+            <div class="editor-content" id="editor-content" contenteditable="true">
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-modal secondary" id="btn-cancel-advanced-editor">取消</button>
+                <button class="btn-modal primary" id="btn-confirm-advanced-editor">確定</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 載入動畫 -->
     <div class="loading" id="loading">
         <div class="spinner"></div>
@@ -1037,6 +1280,7 @@
         let historyIndex = -1; // 歷史記錄索引
         let clipboard = null; // 剪貼簿
         let mapModifiedStatus = {}; // 追蹤每個 Map 的變動狀態
+        let mapSourceTracking = {}; // 追蹤每個 Map 的來源：'created' 或 'loaded'
         let deleteTargetFileName = null; // 待刪除的檔案名稱
         let editTargetFileName = null; // 待修改的檔案名稱
 
@@ -1069,6 +1313,9 @@
             // 初始化畫布
             initCanvas();
 
+            // 初始化進階編輯器
+            initAdvancedEditor();
+
             console.log('✅ 應用程式已準備就緒');
             console.log('💡 提示：打開瀏覽器開發者工具 (F12) 查看詳細日誌');
         }
@@ -1099,6 +1346,13 @@
             if (menuToggle) {
                 menuToggle.addEventListener('click', toggleSidebar);
                 console.log('✓ 選單切換監聽器已綁定');
+            }
+
+            // 浮動側邊欄切換按鈕
+            const floatingToggle = document.getElementById('floating-sidebar-toggle');
+            if (floatingToggle) {
+                floatingToggle.addEventListener('click', toggleSidebar);
+                console.log('✓ 浮動切換按鈕監聽器已綁定');
             }
 
             // 專案管理
@@ -1173,7 +1427,17 @@
         }
 
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('hidden');
+            const sidebar = document.getElementById('sidebar');
+            const floatingToggle = document.getElementById('floating-sidebar-toggle');
+
+            sidebar.classList.toggle('hidden');
+
+            // 當側邊欄隱藏時顯示浮動按鈕，反之隱藏浮動按鈕
+            if (sidebar.classList.contains('hidden')) {
+                floatingToggle.classList.add('show');
+            } else {
+                floatingToggle.classList.remove('show');
+            }
         }
 
         function showNewMapModal() {
@@ -1516,6 +1780,9 @@
             // 標記為已修改（新增的 Map 需要儲存）
             mapModifiedStatus[fileName] = true;
 
+            // 標記為新建的 Map（儲存時生成完整 HTML）
+            mapSourceTracking[fileName] = 'created';
+
             // 更新 UI
             document.getElementById('canvas-title').textContent = title;
             hideNewMapModal();
@@ -1666,6 +1933,9 @@
                     currentMapData = JSON.parse(dataScript.textContent);
                     currentFileName = fileName;
 
+                    // 標記為載入的 Map（儲存時只更新 JSON 和標題）
+                    mapSourceTracking[fileName] = 'loaded';
+
                     // 更新 UI
                     document.getElementById('canvas-title').textContent = currentMapData.title;
 
@@ -1746,7 +2016,18 @@
                 });
 
                 const writable = await fileHandle.createWritable();
-                const htmlContent = generateMapHTML(mapData);
+                let htmlContent;
+
+                // 根據來源決定儲存策略
+                const source = mapSourceTracking[fileName] || 'created';
+
+                if (source === 'created') {
+                    // 新建的 Map：生成完整的 HTML
+                    htmlContent = generateMapHTML(mapData);
+                } else {
+                    // 載入的 Map：只更新 JSON 數據和 title
+                    htmlContent = await updateExistingMapHTML(fileHandle, mapData);
+                }
 
                 await writable.write(htmlContent);
                 await writable.close();
@@ -1773,6 +2054,33 @@
             } finally {
                 hideLoading();
             }
+        }
+
+        async function updateExistingMapHTML(fileHandle, mapData) {
+            // 讀取現有的 HTML 文件
+            const file = await fileHandle.getFile();
+            const existingHTML = await file.text();
+
+            // 解析 HTML
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(existingHTML, 'text/html');
+
+            // 1. 更新 <title> 標籤
+            const titleElement = doc.querySelector('title');
+            if (titleElement) {
+                titleElement.textContent = mapData.title;
+            }
+
+            // 2. 更新 <script id="map-data"> 中的 JSON 數據
+            const scriptElement = doc.querySelector('script#map-data');
+            if (scriptElement) {
+                // 使用 JSON.stringify 安全地生成 JSON
+                const jsonData = JSON.stringify(mapData, null, 4);
+                scriptElement.textContent = `\n            const mapData = ${jsonData};\n        `;
+            }
+
+            // 序列化回 HTML 字符串
+            return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
         }
 
         function removeMapFromList(fileName) {
@@ -1869,12 +2177,17 @@
             const container = document.getElementById('canvas-container');
             const canvas = document.getElementById('canvas');
 
-            // 平移事件
+            // 平移事件和取消選擇
             container.addEventListener('mousedown', (e) => {
                 if (e.target === container || e.target === canvas) {
+                    // 取消選擇元素
+                    selectedElement = null;
+                    updatePropertyEditor();
+
                     isPanning = true;
                     panStart = { x: e.clientX, y: e.clientY };
                     container.classList.add('grabbing');
+                    renderCanvas(); // 重新渲染以移除選中狀態
                 }
             });
 
@@ -1947,13 +2260,36 @@
             const nodeEl = document.createElement('div');
             nodeEl.className = 'node';
             nodeEl.dataset.id = node.id;
+            nodeEl.dataset.type = 'node';
             nodeEl.style.left = node.x + 'px';
             nodeEl.style.top = node.y + 'px';
             nodeEl.style.width = node.width + 'px';
             nodeEl.style.height = node.height + 'px';
             nodeEl.style.background = node.color || '#3498db';
             nodeEl.style.textAlign = node.textAlign || 'center';
+
+            // 根據文字對齊設置 flexbox 的 justify-content
+            const textAlign = node.textAlign || 'center';
+            if (textAlign === 'left') {
+                nodeEl.style.justifyContent = 'flex-start';
+            } else if (textAlign === 'right') {
+                nodeEl.style.justifyContent = 'flex-end';
+            } else {
+                nodeEl.style.justifyContent = 'center';
+            }
+
             nodeEl.innerHTML = node.text || '';
+
+            // 點擊選擇元素
+            nodeEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectElement(node.id, 'node');
+            });
+
+            // 如果是當前選中的元素，添加 selected 類
+            if (selectedElement && selectedElement.id === node.id) {
+                nodeEl.classList.add('selected');
+            }
 
             canvas.appendChild(nodeEl);
         }
@@ -1963,6 +2299,7 @@
             const frameEl = document.createElement('div');
             frameEl.className = 'frame';
             frameEl.dataset.id = frame.id;
+            frameEl.dataset.type = 'frame';
             frameEl.style.left = frame.x + 'px';
             frameEl.style.top = frame.y + 'px';
             frameEl.style.width = frame.width + 'px';
@@ -1978,11 +2315,416 @@
                 frameEl.appendChild(label);
             }
 
+            // 點擊選擇元素
+            frameEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectElement(frame.id, 'frame');
+            });
+
+            // 如果是當前選中的元素，添加 selected 類
+            if (selectedElement && selectedElement.id === frame.id) {
+                frameEl.classList.add('selected');
+            }
+
             canvas.appendChild(frameEl);
         }
 
         function renderConnections() {
             // 後續實現連接線繪製
+        }
+
+        // ==================== 元素選擇與屬性編輯 ====================
+        function selectElement(id, type) {
+            selectedElement = { id, type };
+            updatePropertyEditor();
+            renderCanvas(); // 重新渲染以顯示選中狀態
+        }
+
+        function updatePropertyEditor() {
+            const editor = document.getElementById('property-editor');
+
+            if (!selectedElement) {
+                editor.innerHTML = '<div class="property-editor-empty">請選擇一個元素來編輯屬性</div>';
+                return;
+            }
+
+            const { id, type } = selectedElement;
+            let element;
+
+            if (type === 'node') {
+                element = currentMapData.data.nodes.find(n => n.id === id);
+                if (element) {
+                    editor.innerHTML = createNodePropertyEditor(element);
+                    bindNodePropertyEvents(element);
+                }
+            } else if (type === 'frame') {
+                element = currentMapData.data.frames.find(f => f.id === id);
+                if (element) {
+                    editor.innerHTML = createFramePropertyEditor(element);
+                    bindFramePropertyEvents(element);
+                }
+            }
+        }
+
+        function createNodePropertyEditor(node) {
+            return `
+                <div class="property-group">
+                    <label class="property-label">文字內容：</label>
+                    <textarea class="property-textarea" id="prop-node-text">${node.text || ''}</textarea>
+                    <button class="toolbar-btn primary" id="btn-advanced-editor" style="margin-top: 8px; width: 100%;">✏️ 進階編輯</button>
+                </div>
+                <div class="property-group">
+                    <label class="property-label">顏色：</label>
+                    <input type="color" class="property-input" id="prop-node-color" value="${node.color || '#3498db'}">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">文字對齊：</label>
+                    <select class="property-select" id="prop-node-align">
+                        <option value="left" ${node.textAlign === 'left' ? 'selected' : ''}>靠左</option>
+                        <option value="center" ${node.textAlign === 'center' ? 'selected' : ''}>置中</option>
+                        <option value="right" ${node.textAlign === 'right' ? 'selected' : ''}>靠右</option>
+                    </select>
+                </div>
+                <div class="property-group">
+                    <label class="property-label">寬度：</label>
+                    <input type="number" class="property-input" id="prop-node-width" value="${node.width}" min="50">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">高度：</label>
+                    <input type="number" class="property-input" id="prop-node-height" value="${node.height}" min="30">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">連結：</label>
+                    <input type="text" class="property-input" id="prop-node-link" value="${node.link || ''}" placeholder="http://...">
+                </div>
+                <div class="property-group" style="margin-top: 20px;">
+                    <button class="toolbar-btn accent" id="btn-delete-element" style="width: 100%;">🗑️ 刪除節點</button>
+                </div>
+            `;
+        }
+
+        function createFramePropertyEditor(frame) {
+            return `
+                <div class="property-group">
+                    <label class="property-label">標籤文字：</label>
+                    <input type="text" class="property-input" id="prop-frame-label" value="${frame.label || ''}" placeholder="框架標籤">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">邊框顏色：</label>
+                    <input type="color" class="property-input" id="prop-frame-border-color" value="${frame.borderColor || '#95a5a6'}">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">背景顏色：</label>
+                    <input type="color" class="property-input" id="prop-frame-bg-color" value="${rgbaToHex(frame.bgColor) || '#95a5a6'}">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">背景透明度：</label>
+                    <input type="range" class="property-input" id="prop-frame-opacity" value="${getOpacity(frame.bgColor)}" min="0" max="100" step="5">
+                    <span id="opacity-value">${getOpacity(frame.bgColor)}%</span>
+                </div>
+                <div class="property-group">
+                    <label class="property-label">寬度：</label>
+                    <input type="number" class="property-input" id="prop-frame-width" value="${frame.width}" min="100">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">高度：</label>
+                    <input type="number" class="property-input" id="prop-frame-height" value="${frame.height}" min="100">
+                </div>
+                <div class="property-group" style="margin-top: 20px;">
+                    <button class="toolbar-btn accent" id="btn-delete-element" style="width: 100%;">🗑️ 刪除框架</button>
+                </div>
+            `;
+        }
+
+        function bindNodePropertyEvents(node) {
+            document.getElementById('prop-node-text').addEventListener('input', (e) => {
+                node.text = e.target.value;
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            // 進階編輯按鈕
+            document.getElementById('btn-advanced-editor').addEventListener('click', () => {
+                openAdvancedEditor(node);
+            });
+
+            document.getElementById('prop-node-color').addEventListener('input', (e) => {
+                node.color = e.target.value;
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            document.getElementById('prop-node-align').addEventListener('change', (e) => {
+                node.textAlign = e.target.value;
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            document.getElementById('prop-node-width').addEventListener('input', (e) => {
+                node.width = parseInt(e.target.value);
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            document.getElementById('prop-node-height').addEventListener('input', (e) => {
+                node.height = parseInt(e.target.value);
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            document.getElementById('prop-node-link').addEventListener('input', (e) => {
+                node.link = e.target.value;
+                markMapAsModified();
+            });
+
+            document.getElementById('btn-delete-element').addEventListener('click', () => {
+                if (confirm('確定要刪除這個節點嗎？')) {
+                    const index = currentMapData.data.nodes.findIndex(n => n.id === node.id);
+                    if (index !== -1) {
+                        currentMapData.data.nodes.splice(index, 1);
+                        selectedElement = null;
+                        updatePropertyEditor();
+                        renderCanvas();
+                        saveHistory();
+                        markMapAsModified();
+                    }
+                }
+            });
+        }
+
+        function bindFramePropertyEvents(frame) {
+            document.getElementById('prop-frame-label').addEventListener('input', (e) => {
+                frame.label = e.target.value;
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            document.getElementById('prop-frame-border-color').addEventListener('input', (e) => {
+                frame.borderColor = e.target.value;
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            const bgColorInput = document.getElementById('prop-frame-bg-color');
+            const opacityInput = document.getElementById('prop-frame-opacity');
+            const opacityValue = document.getElementById('opacity-value');
+
+            bgColorInput.addEventListener('input', (e) => {
+                const opacity = parseInt(opacityInput.value) / 100;
+                frame.bgColor = hexToRgba(e.target.value, opacity);
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            opacityInput.addEventListener('input', (e) => {
+                const opacity = parseInt(e.target.value) / 100;
+                opacityValue.textContent = e.target.value + '%';
+                const color = bgColorInput.value;
+                frame.bgColor = hexToRgba(color, opacity);
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            document.getElementById('prop-frame-width').addEventListener('input', (e) => {
+                frame.width = parseInt(e.target.value);
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            document.getElementById('prop-frame-height').addEventListener('input', (e) => {
+                frame.height = parseInt(e.target.value);
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            document.getElementById('btn-delete-element').addEventListener('click', () => {
+                if (confirm('確定要刪除這個框架嗎？')) {
+                    const index = currentMapData.data.frames.findIndex(f => f.id === frame.id);
+                    if (index !== -1) {
+                        currentMapData.data.frames.splice(index, 1);
+                        selectedElement = null;
+                        updatePropertyEditor();
+                        renderCanvas();
+                        saveHistory();
+                        markMapAsModified();
+                    }
+                }
+            });
+        }
+
+        // ==================== 進階文字編輯器 ====================
+        let currentEditingNode = null;
+        let isHtmlMode = false;
+
+        function openAdvancedEditor(node) {
+            currentEditingNode = node;
+            isHtmlMode = false;
+            const editorContent = document.getElementById('editor-content');
+            editorContent.innerHTML = node.text || '';
+            editorContent.setAttribute('contenteditable', 'true');
+
+            // 確保所有格式按鈕可用
+            enableFormatButtons();
+
+            document.getElementById('modal-advanced-editor').classList.add('active');
+
+            // 聚焦到編輯器
+            setTimeout(() => editorContent.focus(), 100);
+        }
+
+        function closeAdvancedEditor() {
+            document.getElementById('modal-advanced-editor').classList.remove('active');
+            currentEditingNode = null;
+            isHtmlMode = false;
+        }
+
+        function enableFormatButtons() {
+            document.querySelectorAll('.format-btn').forEach(btn => {
+                btn.disabled = false;
+            });
+        }
+
+        function disableFormatButtons() {
+            document.querySelectorAll('.format-btn').forEach(btn => {
+                btn.disabled = true;
+            });
+        }
+
+        function toggleHtmlMode() {
+            const editorContent = document.getElementById('editor-content');
+            const toggleBtn = document.getElementById('btn-toggle-html');
+
+            if (!isHtmlMode) {
+                // 切換到 HTML 模式
+                const html = editorContent.innerHTML;
+                editorContent.textContent = html; // 顯示原始 HTML
+                editorContent.setAttribute('contenteditable', 'true');
+                editorContent.classList.add('html-mode');
+                isHtmlMode = true;
+                toggleBtn.classList.add('active');
+                disableFormatButtons();
+            } else {
+                // 切換回視覺模式
+                const html = editorContent.textContent;
+                editorContent.innerHTML = html; // 解析 HTML
+                editorContent.setAttribute('contenteditable', 'true');
+                editorContent.classList.remove('html-mode');
+                isHtmlMode = false;
+                toggleBtn.classList.remove('active');
+                enableFormatButtons();
+            }
+
+            editorContent.focus();
+        }
+
+        function confirmAdvancedEditor() {
+            if (currentEditingNode) {
+                const editorContent = document.getElementById('editor-content');
+
+                // 如果在 HTML 模式，先切換回來以獲取正確的 HTML
+                if (isHtmlMode) {
+                    const html = editorContent.textContent;
+                    currentEditingNode.text = html;
+                } else {
+                    currentEditingNode.text = editorContent.innerHTML;
+                }
+
+                // 更新簡單編輯器的內容
+                const simpleTextarea = document.getElementById('prop-node-text');
+                if (simpleTextarea) {
+                    // 創建臨時元素來提取純文字
+                    const temp = document.createElement('div');
+                    temp.innerHTML = currentEditingNode.text;
+                    simpleTextarea.value = temp.innerText;
+                }
+
+                renderCanvas();
+                markMapAsModified();
+            }
+            closeAdvancedEditor();
+        }
+
+        // 初始化進階編輯器
+        function initAdvancedEditor() {
+            // 工具列按鈕事件
+            document.querySelectorAll('.editor-btn[data-command]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const command = btn.dataset.command;
+                    document.execCommand(command, false, null);
+                    document.getElementById('editor-content').focus();
+                });
+            });
+
+            // 字體大小
+            document.getElementById('editor-font-size').addEventListener('change', (e) => {
+                document.execCommand('fontSize', false, e.target.value);
+                document.getElementById('editor-content').focus();
+            });
+
+            // 文字顏色
+            document.getElementById('editor-text-color').addEventListener('change', (e) => {
+                document.execCommand('foreColor', false, e.target.value);
+                document.getElementById('editor-content').focus();
+            });
+
+            // 清除格式
+            document.getElementById('btn-clear-format').addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('removeFormat', false, null);
+                document.getElementById('editor-content').focus();
+            });
+
+            // 插入連結
+            document.getElementById('btn-insert-link').addEventListener('click', (e) => {
+                e.preventDefault();
+                const url = prompt('請輸入連結網址：', 'https://');
+                if (url && url !== 'https://') {
+                    document.execCommand('createLink', false, url);
+                    document.getElementById('editor-content').focus();
+                }
+            });
+
+            // 切換 HTML 模式
+            document.getElementById('btn-toggle-html').addEventListener('click', (e) => {
+                e.preventDefault();
+                toggleHtmlMode();
+            });
+
+            // 取消按鈕
+            document.getElementById('btn-cancel-advanced-editor').addEventListener('click', closeAdvancedEditor);
+
+            // 確定按鈕
+            document.getElementById('btn-confirm-advanced-editor').addEventListener('click', confirmAdvancedEditor);
+        }
+
+        // 輔助函數：將 rgba 轉換為 hex
+        function rgbaToHex(rgba) {
+            if (!rgba) return '#95a5a6';
+            const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            if (!match) return '#95a5a6';
+            const r = parseInt(match[1]).toString(16).padStart(2, '0');
+            const g = parseInt(match[2]).toString(16).padStart(2, '0');
+            const b = parseInt(match[3]).toString(16).padStart(2, '0');
+            return `#${r}${g}${b}`;
+        }
+
+        // 輔助函數：獲取 rgba 的透明度
+        function getOpacity(rgba) {
+            if (!rgba) return 10;
+            const match = rgba.match(/rgba?\([^,]+,[^,]+,[^,]+,?\s*([\d.]+)?\)/);
+            if (match && match[1]) {
+                return Math.round(parseFloat(match[1]) * 100);
+            }
+            return 10;
+        }
+
+        // 輔助函數：將 hex 轉換為 rgba
+        function hexToRgba(hex, opacity) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${opacity})`;
         }
 
         // ==================== 元素操作 ====================
@@ -2213,7 +2955,31 @@
             user-select: none;
             display: flex;
             align-items: center;
-            justify-content: center;
+            /* justify-content 由 JavaScript 動態設置 */
+        }
+
+        .node.has-link {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .node.has-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        .node-link-icon {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .node a {
+            color: inherit;
+            text-decoration: underline;
+            pointer-events: auto;
         }
 
         .frame {
@@ -2355,7 +3121,70 @@
                 nodeEl.style.height = node.height + 'px';
                 nodeEl.style.background = node.color || '#3498db';
                 nodeEl.style.textAlign = node.textAlign || 'center';
+
+                // 根據文字對齊設置 flexbox 的 justify-content
+                const textAlign = node.textAlign || 'center';
+                if (textAlign === 'left') {
+                    nodeEl.style.justifyContent = 'flex-start';
+                } else if (textAlign === 'right') {
+                    nodeEl.style.justifyContent = 'flex-end';
+                } else {
+                    nodeEl.style.justifyContent = 'center';
+                }
+
                 nodeEl.innerHTML = node.text || '';
+
+                // 處理節點本身的連結
+                if (node.link && node.link.trim() !== '') {
+                    nodeEl.classList.add('has-link');
+
+                    // 判斷是否為專案 HTML 檔案
+                    const isProjectHtml = !node.link.match(/^[a-zA-Z]+:\\/\\//) &&    // 沒有協議
+                                         !node.link.match(/^\\//) &&                  // 不是 Unix 絕對路徑
+                                         !node.link.match(/^[a-zA-Z]:[\/\\\\]/) &&    // 不是 Windows 絕對路徑
+                                         node.link.match(/\\.html?$/i);               // 結尾是 .html 或 .htm
+
+                    nodeEl.addEventListener('click', (e) => {
+                        // 如果點擊的是文字內容中的 <a> 標籤，不觸發節點連結
+                        if (e.target.tagName === 'A') {
+                            return;
+                        }
+
+                        if (isProjectHtml) {
+                            // 專案 HTML 檔案：同一視窗打開
+                            window.location.href = node.link;
+                        } else {
+                            // 外部連結：新視窗打開
+                            window.open(node.link, '_blank', 'noopener,noreferrer');
+                        }
+                    });
+
+                    // 添加連結圖標
+                    const linkIcon = document.createElement('div');
+                    linkIcon.className = 'node-link-icon';
+                    linkIcon.textContent = '🔗';
+                    nodeEl.appendChild(linkIcon);
+                }
+
+                // 處理文字內容中的 <a> 標籤：專案 HTML 檔案在同一視窗打開，外部連結在新視窗打開
+                const links = nodeEl.querySelectorAll('a');
+                links.forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (href) {
+                        // 判斷是否為專案 HTML 檔案
+                        const isProjectHtml = !href.match(/^[a-zA-Z]+:\\/\\//) &&    // 沒有協議
+                                             !href.match(/^\\//) &&                  // 不是 Unix 絕對路徑
+                                             !href.match(/^[a-zA-Z]:[\/\\\\]/) &&    // 不是 Windows 絕對路徑
+                                             href.match(/\\.html?$/i);               // 結尾是 .html 或 .htm
+
+                        if (!isProjectHtml) {
+                            // 外部連結：新視窗打開
+                            link.setAttribute('target', '_blank');
+                            link.setAttribute('rel', 'noopener noreferrer');
+                        }
+                        // 專案 HTML 檔案：不設置 target，在同一視窗打開（預設行為）
+                    }
+                });
 
                 if (node.completed || node.abandoned) {
                     const badge = document.createElement('div');
