@@ -605,6 +605,11 @@
             height: 100%;
             transform-origin: 0 0;
             z-index: 1;
+            pointer-events: none; /* 讓層本身不阻擋事件 */
+        }
+
+        #frame-layer > * {
+            pointer-events: auto; /* 但層內的元素可以接收事件 */
         }
 
         /* 節點層 */
@@ -616,6 +621,11 @@
             height: 100%;
             transform-origin: 0 0;
             z-index: 2;
+            pointer-events: none; /* 讓層本身不阻擋事件 */
+        }
+
+        #node-layer > * {
+            pointer-events: auto; /* 但層內的元素可以接收事件 */
         }
 
         /* SVG 連接線層 */
@@ -623,7 +633,6 @@
             position: absolute;
             top: 0;
             left: 0;
-            pointer-events: none;
             z-index: 3;
             overflow: visible;
         }
@@ -659,8 +668,9 @@
             min-width: 100px;
             min-height: 50px;
             display: flex;
-            align-items: center;
-            /* justify-content 由 JavaScript 動態設置 */
+            flex-direction: column; /* 垂直排列，支援多行內容 */
+            justify-content: center; /* 垂直置中 */
+            /* align-items 由 JavaScript 動態設置，用於水平對齊 */
         }
 
         .node:hover {
@@ -669,6 +679,20 @@
 
         .node.selected {
             box-shadow: 0 0 0 3px var(--warning-color);
+        }
+
+        .node.connecting-start, .frame.connecting-start {
+            animation: pulse-border 1s ease-in-out infinite;
+            box-shadow: 0 0 0 4px var(--success-color) !important;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% {
+                box-shadow: 0 0 0 4px var(--success-color);
+            }
+            50% {
+                box-shadow: 0 0 0 8px var(--success-color);
+            }
         }
 
         /* 節點內的超連結不可點擊 */
@@ -1333,6 +1357,10 @@
         let dragStart = { x: 0, y: 0 };
         let dragOffset = { x: 0, y: 0 };
 
+        // 連接模式狀態
+        let isConnecting = false;
+        let connectionStart = null; // { id, type }
+
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', () => {
             initApp();
@@ -1451,6 +1479,7 @@
             // 工具按鈕
             document.getElementById('btn-add-node').addEventListener('click', addNode);
             document.getElementById('btn-add-frame').addEventListener('click', addFrame);
+            document.getElementById('btn-add-connection').addEventListener('click', toggleConnectionMode);
             document.getElementById('btn-undo').addEventListener('click', undo);
             document.getElementById('btn-redo').addEventListener('click', redo);
         }
@@ -1964,14 +1993,6 @@
         async function loadMap(fileName) {
             if (!currentProjectHandle) return;
 
-            // 如果當前 Map 有變動，提示保存
-            if (currentFileName && mapModifiedStatus[currentFileName]) {
-                const shouldSave = confirm(`當前 Map "${currentFileName}" 尚未儲存，是否要先儲存？`);
-                if (shouldSave) {
-                    await saveCurrentMap();
-                }
-            }
-
             showLoading();
 
             try {
@@ -2345,14 +2366,14 @@
             nodeEl.style.background = node.color || '#3498db';
             nodeEl.style.textAlign = node.textAlign || 'center';
 
-            // 根據文字對齊設置 flexbox 的 justify-content
+            // 根據文字對齊設置 flexbox 的 align-items（因為 flex-direction: column）
             const textAlign = node.textAlign || 'center';
             if (textAlign === 'left') {
-                nodeEl.style.justifyContent = 'flex-start';
+                nodeEl.style.alignItems = 'flex-start';
             } else if (textAlign === 'right') {
-                nodeEl.style.justifyContent = 'flex-end';
+                nodeEl.style.alignItems = 'flex-end';
             } else {
-                nodeEl.style.justifyContent = 'center';
+                nodeEl.style.alignItems = 'center';
             }
 
             nodeEl.innerHTML = node.text || '';
@@ -2378,9 +2399,15 @@
                 nodeEl.appendChild(badge);
             }
 
-            // 拖曳節點
+            // 拖曳節點或連接模式處理
             nodeEl.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
+
+                // 如果處於連接模式
+                if (isConnecting) {
+                    handleConnectionClick(node.id, 'node');
+                    return;
+                }
 
                 // 選擇元素
                 selectElement(node.id, 'node');
@@ -2395,6 +2422,11 @@
             // 如果是當前選中的元素，添加 selected 類
             if (selectedElement && selectedElement.id === node.id) {
                 nodeEl.classList.add('selected');
+            }
+
+            // 如果是連接模式的起點，添加 connecting-start 類
+            if (connectionStart && connectionStart.id === node.id && connectionStart.type === 'node') {
+                nodeEl.classList.add('connecting-start');
             }
 
             nodeLayer.appendChild(nodeEl);
@@ -2444,9 +2476,15 @@
                 frameEl.appendChild(badge);
             }
 
-            // 拖曳框架
+            // 拖曳框架或連接模式處理
             frameEl.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
+
+                // 如果處於連接模式
+                if (isConnecting) {
+                    handleConnectionClick(frame.id, 'frame');
+                    return;
+                }
 
                 // 選擇元素
                 selectElement(frame.id, 'frame');
@@ -2463,11 +2501,189 @@
                 frameEl.classList.add('selected');
             }
 
+            // 如果是連接模式的起點，添加 connecting-start 類
+            if (connectionStart && connectionStart.id === frame.id && connectionStart.type === 'frame') {
+                frameEl.classList.add('connecting-start');
+            }
+
             frameLayer.appendChild(frameEl);
         }
 
         function renderConnections() {
-            // 後續實現連接線繪製
+            if (!currentMapData || !currentMapData.data.connections) return;
+
+            const svg = document.getElementById('svg-layer');
+
+            currentMapData.data.connections.forEach(connection => {
+                // 查找起點和終點元素
+                const fromNode = currentMapData.data.nodes.find(n => n.id === connection.from);
+                const fromFrame = currentMapData.data.frames.find(f => f.id === connection.from);
+                const toNode = currentMapData.data.nodes.find(n => n.id === connection.to);
+                const toFrame = currentMapData.data.frames.find(f => f.id === connection.to);
+
+                const from = fromNode || fromFrame;
+                const to = toNode || toFrame;
+
+                if (!from || !to) return; // 如果找不到元素，跳過
+
+                // 計算起點和終點的中心位置
+                const fromCenterX = from.x + from.width / 2;
+                const fromCenterY = from.y + from.height / 2;
+                const toCenterX = to.x + to.width / 2;
+                const toCenterY = to.y + to.height / 2;
+
+                // 計算邊緣交點
+                const fromEdge = getEdgePoint(from, toCenterX, toCenterY);
+                const toEdge = getEdgePoint(to, fromCenterX, fromCenterY);
+
+                // 將座標轉換為屏幕座標（考慮 scale 和 offset）
+                const x1 = fromEdge.x * scale + offsetX;
+                const y1 = fromEdge.y * scale + offsetY;
+                const x2 = toEdge.x * scale + offsetX;
+                const y2 = toEdge.y * scale + offsetY;
+
+                // 創建一個透明的粗線條作為點擊區域
+                const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                hitArea.setAttribute('x1', x1);
+                hitArea.setAttribute('y1', y1);
+                hitArea.setAttribute('x2', x2);
+                hitArea.setAttribute('y2', y2);
+                hitArea.setAttribute('stroke', 'transparent');
+                hitArea.setAttribute('stroke-width', 12 * scale);
+                hitArea.style.cursor = 'pointer';
+                hitArea.dataset.connectionId = connection.id;
+
+                // 點擊事件
+                hitArea.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectElement(connection.id, 'connection');
+                });
+
+                // 創建實際的線條
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', connection.color || '#7f8c8d');
+                line.setAttribute('stroke-width', 2 * scale);
+
+                // 只在 arrowType 為 'arrow' 時添加箭頭
+                if (connection.arrowType !== 'none') {
+                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                }
+
+                line.style.pointerEvents = 'none'; // 線條本身不接收點擊
+
+                // 如果是當前選中的連接，添加高亮效果
+                if (selectedElement && selectedElement.id === connection.id && selectedElement.type === 'connection') {
+                    line.setAttribute('stroke-width', 4 * scale);
+                    line.setAttribute('stroke', '#e74c3c');
+                }
+
+                svg.appendChild(hitArea);
+                svg.appendChild(line);
+
+                // 如果有標籤，添加文字
+                if (connection.label) {
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    const midX = (x1 + x2) / 2;
+                    const midY = (y1 + y2) / 2;
+                    text.setAttribute('x', midX);
+                    text.setAttribute('y', midY - 5 * scale);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('fill', connection.color || '#7f8c8d');
+                    text.setAttribute('font-size', 14 * scale);
+                    text.setAttribute('font-weight', 'bold');
+                    text.style.pointerEvents = 'none';
+                    text.textContent = connection.label;
+
+                    // 添加白色背景以提高可讀性
+                    const textBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    const bbox = { width: connection.label.length * 8 * scale, height: 18 * scale };
+                    textBg.setAttribute('x', midX - bbox.width / 2 - 2 * scale);
+                    textBg.setAttribute('y', midY - 5 * scale - 14 * scale);
+                    textBg.setAttribute('width', bbox.width + 4 * scale);
+                    textBg.setAttribute('height', bbox.height);
+                    textBg.setAttribute('fill', 'white');
+                    textBg.setAttribute('opacity', '0.8');
+                    textBg.style.pointerEvents = 'none';
+
+                    svg.appendChild(textBg);
+                    svg.appendChild(text);
+                }
+            });
+
+            // 確保箭頭標記存在
+            ensureArrowMarker();
+        }
+
+        function ensureArrowMarker() {
+            const svg = document.getElementById('svg-layer');
+
+            // 每次都重新創建箭頭標記以適應不同的 scale
+            // 先移除舊的
+            const oldDefs = svg.querySelector('defs');
+            if (oldDefs) {
+                oldDefs.remove();
+            }
+
+            // 創建新的箭頭標記
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            marker.setAttribute('id', 'arrowhead');
+            marker.setAttribute('markerWidth', 10 * scale);
+            marker.setAttribute('markerHeight', 10 * scale);
+            marker.setAttribute('refX', 9 * scale);
+            marker.setAttribute('refY', 3 * scale);
+            marker.setAttribute('orient', 'auto');
+            marker.setAttribute('markerUnits', 'userSpaceOnUse');
+
+            const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            const points = `0 0, ${10 * scale} ${3 * scale}, 0 ${6 * scale}`;
+            polygon.setAttribute('points', points);
+            polygon.setAttribute('fill', 'context-stroke');
+
+            marker.appendChild(polygon);
+            defs.appendChild(marker);
+            svg.insertBefore(defs, svg.firstChild);
+        }
+
+        // 計算從矩形中心到目標點的線與矩形邊緣的交點
+        function getEdgePoint(rect, targetX, targetY) {
+            const centerX = rect.x + rect.width / 2;
+            const centerY = rect.y + rect.height / 2;
+
+            // 計算方向向量
+            const dx = targetX - centerX;
+            const dy = targetY - centerY;
+
+            // 如果目標就是中心，返回中心點
+            if (dx === 0 && dy === 0) {
+                return { x: centerX, y: centerY };
+            }
+
+            // 計算與四條邊的交點，選擇最近的一個
+            const halfWidth = rect.width / 2;
+            const halfHeight = rect.height / 2;
+
+            // 計算參數 t，使得 (centerX + t*dx, centerY + t*dy) 在邊緣上
+            let t;
+
+            // 使用比例來判斷會先碰到哪條邊
+            const txLeft = dx !== 0 ? -halfWidth / dx : Infinity;
+            const txRight = dx !== 0 ? halfWidth / dx : Infinity;
+            const tyTop = dy !== 0 ? -halfHeight / dy : Infinity;
+            const tyBottom = dy !== 0 ? halfHeight / dy : Infinity;
+
+            // 找出最小的正 t 值
+            const candidates = [txLeft, txRight, tyTop, tyBottom].filter(t => t > 0);
+            t = Math.min(...candidates);
+
+            const edgeX = centerX + t * dx;
+            const edgeY = centerY + t * dy;
+
+            return { x: edgeX, y: edgeY };
         }
 
         // ==================== 元素選擇與屬性編輯 ====================
@@ -2500,6 +2716,12 @@
                     editor.innerHTML = createFramePropertyEditor(element);
                     bindFramePropertyEvents(element);
                 }
+            } else if (type === 'connection') {
+                element = currentMapData.data.connections.find(c => c.id === id);
+                if (element) {
+                    editor.innerHTML = createConnectionPropertyEditor(element);
+                    bindConnectionPropertyEvents(element);
+                }
             }
         }
 
@@ -2523,12 +2745,17 @@
                     </select>
                 </div>
                 <div class="property-group">
-                    <label class="property-label">寬度：</label>
-                    <input type="number" class="property-input" id="prop-node-width" value="${node.width}" min="50">
-                </div>
-                <div class="property-group">
-                    <label class="property-label">高度：</label>
-                    <input type="number" class="property-input" id="prop-node-height" value="${node.height}" min="30">
+                    <label class="property-label">尺寸：</label>
+                    <div style="display: flex; gap: 8px;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 12px; color: var(--gray-color);">寬</label>
+                            <input type="number" class="property-input" id="prop-node-width" value="${node.width}" min="50">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 12px; color: var(--gray-color);">高</label>
+                            <input type="number" class="property-input" id="prop-node-height" value="${node.height}" min="30">
+                        </div>
+                    </div>
                 </div>
                 <div class="property-group">
                     <label class="property-label">連結：</label>
@@ -2564,12 +2791,17 @@
                     <input type="color" class="property-input" id="prop-frame-color" value="${frame.borderColor || '#95a5a6'}">
                 </div>
                 <div class="property-group">
-                    <label class="property-label">寬度：</label>
-                    <input type="number" class="property-input" id="prop-frame-width" value="${frame.width}" min="100">
-                </div>
-                <div class="property-group">
-                    <label class="property-label">高度：</label>
-                    <input type="number" class="property-input" id="prop-frame-height" value="${frame.height}" min="100">
+                    <label class="property-label">尺寸：</label>
+                    <div style="display: flex; gap: 8px;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 12px; color: var(--gray-color);">寬</label>
+                            <input type="number" class="property-input" id="prop-frame-width" value="${frame.width}" min="100">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 12px; color: var(--gray-color);">高</label>
+                            <input type="number" class="property-input" id="prop-frame-height" value="${frame.height}" min="100">
+                        </div>
+                    </div>
                 </div>
                 <div class="property-group">
                     <label class="property-label">層級 (z-index)：</label>
@@ -2710,6 +2942,80 @@
                     const index = currentMapData.data.frames.findIndex(f => f.id === frame.id);
                     if (index !== -1) {
                         currentMapData.data.frames.splice(index, 1);
+                        selectedElement = null;
+                        updatePropertyEditor();
+                        renderCanvas();
+                        saveHistory();
+                        markMapAsModified();
+                    }
+                }
+            });
+        }
+
+        function createConnectionPropertyEditor(connection) {
+            // 找出起點和終點的名稱
+            const fromNode = currentMapData.data.nodes.find(n => n.id === connection.from);
+            const fromFrame = currentMapData.data.frames.find(f => f.id === connection.from);
+            const toNode = currentMapData.data.nodes.find(n => n.id === connection.to);
+            const toFrame = currentMapData.data.frames.find(f => f.id === connection.to);
+
+            const fromName = fromNode ? (fromNode.text || '節點') : (fromFrame ? (fromFrame.label || '框架') : '未知');
+            const toName = toNode ? (toNode.text || '節點') : (toFrame ? (toFrame.label || '框架') : '未知');
+
+            return `
+                <div class="property-group">
+                    <label class="property-label">連接：</label>
+                    <div style="padding: 8px; background: var(--light-gray); border-radius: 4px; font-size: 14px;">
+                        ${fromName} → ${toName}
+                    </div>
+                </div>
+                <div class="property-group">
+                    <label class="property-label">標籤文字：</label>
+                    <input type="text" class="property-input" id="prop-connection-label" value="${connection.label || ''}" placeholder="可選的標籤文字">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">顏色：</label>
+                    <input type="color" class="property-input" id="prop-connection-color" value="${connection.color || '#7f8c8d'}">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">箭頭類型：</label>
+                    <select class="property-select" id="prop-connection-arrow">
+                        <option value="arrow" ${connection.arrowType === 'arrow' ? 'selected' : ''}>箭頭</option>
+                        <option value="none" ${connection.arrowType === 'none' ? 'selected' : ''}>無箭頭</option>
+                    </select>
+                </div>
+                <div class="property-group">
+                    <button class="toolbar-btn danger" id="btn-delete-element" style="width: 100%; margin-top: 12px;">
+                        🗑️ 刪除連接線
+                    </button>
+                </div>
+            `;
+        }
+
+        function bindConnectionPropertyEvents(connection) {
+            document.getElementById('prop-connection-label').addEventListener('input', (e) => {
+                connection.label = e.target.value;
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            document.getElementById('prop-connection-color').addEventListener('input', (e) => {
+                connection.color = e.target.value;
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            document.getElementById('prop-connection-arrow').addEventListener('change', (e) => {
+                connection.arrowType = e.target.value;
+                renderCanvas();
+                markMapAsModified();
+            });
+
+            document.getElementById('btn-delete-element').addEventListener('click', () => {
+                if (confirm('確定要刪除這條連接線嗎？')) {
+                    const index = currentMapData.data.connections.findIndex(c => c.id === connection.id);
+                    if (index !== -1) {
+                        currentMapData.data.connections.splice(index, 1);
                         selectedElement = null;
                         updatePropertyEditor();
                         renderCanvas();
@@ -3084,6 +3390,87 @@
             autoHideSidebarOnSmallScreen();
         }
 
+        function toggleConnectionMode() {
+            if (!currentMapData) {
+                alert('請先建立或開啟一個概念圖');
+                return;
+            }
+
+            // 切換連接模式
+            isConnecting = !isConnecting;
+
+            // 如果關閉連接模式，清除連接開始狀態
+            if (!isConnecting) {
+                connectionStart = null;
+                // 移除所有連接中的視覺效果
+                document.querySelectorAll('.connecting-start').forEach(el => {
+                    el.classList.remove('connecting-start');
+                });
+            }
+
+            // 更新按鈕樣式
+            const btn = document.getElementById('btn-add-connection');
+            if (isConnecting) {
+                btn.classList.add('active');
+                btn.style.background = 'var(--success-color)';
+                btn.style.color = 'white';
+            } else {
+                btn.classList.remove('active');
+                btn.style.background = '';
+                btn.style.color = '';
+            }
+
+            renderCanvas();
+        }
+
+        function handleConnectionClick(id, type) {
+            // 如果這是第一次點擊（還沒有起點）
+            if (!connectionStart) {
+                connectionStart = { id, type };
+                renderCanvas(); // 重新渲染以顯示視覺效果
+                return;
+            }
+
+            // 如果點擊的是同一個元素（不能連接自己）
+            if (connectionStart.id === id) {
+                alert('不能連接自己');
+                return;
+            }
+
+            // 創建連接
+            createConnection(connectionStart, { id, type });
+
+            // 重置連接狀態
+            connectionStart = null;
+            isConnecting = false;
+
+            // 更新按鈕樣式
+            const btn = document.getElementById('btn-add-connection');
+            btn.classList.remove('active');
+            btn.style.background = '';
+            btn.style.color = '';
+
+            renderCanvas();
+        }
+
+        function createConnection(from, to) {
+            if (!currentMapData) return;
+
+            const connection = {
+                id: 'connection-' + Date.now(),
+                from: from.id,
+                to: to.id,
+                arrowType: 'arrow',
+                label: '',
+                color: '#7f8c8d'
+            };
+
+            currentMapData.data.connections.push(connection);
+            saveHistory();
+            markMapAsModified();
+            renderCanvas();
+        }
+
         // ==================== 歷史記錄 ====================
         function saveHistory() {
             if (!currentMapData) return;
@@ -3240,6 +3627,11 @@
             height: 100%;
             transform-origin: 0 0;
             z-index: 1;
+            pointer-events: none;
+        }
+
+        #frame-layer > * {
+            pointer-events: auto;
         }
 
         #node-layer {
@@ -3250,6 +3642,11 @@
             height: 100%;
             transform-origin: 0 0;
             z-index: 2;
+            pointer-events: none;
+        }
+
+        #node-layer > * {
+            pointer-events: auto;
         }
 
         svg {
@@ -3270,8 +3667,9 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
             user-select: none;
             display: flex;
-            align-items: center;
-            /* justify-content 由 JavaScript 動態設置 */
+            flex-direction: column;
+            justify-content: center;
+            /* align-items 由 JavaScript 動態設置 */
         }
 
         .node.has-link {
@@ -3443,14 +3841,14 @@
                 nodeEl.style.background = node.color || '#3498db';
                 nodeEl.style.textAlign = node.textAlign || 'center';
 
-                // 根據文字對齊設置 flexbox 的 justify-content
+                // 根據文字對齊設置 flexbox 的 align-items（因為 flex-direction: column）
                 const textAlign = node.textAlign || 'center';
                 if (textAlign === 'left') {
-                    nodeEl.style.justifyContent = 'flex-start';
+                    nodeEl.style.alignItems = 'flex-start';
                 } else if (textAlign === 'right') {
-                    nodeEl.style.justifyContent = 'flex-end';
+                    nodeEl.style.alignItems = 'flex-end';
                 } else {
-                    nodeEl.style.justifyContent = 'center';
+                    nodeEl.style.alignItems = 'center';
                 }
 
                 nodeEl.innerHTML = node.text || '';
@@ -3570,7 +3968,7 @@
                     frameEl.appendChild(badge);
                 }
 
-                this.canvas.appendChild(frameEl);
+                this.frameLayer.appendChild(frameEl);
             }
 
             updateConnections() {
