@@ -732,6 +732,30 @@
             pointer-events: none;
         }
 
+        /* 縮放控制點 */
+        .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 12px;
+            height: 12px;
+            background: var(--primary-color);
+            border: 2px solid white;
+            border-radius: 2px;
+            cursor: nwse-resize;
+            pointer-events: auto;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .node:hover .resize-handle,
+        .frame:hover .resize-handle,
+        .node.selected .resize-handle,
+        .frame.selected .resize-handle {
+            opacity: 1;
+        }
+
         /* 狀態徽章 */
         .status-badge {
             position: absolute;
@@ -1361,6 +1385,12 @@
         // 連接模式狀態
         let isConnecting = false;
         let connectionStart = null; // { id, type }
+
+        // 縮放狀態
+        let isResizing = false;
+        let resizeTarget = null; // { type, element }
+        let resizeStart = { x: 0, y: 0 };
+        let resizeOriginalSize = { width: 0, height: 0 };
 
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', () => {
@@ -2270,7 +2300,17 @@
             });
 
             window.addEventListener('mousemove', (e) => {
-                if (isDragging && dragTarget) {
+                if (isResizing && resizeTarget) {
+                    // 縮放元素
+                    const dx = (e.clientX - resizeStart.x) / scale;
+                    const dy = (e.clientY - resizeStart.y) / scale;
+
+                    resizeTarget.element.width = Math.max(50, resizeOriginalSize.width + dx);
+                    resizeTarget.element.height = Math.max(30, resizeOriginalSize.height + dy);
+
+                    renderCanvas();
+                    updatePropertyEditor(); // 更新屬性編輯器中的尺寸顯示
+                } else if (isDragging && dragTarget) {
                     // 拖曳元素
                     const dx = (e.clientX - dragStart.x) / scale;
                     const dy = (e.clientY - dragStart.y) / scale;
@@ -2289,6 +2329,13 @@
             });
 
             window.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    resizeTarget = null;
+                    saveHistory();
+                    markMapAsModified();
+                }
+
                 if (isDragging) {
                     isDragging = false;
                     dragTarget = null;
@@ -2430,6 +2477,15 @@
                 nodeEl.classList.add('connecting-start');
             }
 
+            // 添加縮放控制點
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'resize-handle';
+            resizeHandle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                startResize(e, node, 'node');
+            });
+            nodeEl.appendChild(resizeHandle);
+
             nodeLayer.appendChild(nodeEl);
         }
 
@@ -2507,6 +2563,15 @@
                 frameEl.classList.add('connecting-start');
             }
 
+            // 添加縮放控制點
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'resize-handle';
+            resizeHandle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                startResize(e, frame, 'frame');
+            });
+            frameEl.appendChild(resizeHandle);
+
             frameLayer.appendChild(frameEl);
         }
 
@@ -2570,10 +2635,14 @@
                 line.setAttribute('stroke', connection.color || '#7f8c8d');
                 line.setAttribute('stroke-width', 2 * scale);
 
-                // 只在 arrowType 為 'arrow' 時添加箭頭
-                if (connection.arrowType !== 'none') {
+                // 根據 arrowType 添加箭頭
+                if (connection.arrowType === 'single') {
+                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                } else if (connection.arrowType === 'double') {
+                    line.setAttribute('marker-start', 'url(#arrowhead-reverse)');
                     line.setAttribute('marker-end', 'url(#arrowhead)');
                 }
+                // arrowType === 'none' 時不添加任何箭頭
 
                 line.style.pointerEvents = 'none'; // 線條本身不接收點擊
 
@@ -2632,22 +2701,43 @@
 
             // 創建新的箭頭標記
             const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+
+            // 正向箭頭（末端）
             const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
             marker.setAttribute('id', 'arrowhead');
             marker.setAttribute('markerWidth', 10 * scale);
             marker.setAttribute('markerHeight', 10 * scale);
-            marker.setAttribute('refX', 9 * scale);
-            marker.setAttribute('refY', 3 * scale);
+            marker.setAttribute('refX', 10 * scale);  // 箭頭尖端位置，防止深入節點
+            marker.setAttribute('refY', 5 * scale);   // 箭頭寬度的一半，保持居中
             marker.setAttribute('orient', 'auto');
             marker.setAttribute('markerUnits', 'userSpaceOnUse');
 
             const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-            const points = `0 0, ${10 * scale} ${3 * scale}, 0 ${6 * scale}`;
+            const points = `0 0, ${10 * scale} ${5 * scale}, 0 ${10 * scale}`;  // 增加寬度讓箭頭更明顯
             polygon.setAttribute('points', points);
             polygon.setAttribute('fill', 'context-stroke');
 
             marker.appendChild(polygon);
             defs.appendChild(marker);
+
+            // 反向箭頭（起點）
+            const markerReverse = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            markerReverse.setAttribute('id', 'arrowhead-reverse');
+            markerReverse.setAttribute('markerWidth', 10 * scale);
+            markerReverse.setAttribute('markerHeight', 10 * scale);
+            markerReverse.setAttribute('refX', 0);  // 箭頭尖端位置，防止深入節點
+            markerReverse.setAttribute('refY', 5 * scale);  // 箭頭寬度的一半，保持居中
+            markerReverse.setAttribute('orient', 'auto');
+            markerReverse.setAttribute('markerUnits', 'userSpaceOnUse');
+
+            const polygonReverse = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            const pointsReverse = `${10 * scale} 0, 0 ${5 * scale}, ${10 * scale} ${10 * scale}`;  // 增加寬度讓箭頭更明顯
+            polygonReverse.setAttribute('points', pointsReverse);
+            polygonReverse.setAttribute('fill', 'context-stroke');
+
+            markerReverse.appendChild(polygonReverse);
+            defs.appendChild(markerReverse);
+
             svg.insertBefore(defs, svg.firstChild);
         }
 
@@ -2955,22 +3045,7 @@
         }
 
         function createConnectionPropertyEditor(connection) {
-            // 找出起點和終點的名稱
-            const fromNode = currentMapData.data.nodes.find(n => n.id === connection.from);
-            const fromFrame = currentMapData.data.frames.find(f => f.id === connection.from);
-            const toNode = currentMapData.data.nodes.find(n => n.id === connection.to);
-            const toFrame = currentMapData.data.frames.find(f => f.id === connection.to);
-
-            const fromName = fromNode ? (fromNode.text || '節點') : (fromFrame ? (fromFrame.label || '框架') : '未知');
-            const toName = toNode ? (toNode.text || '節點') : (toFrame ? (toFrame.label || '框架') : '未知');
-
             return `
-                <div class="property-group">
-                    <label class="property-label">連接：</label>
-                    <div style="padding: 8px; background: var(--light-gray); border-radius: 4px; font-size: 14px;">
-                        ${fromName} → ${toName}
-                    </div>
-                </div>
                 <div class="property-group">
                     <label class="property-label">標籤文字：</label>
                     <input type="text" class="property-input" id="prop-connection-label" value="${connection.label || ''}" placeholder="可選的標籤文字">
@@ -2982,7 +3057,8 @@
                 <div class="property-group">
                     <label class="property-label">箭頭類型：</label>
                     <select class="property-select" id="prop-connection-arrow">
-                        <option value="arrow" ${connection.arrowType === 'arrow' ? 'selected' : ''}>箭頭</option>
+                        <option value="single" ${connection.arrowType === 'single' ? 'selected' : ''}>單箭頭</option>
+                        <option value="double" ${connection.arrowType === 'double' ? 'selected' : ''}>雙箭頭</option>
                         <option value="none" ${connection.arrowType === 'none' ? 'selected' : ''}>無箭頭</option>
                     </select>
                 </div>
@@ -3425,6 +3501,14 @@
             renderCanvas();
         }
 
+        function startResize(e, element, type) {
+            e.stopPropagation();
+            isResizing = true;
+            resizeTarget = { type, element };
+            resizeStart = { x: e.clientX, y: e.clientY };
+            resizeOriginalSize = { width: element.width, height: element.height };
+        }
+
         function handleConnectionClick(id, type) {
             // 如果這是第一次點擊（還沒有起點）
             if (!connectionStart) {
@@ -3459,10 +3543,10 @@
             if (!currentMapData) return;
 
             const connection = {
-                id: 'connection-' + Date.now(),
+                id: 'conn-' + Date.now(),
                 from: from.id,
                 to: to.id,
-                arrowType: 'arrow',
+                arrowType: 'single',
                 label: '',
                 color: '#7f8c8d'
             };
