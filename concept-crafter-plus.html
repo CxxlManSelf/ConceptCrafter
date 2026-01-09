@@ -635,6 +635,7 @@
             left: 0;
             z-index: 3;
             overflow: visible;
+            pointer-events: none; /* 層本身不接收事件，避免阻擋下層元素 */
         }
 
         /* 畫布標題顯示 */
@@ -2551,6 +2552,7 @@
                 hitArea.setAttribute('stroke', 'transparent');
                 hitArea.setAttribute('stroke-width', 12 * scale);
                 hitArea.style.cursor = 'pointer';
+                hitArea.style.pointerEvents = 'auto'; // 允許點擊區域接收事件
                 hitArea.dataset.connectionId = connection.id;
 
                 // 點擊事件
