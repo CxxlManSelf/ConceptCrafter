@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Concept-Crafter Plus v1.0</title>
     <style>
         * {
@@ -780,10 +780,15 @@
 
         /* ==================== 響應式設計 ==================== */
         @media (max-width: 768px) {
+            :root {
+                --sidebar-width: min(90vw, 320px);
+            }
+
             #sidebar {
                 position: fixed;
                 left: 0;
                 top: 0;
+                width: var(--sidebar-width);
                 height: 100vh;
                 z-index: 200;
             }
@@ -795,6 +800,135 @@
             .canvas-title {
                 font-size: 14px;
                 padding: 8px 12px;
+            }
+
+            /* 調整內容區域的左邊距 */
+            #main-content {
+                margin-left: 0;
+            }
+
+            /* 調整側邊欄內部元素的尺寸 */
+            .toolbar-btn {
+                font-size: 13px;
+                padding: 8px 12px;
+            }
+
+            .property-editor {
+                font-size: 13px;
+            }
+
+            .property-input,
+            .property-textarea,
+            .property-select {
+                font-size: 13px;
+            }
+
+            /* 調整對話框在小螢幕上的寬度 */
+            .modal-content {
+                max-width: 90vw !important;
+                margin: 20px;
+                max-height: 85vh;
+                overflow-y: auto;
+            }
+
+            /* 調整進階編輯器在小螢幕上的顯示 */
+            .editor-modal .modal-content {
+                max-width: 95vw !important;
+                margin: 10px;
+            }
+
+            .editor-toolbar {
+                flex-wrap: wrap;
+            }
+
+            .editor-btn {
+                min-width: 40px;
+                min-height: 40px;
+            }
+
+            /* 調整浮動切換按鈕在小螢幕上的位置 */
+            .floating-sidebar-toggle {
+                width: 44px;
+                height: 44px;
+                font-size: 20px;
+            }
+
+            /* 調整標籤頁在小螢幕上的顯示 */
+            .tab {
+                font-size: 12px;
+                padding: 10px 12px;
+            }
+        }
+
+        /* ==================== 超小螢幕優化 ==================== */
+        @media (max-width: 480px) {
+            :root {
+                --sidebar-width: 100vw;
+            }
+
+            #sidebar {
+                width: 100vw;
+            }
+
+            .sidebar-title h1 {
+                font-size: 18px;
+            }
+
+            .toolbar-section h3 {
+                font-size: 14px;
+            }
+
+            .toolbar-btn {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+
+            .map-item-title {
+                font-size: 13px;
+            }
+
+            .map-item-meta {
+                font-size: 11px;
+            }
+
+            /* 增加觸控目標大小 */
+            .map-item-btn {
+                min-width: 44px;
+                min-height: 44px;
+                padding: 10px;
+            }
+
+            .tab {
+                min-height: 44px;
+            }
+        }
+
+        /* ==================== 縮放比例顯示 ==================== */
+        #scale-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(44, 62, 80, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 50;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #scale-indicator.show {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            #scale-indicator {
+                bottom: 80px;
+                font-size: 14px;
+                padding: 10px 18px;
             }
         }
 
@@ -1188,6 +1322,7 @@
                 <div id="frame-layer"></div>
                 <div id="node-layer"></div>
                 <svg id="svg-layer"></svg>
+                <div id="scale-indicator">100%</div>
             </div>
         </main>
     </div>
@@ -1366,6 +1501,7 @@
         let clipboard = null; // 剪貼簿
         let mapModifiedStatus = {}; // 追蹤每個 Map 的變動狀態
         let mapSourceTracking = {}; // 追蹤每個 Map 的來源：'created' 或 'loaded'
+        let mapCache = {}; // 記憶體快取，存儲所有 map 的數據（包括未儲存的）
         let deleteTargetFileName = null; // 待刪除的檔案名稱
         let editTargetFileName = null; // 待修改的檔案名稱
 
@@ -1398,15 +1534,8 @@
         });
 
         function initApp() {
-            console.log('🚀 Concept-Crafter Plus 啟動中...');
-            console.log('📍 當前 URL:', window.location.href);
-            console.log('🌐 User Agent:', navigator.userAgent);
-
             // 檢查瀏覽器支援
             const isSupported = checkBrowserSupport();
-            if (!isSupported) {
-                console.warn('⚠️ 瀏覽器不支援必要的 API');
-            }
 
             // 初始化事件監聽器
             initEventListeners();
@@ -1417,25 +1546,36 @@
             // 初始化進階編輯器
             initAdvancedEditor();
 
-            console.log('✅ 應用程式已準備就緒');
-            console.log('💡 提示：打開瀏覽器開發者工具 (F12) 查看詳細日誌');
+            // 初始化複製貼上按鈕狀態
+            updateCopyPasteButtons();
+
+            // 初始化 Undo/Redo 按鈕狀態
+            updateUndoRedoButtons();
+
+            // 在小螢幕上預設隱藏側邊欄
+            if (window.innerWidth <= 768) {
+                const sidebar = document.getElementById('sidebar');
+                const floatingToggle = document.getElementById('floating-sidebar-toggle');
+                sidebar.classList.add('hidden');
+                floatingToggle.classList.add('show');
+            }
         }
 
         // ==================== 瀏覽器支援檢查 ====================
         function checkBrowserSupport() {
             if (!window.showDirectoryPicker) {
-                console.error('❌ File System Access API not supported');
-                console.log('當前瀏覽器:', navigator.userAgent);
-                console.log('當前協議:', window.location.protocol);
+                // console.error('❌ File System Access API not supported');
+                // console.log('當前瀏覽器:', navigator.userAgent);
+                // console.log('當前協議:', window.location.protocol);
                 return false;
             }
-            console.log('✓ File System Access API supported');
+            // console.log('✓ File System Access API supported');
             return true;
         }
 
         // ==================== 事件監聽器 ====================
         function initEventListeners() {
-            console.log('🔧 正在初始化事件監聽器...');
+            // console.log('🔧 正在初始化事件監聽器...');
 
             // 標籤切換
             document.querySelectorAll('.tab').forEach(tab => {
@@ -1446,14 +1586,14 @@
             const menuToggle = document.getElementById('menu-toggle-sidebar');
             if (menuToggle) {
                 menuToggle.addEventListener('click', toggleSidebar);
-                console.log('✓ 選單切換監聽器已綁定');
+                // console.log('✓ 選單切換監聽器已綁定');
             }
 
             // 浮動側邊欄切換按鈕
             const floatingToggle = document.getElementById('floating-sidebar-toggle');
             if (floatingToggle) {
                 floatingToggle.addEventListener('click', toggleSidebar);
-                console.log('✓ 浮動切換按鈕監聽器已綁定');
+                // console.log('✓ 浮動切換按鈕監聽器已綁定');
             }
 
             // 專案管理
@@ -1464,32 +1604,32 @@
 
             if (btnSelectFolder) {
                 btnSelectFolder.addEventListener('click', (e) => {
-                    console.log('🖱️ 點擊了「選擇專案資料夾」按鈕');
+                    // console.log('🖱️ 點擊了「選擇專案資料夾」按鈕');
                     e.preventDefault();
                     selectProjectFolder();
                 });
-                console.log('✓ 選擇資料夾按鈕監聽器已綁定');
+                // console.log('✓ 選擇資料夾按鈕監聽器已綁定');
             } else {
-                console.error('❌ 找不到 btn-select-folder 元素');
+                // console.error('❌ 找不到 btn-select-folder 元素');
             }
 
             if (btnChangeFolder) {
                 btnChangeFolder.addEventListener('click', (e) => {
-                    console.log('🖱️ 點擊了「更換」按鈕');
+                    // console.log('🖱️ 點擊了「更換」按鈕');
                     e.preventDefault();
                     selectProjectFolder();
                 });
-                console.log('✓ 更換資料夾按鈕監聽器已綁定');
+                // console.log('✓ 更換資料夾按鈕監聽器已綁定');
             }
 
             if (btnNewMap) {
                 btnNewMap.addEventListener('click', showNewMapModal);
-                console.log('✓ 新增 Map 按鈕監聽器已綁定');
+                // console.log('✓ 新增 Map 按鈕監聽器已綁定');
             }
 
             if (btnLoadMap) {
                 btnLoadMap.addEventListener('click', showSelectMapModal);
-                console.log('✓ 載入 Map 按鈕監聽器已綁定');
+                // console.log('✓ 載入 Map 按鈕監聽器已綁定');
             }
 
             // 新增概念圖對話框
@@ -1513,6 +1653,11 @@
             document.getElementById('btn-add-connection').addEventListener('click', toggleConnectionMode);
             document.getElementById('btn-undo').addEventListener('click', undo);
             document.getElementById('btn-redo').addEventListener('click', redo);
+            document.getElementById('btn-copy').addEventListener('click', copyElements);
+            document.getElementById('btn-paste').addEventListener('click', pasteElements);
+
+            // 鍵盤快捷鍵
+            document.addEventListener('keydown', handleKeyboardShortcuts);
         }
 
         // ==================== UI 控制 ====================
@@ -1604,7 +1749,7 @@
                         document.getElementById('input-edit-map-title').value = fileName.replace('.html', '');
                     }
                 } catch (err) {
-                    console.error('讀取 Map 檔案失敗:', err);
+                    // console.error('讀取 Map 檔案失敗:', err);
                     // 使用檔案名稱作為預設標題
                     document.getElementById('input-edit-map-title').value = fileName.replace('.html', '');
                 }
@@ -1671,7 +1816,7 @@
                                 title: title
                             });
                         } catch (err) {
-                            console.error(`讀取檔案 ${entry.name} 失敗:`, err);
+                            // console.error(`讀取檔案 ${entry.name} 失敗:`, err);
                         }
                     }
                 }
@@ -1702,7 +1847,7 @@
                     });
                 }
             } catch (err) {
-                console.error('掃描 Map 檔案失敗:', err);
+                // console.error('掃描 Map 檔案失敗:', err);
                 selectMapList.innerHTML = `
                     <div style="text-align: center; color: var(--accent-color); padding: 40px;">
                         <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
@@ -1747,7 +1892,7 @@
                         currentMapData.title = newTitle;
                         document.getElementById('canvas-title').textContent = newTitle;
 
-                        console.log(`✓ Map 標題已更新（記憶體）：${newTitle}`);
+                        // console.log(`✓ Map 標題已更新（記憶體）：${newTitle}`);
                         alert('Map 標題已更新！\n\n注意：此 Map 尚未儲存到檔案系統，請記得儲存。');
                     } else {
                         alert('無法更新：檔案不存在且不在編輯狀態中。');
@@ -1781,14 +1926,14 @@
                             document.getElementById('canvas-title').textContent = newTitle;
                         }
 
-                        console.log(`✓ Map 標題已更新（檔案）：${newTitle}`);
+                        // console.log(`✓ Map 標題已更新（檔案）：${newTitle}`);
                         alert('Map 資訊已成功更新！');
                     } else {
                         alert('無法解析 Map 檔案');
                     }
                 }
             } catch (err) {
-                console.error('更新 Map 失敗:', err);
+                // console.error('更新 Map 失敗:', err);
                 alert('更新失敗：' + err.message);
             }
 
@@ -1797,7 +1942,7 @@
 
         // ==================== 專案管理 ====================
         async function selectProjectFolder() {
-            console.log('🔍 selectProjectFolder() 被調用');
+            // console.log('🔍 selectProjectFolder() 被調用');
 
             // 檢查瀏覽器支援
             if (!window.showDirectoryPicker) {
@@ -1806,12 +1951,12 @@
             }
 
             try {
-                console.log('📂 正在打開資料夾選擇對話框...');
+                // console.log('📂 正在打開資料夾選擇對話框...');
 
                 // 參考 concept-crafter.html 的做法：不傳入 options
                 currentProjectHandle = await window.showDirectoryPicker();
 
-                console.log('✓ 已選擇資料夾:', currentProjectHandle.name);
+                // console.log('✓ 已選擇資料夾:', currentProjectHandle.name);
 
                 // 更新 UI：顯示資料夾資訊
                 document.getElementById('project-folder-info').classList.add('active');
@@ -1822,15 +1967,15 @@
                 document.getElementById('btn-new-map').disabled = false;
                 document.getElementById('btn-load-map').disabled = false;
 
-                console.log('✓ 資料夾選擇完成，可以開始使用');
+                // console.log('✓ 資料夾選擇完成，可以開始使用');
             } catch (err) {
                 if (err.name === 'AbortError') {
-                    console.log('ℹ️ 使用者取消選擇資料夾');
+                    // console.log('ℹ️ 使用者取消選擇資料夾');
                 } else if (err.name === 'SecurityError') {
-                    console.error('❌ 安全錯誤:', err);
+                    // console.error('❌ 安全錯誤:', err);
                     alert('無法訪問檔案系統。\n\n請確認：\n1. 使用 HTTPS 或 localhost\n2. 瀏覽器已允許存取權限');
                 } else {
-                    console.error('❌ 選擇資料夾失敗:', err);
+                    // console.error('❌ 選擇資料夾失敗:', err);
                     alert('選擇資料夾失敗：' + err.message + '\n\n請重試或查看控制台了解詳情。');
                 }
             }
@@ -1873,7 +2018,7 @@
             } catch (err) {
                 // 如果檔案不存在，會拋出 NotFoundError，這是預期的
                 if (err.name !== 'NotFoundError') {
-                    console.error('檢查檔案時發生錯誤:', err);
+                    // console.error('檢查檔案時發生錯誤:', err);
                     alert('檢查檔案時發生錯誤：' + err.message);
                     return;
                 }
@@ -1892,22 +2037,35 @@
 
             currentFileName = fileName;
 
+            // 標記為新建的 Map（儲存時生成完整 HTML）
+            mapSourceTracking[fileName] = 'created';
+
             // 標記為已修改（新增的 Map 需要儲存）
             mapModifiedStatus[fileName] = true;
 
-            // 標記為新建的 Map（儲存時生成完整 HTML）
-            mapSourceTracking[fileName] = 'created';
+            // 將新 map 存入記憶體快取
+            mapCache[fileName] = JSON.parse(JSON.stringify(currentMapData));
 
             // 更新 UI
             document.getElementById('canvas-title').textContent = title;
             hideNewMapModal();
 
+            // 清除選擇狀態
+            selectedElement = null;
+            updatePropertyEditor();
+
             // 清空畫布
             renderCanvas();
+
+            // 更新複製貼上按鈕狀態
+            updateCopyPasteButtons();
 
             // 初始化歷史記錄
             history = [JSON.stringify(currentMapData)];
             historyIndex = 0;
+
+            // 更新 Undo/Redo 按鈕狀態
+            updateUndoRedoButtons();
 
             // 添加到列表中（使用之前已聲明的 mapList 變量）
             // 如果列表中有空白提示訊息，先清除
@@ -1919,10 +2077,13 @@
             const newItem = createMapListItem(fileName);
             mapList.appendChild(newItem);
 
+            // 更新所有項目的 active 狀態，確保只有當前新建的 map 為 active
+            updateMapListActiveState(fileName);
+
             // 切換到編輯標籤
             switchTab('edit');
 
-            console.log('✓ 新 Map 已創建，可以開始編輯');
+            // console.log('✓ 新 Map 已創建（已存入記憶體快取）');
         }
 
         async function loadProjectMapList() {
@@ -1954,8 +2115,20 @@
                     });
                 }
             } catch (err) {
-                console.error('讀取專案列表失敗:', err);
+                // console.error('讀取專案列表失敗:', err);
             }
+        }
+
+        function updateMapListActiveState(activeFileName) {
+            // 更新所有 map 項目的 active 狀態，確保只有一個為 active
+            document.querySelectorAll('.map-item').forEach(item => {
+                const itemFileName = item.querySelector('[data-filename]').dataset.filename;
+                if (itemFileName === activeFileName) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
         }
 
         function createMapListItem(fileName) {
@@ -2024,74 +2197,110 @@
         async function loadMap(fileName) {
             if (!currentProjectHandle) return;
 
+            // 如果點擊的是當前正在編輯的 map，不需要重新載入
+            if (fileName === currentFileName) {
+                // console.log('已經在編輯此 Map，無需重新載入');
+                // 只需要切換到編輯標籤和更新 active 狀態
+                switchTab('edit');
+                updateMapListActiveState(fileName);
+                return;
+            }
+
+            // 先儲存當前 map 的狀態到快取
+            if (currentFileName && currentMapData) {
+                mapCache[currentFileName] = JSON.parse(JSON.stringify(currentMapData));
+                // console.log('✓ 已將當前 Map 存入快取:', currentFileName);
+            }
+
             showLoading();
 
             try {
-                const fileHandle = await currentProjectHandle.getFileHandle(fileName);
-                const file = await fileHandle.getFile();
-                const content = await file.text();
+                let mapData;
 
-                // 解析 HTML 中的 JSON 數據
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(content, 'text/html');
-                const dataScript = doc.getElementById('map-data');
+                // 優先從記憶體快取讀取
+                if (mapCache[fileName]) {
+                    // console.log('✓ 從記憶體快取載入:', fileName);
+                    mapData = JSON.parse(JSON.stringify(mapCache[fileName]));
+                } else {
+                    // 如果快取中沒有，從磁碟讀取
+                    // console.log('從磁碟讀取:', fileName);
+                    const fileHandle = await currentProjectHandle.getFileHandle(fileName);
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
 
-                if (dataScript) {
-                    currentMapData = JSON.parse(dataScript.textContent);
-                    currentFileName = fileName;
+                    // 解析 HTML 中的 JSON 數據
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(content, 'text/html');
+                    const dataScript = doc.getElementById('map-data');
 
-                    // 標記為載入的 Map（儲存時只更新 JSON 和標題）
-                    mapSourceTracking[fileName] = 'loaded';
-
-                    // 更新 UI
-                    document.getElementById('canvas-title').textContent = currentMapData.title;
-
-                    // 重新渲染畫布
-                    renderCanvas();
-
-                    // 重置歷史記錄
-                    history = [JSON.stringify(currentMapData)];
-                    historyIndex = 0;
-
-                    // 清除變動狀態
-                    delete mapModifiedStatus[fileName];
-
-                    // 檢查該 Map 是否已在列表中
-                    const mapList = document.getElementById('map-list');
-                    const existingItem = mapList.querySelector(`[data-filename="${fileName}"]`);
-
-                    if (!existingItem) {
-                        // 如果列表為空(有空白訊息),先清除
-                        const emptyMsg = mapList.querySelector('.map-list-empty');
-                        if (emptyMsg) {
-                            mapList.innerHTML = '';
+                    if (dataScript) {
+                        mapData = JSON.parse(dataScript.textContent);
+                        // 標記為載入的 Map（儲存時只更新 JSON 和標題）
+                        if (!mapSourceTracking[fileName]) {
+                            mapSourceTracking[fileName] = 'loaded';
                         }
-
-                        // 添加到列表中
-                        const newItem = createMapListItem(fileName);
-                        mapList.appendChild(newItem);
+                        // 將讀取的數據存入快取
+                        mapCache[fileName] = JSON.parse(JSON.stringify(mapData));
+                        // console.log('✓ 已從磁碟載入並存入快取:', fileName);
                     } else {
-                        // 更新所有項目的 active 狀態
-                        document.querySelectorAll('.map-item').forEach(item => {
-                            const itemFileName = item.querySelector('[data-filename]').dataset.filename;
-                            if (itemFileName === fileName) {
-                                item.classList.add('active');
-                            } else {
-                                item.classList.remove('active');
-                            }
-                        });
+                        throw new Error('無法解析 Map 數據，檔案格式可能不正確');
+                    }
+                }
+
+                // 設置當前 map 數據
+                currentMapData = mapData;
+                currentFileName = fileName;
+
+                // 更新 UI
+                document.getElementById('canvas-title').textContent = currentMapData.title;
+
+                // 清除選擇狀態
+                selectedElement = null;
+                updatePropertyEditor();
+
+                // 重新渲染畫布
+                renderCanvas();
+
+                // 更新複製貼上按鈕狀態
+                updateCopyPasteButtons();
+
+                // 重置歷史記錄
+                history = [JSON.stringify(currentMapData)];
+                historyIndex = 0;
+
+                // 更新 Undo/Redo 按鈕狀態
+                updateUndoRedoButtons();
+
+                // 檢查該 Map 是否已在列表中
+                const mapList = document.getElementById('map-list');
+                const existingItem = mapList.querySelector(`[data-filename="${fileName}"]`);
+
+                if (!existingItem) {
+                    // 如果列表為空(有空白訊息),先清除
+                    const emptyMsg = mapList.querySelector('.map-list-empty');
+                    if (emptyMsg) {
+                        mapList.innerHTML = '';
                     }
 
-                    // 切換到編輯標籤
-                    switchTab('edit');
-
-                    console.log('載入成功:', fileName);
-                } else {
-                    alert('無法解析 Map 數據，檔案格式可能不正確');
+                    // 添加到列表中
+                    const newItem = createMapListItem(fileName);
+                    mapList.appendChild(newItem);
                 }
+
+                // 更新所有項目的 active 狀態（無論是新增還是已存在）
+                updateMapListActiveState(fileName);
+
+                // 切換到編輯標籤
+                switchTab('edit');
+
+                // console.log('✓ 載入成功:', fileName);
             } catch (err) {
-                console.error('載入 Map 失敗:', err);
-                alert('載入失敗，請重試');
+                // 根據錯誤類型提供更詳細的訊息
+                if (err.name === 'NotFoundError') {
+                    alert(`找不到檔案「${fileName}」\n\n這個 Map 尚未儲存到磁碟。\n請先儲存後才能重新載入。`);
+                } else {
+                    alert(`載入失敗：${err.message}\n\n請查看瀏覽器控制台了解詳細資訊。`);
+                }
             } finally {
                 hideLoading();
             }
@@ -2142,6 +2351,9 @@
                 // 清除變動狀態
                 delete mapModifiedStatus[fileName];
 
+                // 更新記憶體快取
+                mapCache[fileName] = JSON.parse(JSON.stringify(mapData));
+
                 // 更新列表顯示(只更新該項目的顯示狀態)
                 const mapItem = document.querySelector(`[data-filename="${fileName}"]`);
                 if (mapItem) {
@@ -2150,13 +2362,18 @@
                         // 重新創建列表項以移除「儲存」按鈕和「已修改」標籤
                         const newItem = createMapListItem(fileName);
                         parentItem.replaceWith(newItem);
+
+                        // 確保 active 狀態正確（如果儲存的是當前 map）
+                        if (fileName === currentFileName) {
+                            updateMapListActiveState(fileName);
+                        }
                     }
                 }
 
-                console.log('儲存成功:', fileName);
+                // console.log('儲存成功:', fileName);
                 alert('儲存成功！');
             } catch (err) {
-                console.error('儲存失敗:', err);
+                // console.error('儲存失敗:', err);
                 alert('儲存失敗，請重試');
             } finally {
                 hideLoading();
@@ -2199,11 +2416,21 @@
                 currentMapData = null;
                 currentFileName = null;
                 document.getElementById('canvas-title').textContent = '未載入概念圖';
+
+                // 清空歷史記錄
+                history = [];
+                historyIndex = -1;
+
                 renderCanvas();
+                updatePropertyEditor();
+                updateCopyPasteButtons();
+                updateUndoRedoButtons();
             }
 
             // 從狀態中移除
             delete mapModifiedStatus[fileName];
+            delete mapCache[fileName];
+            delete mapSourceTracking[fileName];
 
             // 從 DOM 中移除該項目
             const mapItem = document.querySelector(`[data-filename="${fileName}"]`);
@@ -2268,10 +2495,10 @@
                     `;
                 }
 
-                console.log('刪除成功:', deleteTargetFileName);
+                // console.log('刪除成功:', deleteTargetFileName);
                 alert('刪除成功！');
             } catch (err) {
-                console.error('刪除失敗:', err);
+                // console.error('刪除失敗:', err);
                 alert('刪除失敗，請重試');
             } finally {
                 hideLoading();
@@ -2291,6 +2518,7 @@
                     // 取消選擇元素
                     selectedElement = null;
                     updatePropertyEditor();
+                    updateCopyPasteButtons(); // 更新複製貼上按鈕狀態
 
                     isPanning = true;
                     panStart = { x: e.clientX, y: e.clientY };
@@ -2347,6 +2575,38 @@
                 container.classList.remove('grabbing');
             });
 
+            // 觸控拖曳移動
+            window.addEventListener('touchmove', (e) => {
+                if (isDragging && dragTarget) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const dx = (touch.clientX - dragStart.x) / scale;
+                    const dy = (touch.clientY - dragStart.y) / scale;
+
+                    dragTarget.element.x = dragOffset.x + dx;
+                    dragTarget.element.y = dragOffset.y + dy;
+
+                    renderCanvas();
+                }
+            }, { passive: false });
+
+            // 觸控拖曳結束
+            window.addEventListener('touchend', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    resizeTarget = null;
+                    saveHistory();
+                    markMapAsModified();
+                }
+
+                if (isDragging) {
+                    isDragging = false;
+                    dragTarget = null;
+                    saveHistory();
+                    markMapAsModified();
+                }
+            });
+
             // 縮放事件
             container.addEventListener('wheel', (e) => {
                 e.preventDefault();
@@ -2358,9 +2618,104 @@
                 offsetX = mouseX - (mouseX - offsetX) * delta;
                 offsetY = mouseY - (mouseY - offsetY) * delta;
                 scale *= delta;
-                scale = Math.max(0.1, Math.min(5, scale));
+                scale = Math.max(0.05, Math.min(5, scale));  // 允許縮小到 0.05，方便在手機上看清全局
                 renderCanvas();
+                showScaleIndicator();
             });
+
+            // ==================== 觸控事件支援 ====================
+            let touchStartDistance = 0;
+            let touchStartScale = 1;
+            let lastTouchX = 0;
+            let lastTouchY = 0;
+
+            // 觸控開始
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    // 單指觸控：準備平移或點擊元素
+                    const touch = e.touches[0];
+                    if (e.target === container || e.target === frameLayer || e.target === nodeLayer) {
+                        // 取消選擇元素
+                        selectedElement = null;
+                        updatePropertyEditor();
+                        updateCopyPasteButtons();
+
+                        isPanning = true;
+                        lastTouchX = touch.clientX;
+                        lastTouchY = touch.clientY;
+                        panStart = { x: touch.clientX, y: touch.clientY };
+                        container.classList.add('grabbing');
+                        renderCanvas();
+                    }
+                } else if (e.touches.length === 2) {
+                    // 雙指觸控：準備縮放
+                    e.preventDefault();
+                    isPanning = false;  // 停止平移
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    touchStartDistance = Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+                    touchStartScale = scale;
+
+                    // 計算雙指中心點
+                    const centerX = (touch1.clientX + touch2.clientX) / 2;
+                    const centerY = (touch1.clientY + touch2.clientY) / 2;
+                    lastTouchX = centerX;
+                    lastTouchY = centerY;
+                }
+            }, { passive: false });
+
+            // 觸控移動
+            container.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && isPanning && !isDragging) {
+                    // 單指平移（但不在拖曳節點/框架時）
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    offsetX += touch.clientX - lastTouchX;
+                    offsetY += touch.clientY - lastTouchY;
+                    lastTouchX = touch.clientX;
+                    lastTouchY = touch.clientY;
+                    renderCanvas();
+                } else if (e.touches.length === 2) {
+                    // 雙指縮放
+                    e.preventDefault();
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const currentDistance = Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+
+                    // 計算雙指中心點
+                    const centerX = (touch1.clientX + touch2.clientX) / 2;
+                    const centerY = (touch1.clientY + touch2.clientY) / 2;
+                    const rect = container.getBoundingClientRect();
+                    const touchX = centerX - rect.left;
+                    const touchY = centerY - rect.top;
+
+                    // 計算縮放比例
+                    const scaleChange = currentDistance / touchStartDistance;
+                    const newScale = touchStartScale * scaleChange;
+
+                    // 以雙指中心點為基準縮放
+                    offsetX = touchX - (touchX - offsetX) * (newScale / scale);
+                    offsetY = touchY - (touchY - offsetY) * (newScale / scale);
+
+                    scale = Math.max(0.05, Math.min(5, newScale));
+                    renderCanvas();
+                    showScaleIndicator();
+                }
+            }, { passive: false });
+
+            // 觸控結束
+            container.addEventListener('touchend', (e) => {
+                if (e.touches.length === 0) {
+                    isPanning = false;
+                    container.classList.remove('grabbing');
+                }
+            }, { passive: false });
 
             // 初始化 SVG 尺寸
             updateSVGSize();
@@ -2373,6 +2728,29 @@
             const rect = container.getBoundingClientRect();
             svg.setAttribute('width', rect.width);
             svg.setAttribute('height', rect.height);
+        }
+
+        // 顯示縮放比例指示器
+        let scaleIndicatorTimer = null;
+        function showScaleIndicator() {
+            const indicator = document.getElementById('scale-indicator');
+            if (!indicator) return;
+
+            // 更新顯示的百分比
+            indicator.textContent = Math.round(scale * 100) + '%';
+
+            // 顯示指示器
+            indicator.classList.add('show');
+
+            // 清除之前的計時器
+            if (scaleIndicatorTimer) {
+                clearTimeout(scaleIndicatorTimer);
+            }
+
+            // 1.5 秒後自動隱藏
+            scaleIndicatorTimer = setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 1500);
         }
 
         function renderCanvas() {
@@ -2447,7 +2825,7 @@
                 nodeEl.appendChild(badge);
             }
 
-            // 拖曳節點或連接模式處理
+            // 拖曳節點或連接模式處理（滑鼠）
             nodeEl.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
 
@@ -2466,6 +2844,29 @@
                 dragStart = { x: e.clientX, y: e.clientY };
                 dragOffset = { x: node.x, y: node.y };
             });
+
+            // 觸控支援
+            nodeEl.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                e.preventDefault();  // 防止觸發其他默認行為
+                const touch = e.touches[0];
+
+                // 如果處於連接模式
+                if (isConnecting) {
+                    handleConnectionClick(node.id, 'node');
+                    return;
+                }
+
+                // 選擇元素
+                selectElement(node.id, 'node');
+
+                // 停止畫布平移，開始拖曳節點
+                isPanning = false;
+                isDragging = true;
+                dragTarget = { type: 'node', element: node };
+                dragStart = { x: touch.clientX, y: touch.clientY };
+                dragOffset = { x: node.x, y: node.y };
+            }, { passive: false });
 
             // 如果是當前選中的元素，添加 selected 類
             if (selectedElement && selectedElement.id === node.id) {
@@ -2533,7 +2934,7 @@
                 frameEl.appendChild(badge);
             }
 
-            // 拖曳框架或連接模式處理
+            // 拖曳框架或連接模式處理（滑鼠）
             frameEl.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
 
@@ -2552,6 +2953,27 @@
                 dragStart = { x: e.clientX, y: e.clientY };
                 dragOffset = { x: frame.x, y: frame.y };
             });
+
+            // 觸控支援
+            frameEl.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                const touch = e.touches[0];
+
+                // 如果處於連接模式
+                if (isConnecting) {
+                    handleConnectionClick(frame.id, 'frame');
+                    return;
+                }
+
+                // 選擇元素
+                selectElement(frame.id, 'frame');
+
+                // 開始拖曳
+                isDragging = true;
+                dragTarget = { type: 'frame', element: frame };
+                dragStart = { x: touch.clientX, y: touch.clientY };
+                dragOffset = { x: frame.x, y: frame.y };
+            }, { passive: false });
 
             // 如果是當前選中的元素，添加 selected 類
             if (selectedElement && selectedElement.id === frame.id) {
@@ -2782,6 +3204,7 @@
         function selectElement(id, type) {
             selectedElement = { id, type };
             updatePropertyEditor();
+            updateCopyPasteButtons(); // 更新複製貼上按鈕狀態
             renderCanvas(); // 重新渲染以顯示選中狀態
         }
 
@@ -2978,6 +3401,7 @@
                         currentMapData.data.nodes.splice(index, 1);
                         selectedElement = null;
                         updatePropertyEditor();
+                        updateCopyPasteButtons(); // 更新複製貼上按鈕狀態
                         renderCanvas();
                         saveHistory();
                         markMapAsModified();
@@ -3036,6 +3460,7 @@
                         currentMapData.data.frames.splice(index, 1);
                         selectedElement = null;
                         updatePropertyEditor();
+                        updateCopyPasteButtons(); // 更新複製貼上按鈕狀態
                         renderCanvas();
                         saveHistory();
                         markMapAsModified();
@@ -3096,6 +3521,7 @@
                         currentMapData.data.connections.splice(index, 1);
                         selectedElement = null;
                         updatePropertyEditor();
+                        updateCopyPasteButtons(); // 更新複製貼上按鈕狀態
                         renderCanvas();
                         saveHistory();
                         markMapAsModified();
@@ -3557,6 +3983,229 @@
             renderCanvas();
         }
 
+        // ==================== 複製貼上功能 ====================
+        function copyElements() {
+            if (!selectedElement) {
+                alert('請先選擇一個元素');
+                return;
+            }
+
+            const { id, type } = selectedElement;
+            let elementData = null;
+
+            // 根據類型找到元素資料
+            if (type === 'node') {
+                elementData = currentMapData.data.nodes.find(n => n.id === id);
+            } else if (type === 'frame') {
+                elementData = currentMapData.data.frames.find(f => f.id === id);
+            } else if (type === 'connection') {
+                elementData = currentMapData.data.connections.find(c => c.id === id);
+            }
+
+            if (!elementData) {
+                alert('找不到選中的元素');
+                return;
+            }
+
+            // 將元素資料序列化並存入 localStorage（實現跨 map 複製）
+            const clipboardData = {
+                type: type,
+                data: JSON.parse(JSON.stringify(elementData)), // 深拷貝
+                timestamp: Date.now()
+            };
+
+            try {
+                localStorage.setItem('conceptCrafterClipboard', JSON.stringify(clipboardData));
+                // console.log('✓ 已複製元素到剪貼簿:', clipboardData);
+
+                // 更新貼上按鈕狀態
+                updatePasteButtonState();
+
+                // 給使用者視覺回饋
+                showToast('✓ 已複製');
+            } catch (error) {
+                // console.error('複製失敗:', error);
+                alert('複製失敗：' + error.message);
+            }
+        }
+
+        function pasteElements() {
+            if (!currentMapData) {
+                alert('請先建立或開啟一個概念圖');
+                return;
+            }
+
+            // 從 localStorage 讀取剪貼簿資料
+            let clipboardData = null;
+            try {
+                const clipboardStr = localStorage.getItem('conceptCrafterClipboard');
+                if (!clipboardStr) {
+                    alert('剪貼簿是空的');
+                    return;
+                }
+                clipboardData = JSON.parse(clipboardStr);
+            } catch (error) {
+                // console.error('讀取剪貼簿失敗:', error);
+                alert('讀取剪貼簿失敗');
+                return;
+            }
+
+            const { type, data } = clipboardData;
+
+            // 創建新元素（深拷貝並生成新 ID）
+            const newElement = JSON.parse(JSON.stringify(data));
+            newElement.id = type + '-' + Date.now();
+
+            // 調整位置（偏移一點避免完全重疊）
+            if (type === 'node' || type === 'frame') {
+                newElement.x += 30;
+                newElement.y += 30;
+            }
+
+            // 將新元素加入當前 map
+            if (type === 'node') {
+                currentMapData.data.nodes.push(newElement);
+            } else if (type === 'frame') {
+                currentMapData.data.frames.push(newElement);
+            } else if (type === 'connection') {
+                // 連接線比較特殊，需要檢查 from 和 to 是否存在
+                const fromExists =
+                    currentMapData.data.nodes.some(n => n.id === newElement.from) ||
+                    currentMapData.data.frames.some(f => f.id === newElement.from);
+                const toExists =
+                    currentMapData.data.nodes.some(n => n.id === newElement.to) ||
+                    currentMapData.data.frames.some(f => f.id === newElement.to);
+
+                if (!fromExists || !toExists) {
+                    alert('無法貼上連接線：起點或終點元素不存在於此 Map 中');
+                    return;
+                }
+
+                currentMapData.data.connections.push(newElement);
+            }
+
+            // 選中新貼上的元素
+            selectedElement = { id: newElement.id, type: type };
+
+            renderCanvas();
+            saveHistory();
+            markMapAsModified();
+            updatePropertyEditor();
+
+            // console.log('✓ 已貼上元素:', newElement);
+            showToast('✓ 已貼上');
+
+            // 在小螢幕上自動隱藏側邊欄
+            autoHideSidebarOnSmallScreen();
+        }
+
+        function updatePasteButtonState() {
+            const btnPaste = document.getElementById('btn-paste');
+            const clipboardStr = localStorage.getItem('conceptCrafterClipboard');
+
+            if (clipboardStr) {
+                btnPaste.classList.remove('disabled');
+            } else {
+                btnPaste.classList.add('disabled');
+            }
+        }
+
+        function updateCopyPasteButtons() {
+            const btnCopy = document.getElementById('btn-copy');
+            const btnPaste = document.getElementById('btn-paste');
+
+            // 更新複製按鈕狀態（有選中元素時啟用）
+            if (selectedElement) {
+                btnCopy.classList.remove('disabled');
+            } else {
+                btnCopy.classList.add('disabled');
+            }
+
+            // 更新貼上按鈕狀態（localStorage 有資料時啟用）
+            const clipboardStr = localStorage.getItem('conceptCrafterClipboard');
+            if (clipboardStr) {
+                btnPaste.classList.remove('disabled');
+            } else {
+                btnPaste.classList.add('disabled');
+            }
+        }
+
+        function updateUndoRedoButtons() {
+            const btnUndo = document.getElementById('btn-undo');
+            const btnRedo = document.getElementById('btn-redo');
+
+            // 更新 Undo 按鈕狀態（有歷史可以回復時啟用）
+            if (historyIndex > 0) {
+                btnUndo.classList.remove('disabled');
+            } else {
+                btnUndo.classList.add('disabled');
+            }
+
+            // 更新 Redo 按鈕狀態（有歷史可以重做時啟用）
+            if (historyIndex < history.length - 1) {
+                btnRedo.classList.remove('disabled');
+            } else {
+                btnRedo.classList.add('disabled');
+            }
+        }
+
+        function handleKeyboardShortcuts(e) {
+            // Ctrl+C 或 Cmd+C：複製
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+                // 只有在沒有選中輸入框時才觸發
+                if (!isInputFocused()) {
+                    e.preventDefault();
+                    copyElements();
+                }
+            }
+
+            // Ctrl+V 或 Cmd+V：貼上
+            if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                // 只有在沒有選中輸入框時才觸發
+                if (!isInputFocused()) {
+                    e.preventDefault();
+                    pasteElements();
+                }
+            }
+        }
+
+        function isInputFocused() {
+            const activeElement = document.activeElement;
+            return activeElement && (
+                activeElement.tagName === 'INPUT' ||
+                activeElement.tagName === 'TEXTAREA' ||
+                activeElement.contentEditable === 'true'
+            );
+        }
+
+        function showToast(message) {
+            // 創建提示訊息
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.position = 'fixed';
+            toast.style.top = '20px';
+            toast.style.right = '20px';
+            toast.style.background = 'var(--success-color)';
+            toast.style.color = 'white';
+            toast.style.padding = '12px 24px';
+            toast.style.borderRadius = '6px';
+            toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+            toast.style.zIndex = '10000';
+            toast.style.fontSize = '14px';
+            toast.style.fontWeight = '500';
+            toast.style.transition = 'opacity 0.3s ease';
+
+            document.body.appendChild(toast);
+
+            // 1.5 秒後淡出並移除
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, 1500);
+        }
+
         // ==================== 歷史記錄 ====================
         function saveHistory() {
             if (!currentMapData) return;
@@ -3573,6 +4222,14 @@
                 history.shift();
                 historyIndex--;
             }
+
+            // 同時更新記憶體快取
+            if (currentFileName) {
+                mapCache[currentFileName] = JSON.parse(JSON.stringify(currentMapData));
+            }
+
+            // 更新 Undo/Redo 按鈕狀態
+            updateUndoRedoButtons();
         }
 
         function undo() {
@@ -3581,6 +4238,12 @@
                 currentMapData = JSON.parse(history[historyIndex]);
                 renderCanvas();
                 markMapAsModified();
+                // 更新快取
+                if (currentFileName) {
+                    mapCache[currentFileName] = JSON.parse(JSON.stringify(currentMapData));
+                }
+                // 更新 Undo/Redo 按鈕狀態
+                updateUndoRedoButtons();
             }
         }
 
@@ -3590,6 +4253,12 @@
                 currentMapData = JSON.parse(history[historyIndex]);
                 renderCanvas();
                 markMapAsModified();
+                // 更新快取
+                if (currentFileName) {
+                    mapCache[currentFileName] = JSON.parse(JSON.stringify(currentMapData));
+                }
+                // 更新 Undo/Redo 按鈕狀態
+                updateUndoRedoButtons();
             }
         }
 
@@ -3606,6 +4275,9 @@
                         // 重新創建列表項以顯示「儲存」按鈕和「已修改」標籤
                         const newItem = createMapListItem(currentFileName);
                         parentItem.replaceWith(newItem);
+
+                        // 確保 active 狀態正確
+                        updateMapListActiveState(currentFileName);
                     }
                 }
             }
