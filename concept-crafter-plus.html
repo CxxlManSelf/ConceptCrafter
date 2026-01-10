@@ -575,6 +575,7 @@
             position: relative;
             overflow: hidden;
             cursor: grab;
+            touch-action: none; /* 關鍵！允許自定義觸控處理 */
             background:
                 repeating-linear-gradient(
                     0deg,
@@ -672,6 +673,7 @@
             flex-direction: column; /* 垂直排列，支援多行內容 */
             justify-content: center; /* 垂直置中 */
             /* align-items 由 JavaScript 動態設置，用於水平對齊 */
+            touch-action: none; /* 關鍵！允許自定義觸控處理 */
         }
 
         .node:hover {
@@ -710,6 +712,7 @@
             border-radius: 4px;
             cursor: move;
             user-select: none;
+            touch-action: none; /* 關鍵！允許自定義觸控處理 */
         }
 
         .frame:hover {
@@ -754,6 +757,17 @@
         .node.selected .resize-handle,
         .frame.selected .resize-handle {
             opacity: 1;
+        }
+
+        /* 手機上增大縮放控制點 */
+        @media (max-width: 768px) {
+            .resize-handle {
+                width: 24px;
+                height: 24px;
+                border-width: 3px;
+                bottom: -4px;
+                right: -4px;
+            }
         }
 
         /* 狀態徽章 */
@@ -930,6 +944,31 @@
                 font-size: 14px;
                 padding: 10px 18px;
             }
+        }
+
+        /* 調試面板 */
+        #resize-debug {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(231, 76, 60, 0.95);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-family: monospace;
+            z-index: 1000;
+            pointer-events: none;
+            max-width: 250px;
+            display: none;
+        }
+
+        #resize-debug.show {
+            display: block;
+        }
+
+        #resize-debug div {
+            margin: 2px 0;
         }
 
         /* ==================== 對話框 ==================== */
@@ -1323,6 +1362,7 @@
                 <div id="node-layer"></div>
                 <svg id="svg-layer"></svg>
                 <div id="scale-indicator">100%</div>
+                <div id="resize-debug"></div>
             </div>
         </main>
     </div>
@@ -2575,35 +2615,89 @@
                 container.classList.remove('grabbing');
             });
 
-            // 觸控拖曳移動
+            // 觸控調整大小（window 層級）- 拖曳邏輯已移到節點/Frame 的 touchstart 中
             window.addEventListener('touchmove', (e) => {
-                if (isDragging && dragTarget) {
+                // 注意：節點和 Frame 的拖曳由各自的 touchstart 處理器管理
+                // 這裡只處理調整大小
+                if (isResizing && resizeTarget && e.touches.length === 1) {
                     e.preventDefault();
                     const touch = e.touches[0];
-                    const dx = (touch.clientX - dragStart.x) / scale;
-                    const dy = (touch.clientY - dragStart.y) / scale;
+                    const dx = (touch.clientX - resizeStart.x) / scale;
+                    const dy = (touch.clientY - resizeStart.y) / scale;
 
-                    dragTarget.element.x = dragOffset.x + dx;
-                    dragTarget.element.y = dragOffset.y + dy;
+                    const newWidth = Math.max(50, resizeOriginalSize.width + dx);
+                    const newHeight = Math.max(30, resizeOriginalSize.height + dy);
+
+                    console.log('縮放中:', {
+                        dx, dy,
+                        originalWidth: resizeOriginalSize.width,
+                        originalHeight: resizeOriginalSize.height,
+                        newWidth,
+                        newHeight,
+                        scale
+                    });
+
+                    resizeTarget.element.width = newWidth;
+                    resizeTarget.element.height = newHeight;
+
+                    // 更新調試面板
+                    const debugPanel = document.getElementById('resize-debug');
+                    if (debugPanel) {
+                        debugPanel.innerHTML = `
+                            <div>縮放中...</div>
+                            <div>dx: ${dx.toFixed(1)}, dy: ${dy.toFixed(1)}</div>
+                            <div>新尺寸: ${newWidth.toFixed(0)}x${newHeight.toFixed(0)}</div>
+                            <div>scale: ${scale.toFixed(2)}</div>
+                        `;
+                    }
 
                     renderCanvas();
+                    updatePropertyEditor();
                 }
             }, { passive: false });
 
             // 觸控拖曳結束
             window.addEventListener('touchend', () => {
+                const debugInfo = document.getElementById('debug-info');
+
                 if (isResizing) {
                     isResizing = false;
                     resizeTarget = null;
+                    renderCanvas(); // 確保最終狀態正確
                     saveHistory();
                     markMapAsModified();
+
+                    // 隱藏調試面板
+                    const debugPanel = document.getElementById('resize-debug');
+                    if (debugPanel) {
+                        setTimeout(() => {
+                            debugPanel.classList.remove('show');
+                        }, 1000);
+                    }
                 }
 
                 if (isDragging) {
+                    if (debugInfo) {
+                        debugInfo.innerHTML = `
+                            <div>✅ touchend</div>
+                            <div>拖曳結束，已保存</div>
+                            <div>touchmove 次數: ${touchMoveCount}</div>
+                        `;
+                    }
+
                     isDragging = false;
                     dragTarget = null;
+                    touchMoveCount = 0;
+                    renderCanvas(); // 確保最終狀態正確
                     saveHistory();
                     markMapAsModified();
+
+                    // 3秒後清除調試資訊
+                    setTimeout(() => {
+                        if (debugInfo) {
+                            debugInfo.innerHTML = '等待觸控...';
+                        }
+                    }, 3000);
                 }
             });
 
@@ -2669,8 +2763,19 @@
 
             // 觸控移動
             container.addEventListener('touchmove', (e) => {
-                if (e.touches.length === 1 && isPanning && !isDragging) {
-                    // 單指平移（但不在拖曳節點/框架時）
+                // 如果正在拖曳節點/框架或縮放元素，阻止默認行為（讓 window touchmove 處理）
+                if (isDragging) {
+                    e.preventDefault();
+                    return;
+                }
+
+                if (isResizing) {
+                    e.preventDefault();
+                    return;
+                }
+
+                if (e.touches.length === 1 && isPanning) {
+                    // 單指平移畫布
                     e.preventDefault();
                     const touch = e.touches[0];
                     offsetX += touch.clientX - lastTouchX;
@@ -2847,9 +2952,8 @@
 
             // 觸控支援
             nodeEl.addEventListener('touchstart', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
-                e.preventDefault();  // 防止觸發其他默認行為
-                const touch = e.touches[0];
 
                 // 如果處於連接模式
                 if (isConnecting) {
@@ -2863,10 +2967,75 @@
                 // 停止畫布平移，開始拖曳節點
                 isPanning = false;
                 isDragging = true;
-                dragTarget = { type: 'node', element: node };
-                dragStart = { x: touch.clientX, y: touch.clientY };
-                dragOffset = { x: node.x, y: node.y };
+
+                // 記錄初始觸碰位置和節點位置
+                const touch = e.touches[0];
+                const containerEl = document.getElementById('canvas-container');
+                const rect = containerEl.getBoundingClientRect();
+                const containerX = touch.clientX - rect.left;
+                const containerY = touch.clientY - rect.top;
+                const canvasX = (containerX - offsetX) / scale;
+                const canvasY = (containerY - offsetY) / scale;
+
+                dragTarget = {
+                    type: 'node',
+                    element: node,
+                    startX: canvasX,
+                    startY: canvasY,
+                    initialNodeX: node.x,
+                    initialNodeY: node.y
+                };
             }, { passive: false });
+
+            // 觸控拖曳
+            nodeEl.addEventListener('touchmove', (e) => {
+                if (!isDragging || !dragTarget || dragTarget.element.id !== node.id) {
+                    return;
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const touch = e.touches[0];
+                const containerEl = document.getElementById('canvas-container');
+                const rect = containerEl.getBoundingClientRect();
+
+                // 計算相對於 container 的位置
+                const containerX = touch.clientX - rect.left;
+                const containerY = touch.clientY - rect.top;
+
+                // 轉換為畫布坐標
+                const canvasX = (containerX - offsetX) / scale;
+                const canvasY = (containerY - offsetY) / scale;
+
+                // 計算偏移量
+                const dx = canvasX - dragTarget.startX;
+                const dy = canvasY - dragTarget.startY;
+
+                // 更新節點數據位置（使用初始位置加偏移）
+                node.x = dragTarget.initialNodeX + dx;
+                node.y = dragTarget.initialNodeY + dy;
+
+                // 重新查找當前的 DOM 元素（避免閉包引用失效）
+                const currentNodeEl = document.querySelector(`[data-id="${node.id}"]`);
+                if (currentNodeEl) {
+                    currentNodeEl.style.left = node.x + 'px';
+                    currentNodeEl.style.top = node.y + 'px';
+                }
+
+                // 更新連接線
+                renderConnections();
+            }, { passive: false });
+
+            nodeEl.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+
+                isDragging = false;
+                dragTarget = null;
+
+                saveHistory();
+                markMapAsModified();
+            });
 
             // 如果是當前選中的元素，添加 selected 類
             if (selectedElement && selectedElement.id === node.id) {
@@ -2885,6 +3054,13 @@
                 e.stopPropagation();
                 startResize(e, node, 'node');
             });
+            resizeHandle.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                isPanning = false;
+                isDragging = false;
+                startResize(e, node, 'node');
+            }, { passive: false });
             nodeEl.appendChild(resizeHandle);
 
             nodeLayer.appendChild(nodeEl);
@@ -2956,8 +3132,8 @@
 
             // 觸控支援
             frameEl.addEventListener('touchstart', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
-                const touch = e.touches[0];
 
                 // 如果處於連接模式
                 if (isConnecting) {
@@ -2968,12 +3144,78 @@
                 // 選擇元素
                 selectElement(frame.id, 'frame');
 
-                // 開始拖曳
+                // 停止畫布平移，開始拖曳框架
+                isPanning = false;
                 isDragging = true;
-                dragTarget = { type: 'frame', element: frame };
-                dragStart = { x: touch.clientX, y: touch.clientY };
-                dragOffset = { x: frame.x, y: frame.y };
+
+                // 記錄初始觸碰位置和框架位置
+                const touch = e.touches[0];
+                const containerEl = document.getElementById('canvas-container');
+                const rect = containerEl.getBoundingClientRect();
+                const containerX = touch.clientX - rect.left;
+                const containerY = touch.clientY - rect.top;
+                const canvasX = (containerX - offsetX) / scale;
+                const canvasY = (containerY - offsetY) / scale;
+
+                dragTarget = {
+                    type: 'frame',
+                    element: frame,
+                    startX: canvasX,
+                    startY: canvasY,
+                    initialNodeX: frame.x,
+                    initialNodeY: frame.y
+                };
             }, { passive: false });
+
+            // 觸控拖曳
+            frameEl.addEventListener('touchmove', (e) => {
+                if (!isDragging || !dragTarget || dragTarget.element.id !== frame.id) {
+                    return;
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const touch = e.touches[0];
+                const containerEl = document.getElementById('canvas-container');
+                const rect = containerEl.getBoundingClientRect();
+
+                // 計算相對於 container 的位置
+                const containerX = touch.clientX - rect.left;
+                const containerY = touch.clientY - rect.top;
+
+                // 轉換為畫布坐標
+                const canvasX = (containerX - offsetX) / scale;
+                const canvasY = (containerY - offsetY) / scale;
+
+                // 計算偏移量
+                const dx = canvasX - dragTarget.startX;
+                const dy = canvasY - dragTarget.startY;
+
+                // 更新框架數據位置（使用初始位置加偏移）
+                frame.x = dragTarget.initialNodeX + dx;
+                frame.y = dragTarget.initialNodeY + dy;
+
+                // 重新查找當前的 DOM 元素（避免閉包引用失效）
+                const currentFrameEl = document.querySelector(`[data-id="${frame.id}"]`);
+                if (currentFrameEl) {
+                    currentFrameEl.style.left = frame.x + 'px';
+                    currentFrameEl.style.top = frame.y + 'px';
+                }
+
+                // 更新連接線
+                renderConnections();
+            }, { passive: false });
+
+            frameEl.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+
+                isDragging = false;
+                dragTarget = null;
+
+                saveHistory();
+                markMapAsModified();
+            });
 
             // 如果是當前選中的元素，添加 selected 類
             if (selectedElement && selectedElement.id === frame.id) {
@@ -2992,6 +3234,13 @@
                 e.stopPropagation();
                 startResize(e, frame, 'frame');
             });
+            resizeHandle.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                isPanning = false;
+                isDragging = false;
+                startResize(e, frame, 'frame');
+            }, { passive: false });
             frameEl.appendChild(resizeHandle);
 
             frameLayer.appendChild(frameEl);
@@ -3001,6 +3250,8 @@
             if (!currentMapData || !currentMapData.data.connections) return;
 
             const svg = document.getElementById('svg-layer');
+            // 清空舊的連接線，避免殘影
+            svg.innerHTML = '';
 
             currentMapData.data.connections.forEach(connection => {
                 // 查找起點和終點元素
@@ -3020,9 +3271,9 @@
                 const toCenterX = to.x + to.width / 2;
                 const toCenterY = to.y + to.height / 2;
 
-                // 計算邊緣交點
-                const fromEdge = getEdgePoint(from, toCenterX, toCenterY);
-                const toEdge = getEdgePoint(to, fromCenterX, fromCenterY);
+                // 直接計算兩個中心點連線與矩形邊緣的交點
+                const fromEdge = getEdgePointFromLine(from, fromCenterX, fromCenterY, toCenterX, toCenterY);
+                const toEdge = getEdgePointFromLine(to, toCenterX, toCenterY, fromCenterX, fromCenterY);
 
                 // 將座標轉換為屏幕座標（考慮 scale 和 offset）
                 const x1 = fromEdge.x * scale + offsetX;
@@ -3190,14 +3441,118 @@
             const tyTop = dy !== 0 ? -halfHeight / dy : Infinity;
             const tyBottom = dy !== 0 ? halfHeight / dy : Infinity;
 
-            // 找出最小的正 t 值
-            const candidates = [txLeft, txRight, tyTop, tyBottom].filter(t => t > 0);
+            // 找出最小的正 t 值（使用小的閾值來避免精度問題）
+            const candidates = [txLeft, txRight, tyTop, tyBottom].filter(t => t > 0.0001);
+
+            if (candidates.length === 0) {
+                // 如果沒有有效的候選（不應該發生，但作為安全措施）
+                return { x: centerX, y: centerY };
+            }
+
             t = Math.min(...candidates);
 
             const edgeX = centerX + t * dx;
             const edgeY = centerY + t * dy;
 
             return { x: edgeX, y: edgeY };
+        }
+
+        // 計算從點 (x1, y1) 到點 (x2, y2) 的直線與矩形邊緣的交點
+        function getEdgePointFromLine(rect, x1, y1, x2, y2) {
+            const centerX = rect.x + rect.width / 2;
+            const centerY = rect.y + rect.height / 2;
+
+            // 計算方向向量
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+
+            // 如果沒有方向，返回中心點
+            if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+                return { x: centerX, y: centerY };
+            }
+
+            // 矩形的四條邊
+            const left = rect.x;
+            const right = rect.x + rect.width;
+            const top = rect.y;
+            const bottom = rect.y + rect.height;
+
+            // 極小值用於浮點數比較
+            const eps = 0.01;
+
+            // 計算與每條邊的交點參數 t
+            const candidates = [];
+
+            // 左邊: x = left
+            if (Math.abs(dx) > eps) {
+                const t = (left - x1) / dx;
+                if (t > eps) {
+                    const y = y1 + t * dy;
+                    // 嚴格檢查：y 必須在 top 和 bottom 之間
+                    if (y >= top && y <= bottom) {
+                        candidates.push({ t, x: left, y, edge: 'left' });
+                    }
+                }
+            }
+
+            // 右邊: x = right
+            if (Math.abs(dx) > eps) {
+                const t = (right - x1) / dx;
+                if (t > eps) {
+                    const y = y1 + t * dy;
+                    if (y >= top && y <= bottom) {
+                        candidates.push({ t, x: right, y, edge: 'right' });
+                    }
+                }
+            }
+
+            // 上邊: y = top
+            if (Math.abs(dy) > eps) {
+                const t = (top - y1) / dy;
+                if (t > eps) {
+                    const x = x1 + t * dx;
+                    // 嚴格檢查：x 必須在 left 和 right 之間
+                    if (x >= left && x <= right) {
+                        candidates.push({ t, x, y: top, edge: 'top' });
+                    }
+                }
+            }
+
+            // 下邊: y = bottom
+            if (Math.abs(dy) > eps) {
+                const t = (bottom - y1) / dy;
+                if (t > eps) {
+                    const x = x1 + t * dx;
+                    if (x >= left && x <= right) {
+                        candidates.push({ t, x, y: bottom, edge: 'bottom' });
+                    }
+                }
+            }
+
+            // 選擇最小的 t 值（最近的交點）
+            if (candidates.length === 0) {
+                console.warn('找不到邊緣交點，返回中心點', {
+                    rect, x1, y1, x2, y2, dx, dy,
+                    rectInfo: `(${rect.x}, ${rect.y}) ${rect.width}x${rect.height}`
+                });
+                return { x: centerX, y: centerY };
+            }
+
+            // 按 t 值排序
+            candidates.sort((a, b) => a.t - b.t);
+            const closest = candidates[0];
+
+            // 調試：記錄選擇的邊
+            if (candidates.length > 1) {
+                console.log('多個候選邊緣交點:', {
+                    allCandidates: candidates.map(c => ({ edge: c.edge, t: c.t.toFixed(3), x: c.x.toFixed(1), y: c.y.toFixed(1) })),
+                    selected: closest.edge,
+                    rect: `(${rect.x}, ${rect.y}) ${rect.width}x${rect.height}`,
+                    direction: `(${dx.toFixed(1)}, ${dy.toFixed(1)})`
+                });
+            }
+
+            return { x: closest.x, y: closest.y };
         }
 
         // ==================== 元素選擇與屬性編輯 ====================
@@ -3912,6 +4267,16 @@
                 });
             }
 
+            // 如果開啟連接模式且是小螢幕，自動收起側邊欄
+            if (isConnecting && window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebar');
+                const floatingToggle = document.getElementById('floating-sidebar-toggle');
+                if (!sidebar.classList.contains('hidden')) {
+                    sidebar.classList.add('hidden');
+                    floatingToggle.classList.add('show');
+                }
+            }
+
             // 更新按鈕樣式
             const btn = document.getElementById('btn-add-connection');
             if (isConnecting) {
@@ -3928,11 +4293,39 @@
         }
 
         function startResize(e, element, type) {
+            e.preventDefault();
             e.stopPropagation();
             isResizing = true;
             resizeTarget = { type, element };
-            resizeStart = { x: e.clientX, y: e.clientY };
+
+            // 支持滑鼠和觸控事件
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            resizeStart = { x: clientX, y: clientY };
             resizeOriginalSize = { width: element.width, height: element.height };
+
+            console.log('開始縮放:', {
+                type,
+                elementId: element.id,
+                isTouchEvent: !!e.touches,
+                startX: clientX,
+                startY: clientY,
+                originalWidth: element.width,
+                originalHeight: element.height
+            });
+
+            // 顯示調試面板
+            const debugPanel = document.getElementById('resize-debug');
+            if (debugPanel) {
+                debugPanel.classList.add('show');
+                debugPanel.innerHTML = `
+                    <div>縮放開始</div>
+                    <div>類型: ${type}</div>
+                    <div>觸控: ${!!e.touches}</div>
+                    <div>原始: ${element.width}x${element.height}</div>
+                `;
+            }
         }
 
         function handleConnectionClick(id, type) {
