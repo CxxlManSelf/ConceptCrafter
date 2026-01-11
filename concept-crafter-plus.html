@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
@@ -575,22 +576,19 @@
             position: relative;
             overflow: hidden;
             cursor: grab;
-            touch-action: none; /* 關鍵！允許自定義觸控處理 */
+            touch-action: none;
+            /* 關鍵！允許自定義觸控處理 */
             background:
-                repeating-linear-gradient(
-                    0deg,
+                repeating-linear-gradient(0deg,
                     transparent,
                     transparent 19px,
                     rgba(0, 0, 0, 0.03) 19px,
-                    rgba(0, 0, 0, 0.03) 20px
-                ),
-                repeating-linear-gradient(
-                    90deg,
+                    rgba(0, 0, 0, 0.03) 20px),
+                repeating-linear-gradient(90deg,
                     transparent,
                     transparent 19px,
                     rgba(0, 0, 0, 0.03) 19px,
-                    rgba(0, 0, 0, 0.03) 20px
-                );
+                    rgba(0, 0, 0, 0.03) 20px);
         }
 
         #canvas-container.grabbing {
@@ -606,11 +604,13 @@
             height: 100%;
             transform-origin: 0 0;
             z-index: 1;
-            pointer-events: none; /* 讓層本身不阻擋事件 */
+            pointer-events: none;
+            /* 讓層本身不阻擋事件 */
         }
 
-        #frame-layer > * {
-            pointer-events: auto; /* 但層內的元素可以接收事件 */
+        #frame-layer>* {
+            pointer-events: auto;
+            /* 但層內的元素可以接收事件 */
         }
 
         /* 節點層 */
@@ -622,11 +622,13 @@
             height: 100%;
             transform-origin: 0 0;
             z-index: 2;
-            pointer-events: none; /* 讓層本身不阻擋事件 */
+            pointer-events: none;
+            /* 讓層本身不阻擋事件 */
         }
 
-        #node-layer > * {
-            pointer-events: auto; /* 但層內的元素可以接收事件 */
+        #node-layer>* {
+            pointer-events: auto;
+            /* 但層內的元素可以接收事件 */
         }
 
         /* SVG 連接線層 */
@@ -636,7 +638,8 @@
             left: 0;
             z-index: 3;
             overflow: visible;
-            pointer-events: none; /* 層本身不接收事件，避免阻擋下層元素 */
+            pointer-events: none;
+            /* 層本身不接收事件，避免阻擋下層元素 */
         }
 
         /* 畫布標題顯示 */
@@ -670,10 +673,13 @@
             min-width: 100px;
             min-height: 50px;
             display: flex;
-            flex-direction: column; /* 垂直排列，支援多行內容 */
-            justify-content: center; /* 垂直置中 */
+            flex-direction: column;
+            /* 垂直排列，支援多行內容 */
+            justify-content: center;
+            /* 垂直置中 */
             /* align-items 由 JavaScript 動態設置，用於水平對齊 */
-            touch-action: none; /* 關鍵！允許自定義觸控處理 */
+            touch-action: none;
+            /* 關鍵！允許自定義觸控處理 */
         }
 
         .node:hover {
@@ -684,15 +690,19 @@
             box-shadow: 0 0 0 3px var(--warning-color);
         }
 
-        .node.connecting-start, .frame.connecting-start {
+        .node.connecting-start,
+        .frame.connecting-start {
             animation: pulse-border 1s ease-in-out infinite;
             box-shadow: 0 0 0 4px var(--success-color) !important;
         }
 
         @keyframes pulse-border {
-            0%, 100% {
+
+            0%,
+            100% {
                 box-shadow: 0 0 0 4px var(--success-color);
             }
+
             50% {
                 box-shadow: 0 0 0 8px var(--success-color);
             }
@@ -712,7 +722,8 @@
             border-radius: 4px;
             cursor: move;
             user-select: none;
-            touch-action: none; /* 關鍵！允許自定義觸控處理 */
+            touch-action: none;
+            /* 關鍵！允許自定義觸控處理 */
         }
 
         .frame:hover {
@@ -738,35 +749,65 @@
         /* 縮放控制點 */
         .resize-handle {
             position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 12px;
-            height: 12px;
-            background: var(--primary-color);
-            border: 2px solid white;
-            border-radius: 2px;
+            bottom: 4px;
+            right: 4px;
+            width: 14px;
+            height: 14px;
+            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.4) 100%);
             cursor: nwse-resize;
             pointer-events: auto;
-            z-index: 10;
+            z-index: 1;
+            border-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            transition: all 0.2s;
             opacity: 0;
-            transition: opacity 0.2s;
         }
 
         .node:hover .resize-handle,
+        .node.selected .resize-handle {
+            opacity: 1;
+            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0.6) 100%);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        /* 框架的縮放手柄使用深色 */
+        .frame .resize-handle {
+            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.5) 100%);
+        }
+
         .frame:hover .resize-handle,
-        .node.selected .resize-handle,
         .frame.selected .resize-handle {
             opacity: 1;
+            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.7) 100%);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
 
         /* 手機上增大縮放控制點 */
         @media (max-width: 768px) {
             .resize-handle {
-                width: 24px;
-                height: 24px;
-                border-width: 3px;
-                bottom: -4px;
-                right: -4px;
+                bottom: 4px;
+                right: 4px;
+                width: 20px;
+                height: 20px;
+                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.5) 100%);
+                opacity: 0;
+            }
+
+            .node:hover .resize-handle,
+            .node.selected .resize-handle {
+                opacity: 1;
+                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0.7) 100%);
+            }
+
+            /* 框架的縮放手柄在手機上也使用深色 */
+            .frame .resize-handle {
+                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.6) 100%);
+            }
+
+            .frame:hover .resize-handle,
+            .frame.selected .resize-handle {
+                opacity: 1;
+                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0,0,0,0.8) 50%, rgba(0,0,0,0.8) 100%);
             }
         }
 
@@ -1233,11 +1274,17 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body>
     <!-- 浮動的側邊欄切換按鈕 -->
     <button class="floating-sidebar-toggle" id="floating-sidebar-toggle">☰</button>
@@ -1565,8 +1612,8 @@
         // 縮放狀態
         let isResizing = false;
         let resizeTarget = null; // { type, element }
-        let resizeStart = { x: 0, y: 0 };
-        let resizeOriginalSize = { width: 0, height: 0 };
+        let resizeStartInfo = null; // { startX, startY, startWidth, startHeight, elementX, elementY }
+
 
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', () => {
@@ -2568,13 +2615,23 @@
             });
 
             window.addEventListener('mousemove', (e) => {
-                if (isResizing && resizeTarget) {
-                    // 縮放元素
-                    const dx = (e.clientX - resizeStart.x) / scale;
-                    const dy = (e.clientY - resizeStart.y) / scale;
+                if (isResizing && resizeTarget && resizeStartInfo) {
+                    // 縮放元素 - 使用絕對位置計算，避免累積誤差
+                    // 計算滑鼠相對於節點左上角的位移
+                    const currentX = (e.clientX - offsetX) / scale;
+                    const currentY = (e.clientY - offsetY) / scale;
 
-                    resizeTarget.element.width = Math.max(50, resizeOriginalSize.width + dx);
-                    resizeTarget.element.height = Math.max(30, resizeOriginalSize.height + dy);
+                    // 由於是右下角縮放，可以直接用 (滑鼠位置 - 元素位置) 來計算新尺寸
+                    // 考慮到鼠標在 resizeStart 時可能不在角落，我們使用差值
+                    const deltaX = currentX - resizeStartInfo.startX;
+                    const deltaY = currentY - resizeStartInfo.startY;
+
+                    const newWidth = Math.max(50, resizeStartInfo.startWidth + deltaX);
+                    const newHeight = Math.max(30, resizeStartInfo.startHeight + deltaY);
+
+
+                    resizeTarget.element.width = newWidth;
+                    resizeTarget.element.height = newHeight;
 
                     renderCanvas();
                     updatePropertyEditor(); // 更新屬性編輯器中的尺寸顯示
@@ -2619,37 +2676,21 @@
             window.addEventListener('touchmove', (e) => {
                 // 注意：節點和 Frame 的拖曳由各自的 touchstart 處理器管理
                 // 這裡只處理調整大小
-                if (isResizing && resizeTarget && e.touches.length === 1) {
+                if (isResizing && resizeTarget && resizeStartInfo && e.touches.length === 1) {
                     e.preventDefault();
                     const touch = e.touches[0];
-                    const dx = (touch.clientX - resizeStart.x) / scale;
-                    const dy = (touch.clientY - resizeStart.y) / scale;
 
-                    const newWidth = Math.max(50, resizeOriginalSize.width + dx);
-                    const newHeight = Math.max(30, resizeOriginalSize.height + dy);
+                    const currentX = (touch.clientX - offsetX) / scale;
+                    const currentY = (touch.clientY - offsetY) / scale;
 
-                    console.log('縮放中:', {
-                        dx, dy,
-                        originalWidth: resizeOriginalSize.width,
-                        originalHeight: resizeOriginalSize.height,
-                        newWidth,
-                        newHeight,
-                        scale
-                    });
+                    const deltaX = currentX - resizeStartInfo.startX;
+                    const deltaY = currentY - resizeStartInfo.startY;
+
+                    const newWidth = Math.max(50, resizeStartInfo.startWidth + deltaX);
+                    const newHeight = Math.max(30, resizeStartInfo.startHeight + deltaY);
 
                     resizeTarget.element.width = newWidth;
                     resizeTarget.element.height = newHeight;
-
-                    // 更新調試面板
-                    const debugPanel = document.getElementById('resize-debug');
-                    if (debugPanel) {
-                        debugPanel.innerHTML = `
-                            <div>縮放中...</div>
-                            <div>dx: ${dx.toFixed(1)}, dy: ${dy.toFixed(1)}</div>
-                            <div>新尺寸: ${newWidth.toFixed(0)}x${newHeight.toFixed(0)}</div>
-                            <div>scale: ${scale.toFixed(2)}</div>
-                        `;
-                    }
 
                     renderCanvas();
                     updatePropertyEditor();
@@ -2763,15 +2804,15 @@
 
             // 觸控移動
             container.addEventListener('touchmove', (e) => {
-                // 如果正在拖曳節點/框架或縮放元素，阻止默認行為（讓 window touchmove 處理）
+                // 如果正在拖曳節點/框架，阻止默認行為（讓 window touchmove 處理）
                 if (isDragging) {
                     e.preventDefault();
                     return;
                 }
 
+                // 如果正在縮放元素，不要阻止事件，讓它冒泡到 window 的 touchmove 處理
                 if (isResizing) {
-                    e.preventDefault();
-                    return;
+                    return;  // 不調用 preventDefault，讓 window touchmove 處理
                 }
 
                 if (e.touches.length === 1 && isPanning) {
@@ -2894,6 +2935,7 @@
             nodeEl.style.top = node.y + 'px';
             nodeEl.style.width = node.width + 'px';
             nodeEl.style.height = node.height + 'px';
+            nodeEl.style.overflow = 'hidden';
             nodeEl.style.background = node.color || '#3498db';
             nodeEl.style.textAlign = node.textAlign || 'center';
 
@@ -2952,6 +2994,11 @@
 
             // 觸控支援
             nodeEl.addEventListener('touchstart', (e) => {
+                // 如果觸碰的是 resize handle，不處理（讓 resize handle 自己處理）
+                if (e.target.classList.contains('resize-handle')) {
+                    return;
+                }
+
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -3050,17 +3097,55 @@
             // 添加縮放控制點
             const resizeHandle = document.createElement('div');
             resizeHandle.className = 'resize-handle';
+            // 設置顏色為節點的顏色
+            resizeHandle.style.color = node.color || '#3498db';
             resizeHandle.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
                 startResize(e, node, 'node');
             });
             resizeHandle.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
                 isPanning = false;
                 isDragging = false;
                 startResize(e, node, 'node');
             }, { passive: false });
+
+            // 添加 touchmove 監聽器，直接在這裡處理縮放（解決觸控捕獲問題）
+            resizeHandle.addEventListener('touchmove', (e) => {
+                if (isResizing && resizeTarget && resizeStartInfo && e.touches.length === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const touch = e.touches[0];
+                    const currentX = (touch.clientX - offsetX) / scale;
+                    const currentY = (touch.clientY - offsetY) / scale;
+
+                    const deltaX = currentX - resizeStartInfo.startX;
+                    const deltaY = currentY - resizeStartInfo.startY;
+
+                    const newWidth = Math.max(50, resizeStartInfo.startWidth + deltaX);
+                    const newHeight = Math.max(30, resizeStartInfo.startHeight + deltaY);
+
+                    resizeTarget.element.width = newWidth;
+                    resizeTarget.element.height = newHeight;
+
+                    renderCanvas();
+                    updatePropertyEditor();
+                }
+            }, { passive: false });
+
+            // 添加 touchend 監聽器，結束縮放時保存
+            resizeHandle.addEventListener('touchend', (e) => {
+                if (isResizing) {
+                    isResizing = false;
+                    resizeTarget = null;
+                    resizeOriginalCenters = {};
+                    renderCanvas();
+                    saveHistory();
+                    markMapAsModified();
+                }
+            }, { passive: false });
+
             nodeEl.appendChild(resizeHandle);
 
             nodeLayer.appendChild(nodeEl);
@@ -3132,6 +3217,11 @@
 
             // 觸控支援
             frameEl.addEventListener('touchstart', (e) => {
+                // 如果觸碰的是 resize handle，不處理（讓 resize handle 自己處理）
+                if (e.target.classList.contains('resize-handle')) {
+                    return;
+                }
+
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -3230,17 +3320,56 @@
             // 添加縮放控制點
             const resizeHandle = document.createElement('div');
             resizeHandle.className = 'resize-handle';
+            // 設置顏色為框架的邊框顏色
+            resizeHandle.style.color = frame.borderColor || '#95a5a6';
             resizeHandle.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
                 startResize(e, frame, 'frame');
             });
             resizeHandle.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
+                // 不要 stopPropagation()，讓後續的 touchmove 能夠傳播到 window
                 isPanning = false;
                 isDragging = false;
                 startResize(e, frame, 'frame');
             }, { passive: false });
+
+            // 添加 touchmove 監聽器，直接在這裡處理縮放（解決觸控捕獲問題）
+            resizeHandle.addEventListener('touchmove', (e) => {
+                if (isResizing && resizeTarget && resizeStartInfo && e.touches.length === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const touch = e.touches[0];
+                    const currentX = (touch.clientX - offsetX) / scale;
+                    const currentY = (touch.clientY - offsetY) / scale;
+
+                    const deltaX = currentX - resizeStartInfo.startX;
+                    const deltaY = currentY - resizeStartInfo.startY;
+
+                    const newWidth = Math.max(50, resizeStartInfo.startWidth + deltaX);
+                    const newHeight = Math.max(30, resizeStartInfo.startHeight + deltaY);
+
+                    resizeTarget.element.width = newWidth;
+                    resizeTarget.element.height = newHeight;
+
+                    renderCanvas();
+                    updatePropertyEditor();
+                }
+            }, { passive: false });
+
+            // 添加 touchend 監聽器，結束縮放時保存
+            resizeHandle.addEventListener('touchend', (e) => {
+                if (isResizing) {
+                    isResizing = false;
+                    resizeTarget = null;
+                    resizeOriginalCenters = {};
+                    renderCanvas();
+                    saveHistory();
+                    markMapAsModified();
+                }
+            }, { passive: false });
+
             frameEl.appendChild(resizeHandle);
 
             frameLayer.appendChild(frameEl);
@@ -3265,15 +3394,36 @@
 
                 if (!from || !to) return; // 如果找不到元素，跳過
 
-                // 計算起點和終點的中心位置
-                const fromCenterX = from.x + from.width / 2;
-                const fromCenterY = from.y + from.height / 2;
-                const toCenterX = to.x + to.width / 2;
-                const toCenterY = to.y + to.height / 2;
+                // 計算兩個節點的中心點
+                // 計算兩個節點的中心點
+                // 計算兩個節點的中心點
+                // 改用 DOM 元素的實際尺寸來計算，以解決 CSS 內容撐開但數據已縮小的不同步問題
+                const fromEl = document.querySelector(`[data-id="${from.id}"]`);
+                const toEl = document.querySelector(`[data-id="${to.id}"]`);
 
-                // 直接計算兩個中心點連線與矩形邊緣的交點
-                const fromEdge = getEdgePointFromLine(from, fromCenterX, fromCenterY, toCenterX, toCenterY);
-                const toEdge = getEdgePointFromLine(to, toCenterX, toCenterY, fromCenterX, fromCenterY);
+                const fromWidth = fromEl ? fromEl.offsetWidth : from.width;
+                const fromHeight = fromEl ? fromEl.offsetHeight : from.height;
+                const toWidth = toEl ? toEl.offsetWidth : to.width;
+                const toHeight = toEl ? toEl.offsetHeight : to.height;
+
+                // 注意：DOM 元素的 left/top 是 style 屬性，可能還沒 layout，所以位置還是用 data
+                // 但是尺寸(offsetWidth)是經過 layout 的，可以反映內容撐開的情況
+
+                const fromCenterX = from.x + fromWidth / 2;
+                const fromCenterY = from.y + fromHeight / 2;
+
+                const toCenterX = to.x + toWidth / 2;
+                const toCenterY = to.y + toHeight / 2;
+
+                // 計算邊緣交點
+                // 傳入的 rect 也需要更新為實際尺寸的 rect
+                const fromRect = { x: from.x, y: from.y, width: fromWidth, height: fromHeight };
+                const toRect = { x: to.x, y: to.y, width: toWidth, height: toHeight };
+
+                const fromEdge = getEdgePoint(fromRect, toCenterX, toCenterY, fromCenterX, fromCenterY);
+                const toEdge = getEdgePoint(toRect, fromCenterX, fromCenterY, toCenterX, toCenterY);
+
+
 
                 // 將座標轉換為屏幕座標（考慮 scale 和 offset）
                 const x1 = fromEdge.x * scale + offsetX;
@@ -3414,45 +3564,72 @@
             svg.insertBefore(defs, svg.firstChild);
         }
 
-        // 計算從矩形中心到目標點的線與矩形邊緣的交點
-        function getEdgePoint(rect, targetX, targetY) {
-            const centerX = rect.x + rect.width / 2;
-            const centerY = rect.y + rect.height / 2;
+        // 計算從固定參考點到目標點的射線與矩形邊緣的交點
+        // refX, refY: 固定參考點（不隨矩形大小改變）
+        // targetX, targetY: 目標點（確定射線方向）
+        function getEdgePoint(rect, targetX, targetY, refX = null, refY = null) {
+            const left = rect.x;
+            const width = Math.max(50, rect.width || 0);
+            const height = Math.max(30, rect.height || 0);
+            const right = rect.x + width;
+            const top = rect.y;
+            const bottom = rect.y + height;
 
-            // 計算方向向量
+            // 如果沒有提供參考點，使用矩形中心（兼容舊代碼）
+            const centerX = refX !== null ? refX : (left + right) / 2;
+            const centerY = refY !== null ? refY : (top + bottom) / 2;
+
+            // 計算方向向量（從參考點指向目標點）
             const dx = targetX - centerX;
             const dy = targetY - centerY;
 
-            // 如果目標就是中心，返回中心點
-            if (dx === 0 && dy === 0) {
-                return { x: centerX, y: centerY };
+            // 如果目標就是參考點，返回矩形中心
+            if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+                return { x: (left + right) / 2, y: (top + bottom) / 2 };
             }
 
-            // 計算與四條邊的交點，選擇最近的一個
-            const halfWidth = rect.width / 2;
-            const halfHeight = rect.height / 2;
+            // 計算射線與矩形四條邊的交點
+            // 射線方程：P = (centerX, centerY) + t * (dx, dy)
+            // 對於任意參考點，計算到各邊的距離
 
-            // 計算參數 t，使得 (centerX + t*dx, centerY + t*dy) 在邊緣上
-            let t;
+            // 計算參數 t（射線與各邊相交的距離）
+            // 注意：這裡不再假設參考點在中心，而是使用實際距離
+            const txLeft = dx !== 0 ? (left - centerX) / dx : Infinity;
+            const txRight = dx !== 0 ? (right - centerX) / dx : Infinity;
+            const tyTop = dy !== 0 ? (top - centerY) / dy : Infinity;
+            const tyBottom = dy !== 0 ? (bottom - centerY) / dy : Infinity;
 
-            // 使用比例來判斷會先碰到哪條邊
-            const txLeft = dx !== 0 ? -halfWidth / dx : Infinity;
-            const txRight = dx !== 0 ? halfWidth / dx : Infinity;
-            const tyTop = dy !== 0 ? -halfHeight / dy : Infinity;
-            const tyBottom = dy !== 0 ? halfHeight / dy : Infinity;
-
-            // 找出最小的正 t 值（使用小的閾值來避免精度問題）
-            const candidates = [txLeft, txRight, tyTop, tyBottom].filter(t => t > 0.0001);
+            // 找出最小的正 t 值，確定會先碰到哪條邊
+            const candidates = [];
+            if (txLeft > 0.0001) candidates.push({ t: txLeft, edge: 'left', x: left });
+            if (txRight > 0.0001) candidates.push({ t: txRight, edge: 'right', x: right });
+            if (tyTop > 0.0001) candidates.push({ t: tyTop, edge: 'top', y: top });
+            if (tyBottom > 0.0001) candidates.push({ t: tyBottom, edge: 'bottom', y: bottom });
 
             if (candidates.length === 0) {
-                // 如果沒有有效的候選（不應該發生，但作為安全措施）
                 return { x: centerX, y: centerY };
             }
 
-            t = Math.min(...candidates);
+            // 選擇最小 t 值對應的邊
+            candidates.sort((a, b) => a.t - b.t);
+            const chosen = candidates[0];
 
-            const edgeX = centerX + t * dx;
-            const edgeY = centerY + t * dy;
+            // 根據碰到的邊，使用精確的邊界座標
+            let edgeX, edgeY;
+
+            if (chosen.edge === 'left' || chosen.edge === 'right') {
+                // 碰到左邊或右邊：x 座標使用邊界的精確值，y 座標通過計算得出
+                edgeX = chosen.x;
+                edgeY = centerY + chosen.t * dy;
+                // 確保 y 在範圍內
+                edgeY = Math.max(top, Math.min(bottom, edgeY));
+            } else {
+                // 碰到頂邊或底邊：y 座標使用邊界的精確值，x 座標通過計算得出
+                edgeY = chosen.y;
+                edgeX = centerX + chosen.t * dx;
+                // 確保 x 在範圍內
+                edgeX = Math.max(left, Math.min(right, edgeX));
+            }
 
             return { x: edgeX, y: edgeY };
         }
@@ -3486,7 +3663,7 @@
             // 左邊: x = left
             if (Math.abs(dx) > eps) {
                 const t = (left - x1) / dx;
-                if (t > eps) {
+                if (t > eps && t < 1.0) {  // 只接受 0 < t < 1 的交點
                     const y = y1 + t * dy;
                     // 嚴格檢查：y 必須在 top 和 bottom 之間
                     if (y >= top && y <= bottom) {
@@ -3498,7 +3675,7 @@
             // 右邊: x = right
             if (Math.abs(dx) > eps) {
                 const t = (right - x1) / dx;
-                if (t > eps) {
+                if (t > eps && t < 1.0) {
                     const y = y1 + t * dy;
                     if (y >= top && y <= bottom) {
                         candidates.push({ t, x: right, y, edge: 'right' });
@@ -3509,7 +3686,7 @@
             // 上邊: y = top
             if (Math.abs(dy) > eps) {
                 const t = (top - y1) / dy;
-                if (t > eps) {
+                if (t > eps && t < 1.0) {
                     const x = x1 + t * dx;
                     // 嚴格檢查：x 必須在 left 和 right 之間
                     if (x >= left && x <= right) {
@@ -3521,7 +3698,7 @@
             // 下邊: y = bottom
             if (Math.abs(dy) > eps) {
                 const t = (bottom - y1) / dy;
-                if (t > eps) {
+                if (t > eps && t < 1.0) {
                     const x = x1 + t * dx;
                     if (x >= left && x <= right) {
                         candidates.push({ t, x, y: bottom, edge: 'bottom' });
@@ -3541,16 +3718,6 @@
             // 按 t 值排序
             candidates.sort((a, b) => a.t - b.t);
             const closest = candidates[0];
-
-            // 調試：記錄選擇的邊
-            if (candidates.length > 1) {
-                console.log('多個候選邊緣交點:', {
-                    allCandidates: candidates.map(c => ({ edge: c.edge, t: c.t.toFixed(3), x: c.x.toFixed(1), y: c.y.toFixed(1) })),
-                    selected: closest.edge,
-                    rect: `(${rect.x}, ${rect.y}) ${rect.width}x${rect.height}`,
-                    direction: `(${dx.toFixed(1)}, ${dy.toFixed(1)})`
-                });
-            }
 
             return { x: closest.x, y: closest.y };
         }
@@ -3604,7 +3771,17 @@
                 </div>
                 <div class="property-group">
                     <label class="property-label">顏色：</label>
-                    <input type="color" class="property-input" id="prop-node-color" value="${node.color || '#3498db'}">
+                    <input type="color" class="property-input" id="prop-node-color" value="${node.color || '#3498db'}" list="node-color-presets">
+                    <datalist id="node-color-presets">
+                        <option value="#3498db">藍色</option>
+                        <option value="#e74c3c">紅色</option>
+                        <option value="#27ae60">綠色</option>
+                        <option value="#f39c12">橙色</option>
+                        <option value="#9b59b6">紫色</option>
+                        <option value="#95a5a6">灰色</option>
+                        <option value="#34495e">深灰</option>
+                        <option value="#16a085">青色</option>
+                    </datalist>
                 </div>
                 <div class="property-group">
                     <label class="property-label">文字對齊：</label>
@@ -3658,7 +3835,17 @@
                 </div>
                 <div class="property-group">
                     <label class="property-label">顏色：</label>
-                    <input type="color" class="property-input" id="prop-frame-color" value="${frame.borderColor || '#95a5a6'}">
+                    <input type="color" class="property-input" id="prop-frame-color" value="${frame.borderColor || '#95a5a6'}" list="frame-color-presets">
+                    <datalist id="frame-color-presets">
+                        <option value="#3498db">藍色</option>
+                        <option value="#e74c3c">紅色</option>
+                        <option value="#27ae60">綠色</option>
+                        <option value="#f39c12">橙色</option>
+                        <option value="#9b59b6">紫色</option>
+                        <option value="#95a5a6">灰色</option>
+                        <option value="#34495e">深灰</option>
+                        <option value="#16a085">青色</option>
+                    </datalist>
                 </div>
                 <div class="property-group">
                     <label class="property-label">尺寸：</label>
@@ -4302,30 +4489,22 @@
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-            resizeStart = { x: clientX, y: clientY };
-            resizeOriginalSize = { width: element.width, height: element.height };
+            // 記錄開始狀態的詳細資訊
+            // 轉換為畫布座標
+            const startX = (clientX - offsetX) / scale;
+            const startY = (clientY - offsetY) / scale;
 
-            console.log('開始縮放:', {
-                type,
-                elementId: element.id,
-                isTouchEvent: !!e.touches,
-                startX: clientX,
-                startY: clientY,
-                originalWidth: element.width,
-                originalHeight: element.height
-            });
+            resizeStartInfo = {
+                startX: startX,
+                startY: startY,
+                startWidth: element.width,
+                startHeight: element.height,
+                elementX: element.x,
+                elementY: element.y
+            };
 
-            // 顯示調試面板
-            const debugPanel = document.getElementById('resize-debug');
-            if (debugPanel) {
-                debugPanel.classList.add('show');
-                debugPanel.innerHTML = `
-                    <div>縮放開始</div>
-                    <div>類型: ${type}</div>
-                    <div>觸控: ${!!e.touches}</div>
-                    <div>原始: ${element.width}x${element.height}</div>
-                `;
-            }
+
+
         }
 
         function handleConnectionClick(id, type) {
@@ -5285,4 +5464,5 @@
         }
     </script>
 </body>
+
 </html>
