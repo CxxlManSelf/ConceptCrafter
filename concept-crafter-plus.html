@@ -753,12 +753,12 @@
             right: 4px;
             width: 14px;
             height: 14px;
-            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.4) 100%);
+            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0.4) 100%);
             cursor: nwse-resize;
             pointer-events: auto;
             z-index: 1;
             border-radius: 2px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             transition: all 0.2s;
             opacity: 0;
         }
@@ -766,20 +766,20 @@
         .node:hover .resize-handle,
         .node.selected .resize-handle {
             opacity: 1;
-            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0.6) 100%);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 100%);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
         /* 框架的縮放手柄使用深色 */
         .frame .resize-handle {
-            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.5) 100%);
+            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0.5) 100%);
         }
 
         .frame:hover .resize-handle,
         .frame.selected .resize-handle {
             opacity: 1;
-            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.7) 100%);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0, 0, 0, 0.7) 50%, rgba(0, 0, 0, 0.7) 100%);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         }
 
         /* 手機上增大縮放控制點 */
@@ -789,25 +789,25 @@
                 right: 4px;
                 width: 20px;
                 height: 20px;
-                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.5) 100%);
+                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255, 255, 255, 0.5) 50%, rgba(255, 255, 255, 0.5) 100%);
                 opacity: 0;
             }
 
             .node:hover .resize-handle,
             .node.selected .resize-handle {
                 opacity: 1;
-                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0.7) 100%);
+                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(255, 255, 255, 0.7) 50%, rgba(255, 255, 255, 0.7) 100%);
             }
 
             /* 框架的縮放手柄在手機上也使用深色 */
             .frame .resize-handle {
-                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.6) 100%);
+                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0, 0, 0, 0.6) 50%, rgba(0, 0, 0, 0.6) 100%);
             }
 
             .frame:hover .resize-handle,
             .frame.selected .resize-handle {
                 opacity: 1;
-                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0,0,0,0.8) 50%, rgba(0,0,0,0.8) 100%);
+                background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(0, 0, 0, 0.8) 50%, rgba(0, 0, 0, 0.8) 100%);
             }
         }
 
@@ -1591,6 +1591,7 @@
         let mapCache = {}; // 記憶體快取，存儲所有 map 的數據（包括未儲存的）
         let deleteTargetFileName = null; // 待刪除的檔案名稱
         let editTargetFileName = null; // 待修改的檔案名稱
+        let mapTitlePatterns = {}; // 追蹤每個 Map 的標題前後綴模式 { prefix, suffix }
 
         // 畫布狀態
         let scale = 1;
@@ -2130,6 +2131,9 @@
             // 標記為已修改（新增的 Map 需要儲存）
             mapModifiedStatus[fileName] = true;
 
+            // 初始化標題前後綴模式
+            mapTitlePatterns[fileName] = { prefix: '', suffix: ' - Concept Map Viewer' };
+
             // 將新 map 存入記憶體快取
             mapCache[fileName] = JSON.parse(JSON.stringify(currentMapData));
 
@@ -2322,6 +2326,32 @@
 
                     if (dataScript) {
                         mapData = JSON.parse(dataScript.textContent);
+
+                        // 提取並儲存標題的前後綴模式
+                        const htmlTitle = doc.title;
+                        const jsonTitle = mapData.title || '';
+                        if (jsonTitle && htmlTitle.includes(jsonTitle)) {
+                            const parts = htmlTitle.split(jsonTitle);
+                            if (parts.length >= 2) {
+                                mapTitlePatterns[fileName] = {
+                                    prefix: parts[0] || '',
+                                    suffix: parts.slice(1).join(jsonTitle) || '' // Handle case where title appears multiple times, though unlikely
+                                };
+                            } else {
+                                // Should imply strict match or something else, but if split has 1 element, it means no delimiter found? includes check prevents this.
+                                // If split result is 2 parts: 'prefix', 'suffix'.
+                                // If jsonTitle is at start: '', 'suffix'.
+                                // If at end: 'prefix', ''.
+                                mapTitlePatterns[fileName] = {
+                                    prefix: parts[0] || '',
+                                    suffix: parts[1] || ''
+                                };
+                            }
+                        } else {
+                            // Fallback if title mismatch or empty
+                            mapTitlePatterns[fileName] = { prefix: '', suffix: ' - Concept Map Viewer' };
+                        }
+
                         // 標記為載入的 Map（儲存時只更新 JSON 和標題）
                         if (!mapSourceTracking[fileName]) {
                             mapSourceTracking[fileName] = 'loaded';
@@ -2479,7 +2509,8 @@
             // 1. 更新 <title> 標籤
             const titleElement = doc.querySelector('title');
             if (titleElement) {
-                titleElement.textContent = mapData.title;
+                const pattern = mapTitlePatterns[fileHandle.name] || { prefix: '', suffix: ' - Concept Map Viewer' };
+                titleElement.textContent = (pattern.prefix || '') + mapData.title + (pattern.suffix || '');
             }
 
             // 2. 更新 <script id="map-data"> 中的 JSON 數據
@@ -4996,6 +5027,8 @@
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
             user-select: none;
+            min-width: 100px;
+            min-height: 50px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -5107,6 +5140,7 @@
             }
 
             setupEventListeners() {
+                // 滑鼠事件
                 this.container.addEventListener('mousedown', (e) => {
                     this.isPanning = true;
                     this.panStart = { x: e.clientX, y: e.clientY };
@@ -5141,6 +5175,92 @@
                     this.render();
                 });
 
+                // 觸控事件
+                let touchStartDistance = 0;
+                let touchStartScale = 1;
+                let touchStartCenter = { x: 0, y: 0 };
+
+                this.container.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) {
+                        // 單指：平移
+                        this.isPanning = true;
+                        this.panStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    } else if (e.touches.length === 2) {
+                        // 雙指：縮放
+                        e.preventDefault();
+                        this.isPanning = false;
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        touchStartDistance = Math.hypot(
+                            touch2.clientX - touch1.clientX,
+                            touch2.clientY - touch1.clientY
+                        );
+                        touchStartScale = this.scale;
+                        touchStartCenter = {
+                            x: (touch1.clientX + touch2.clientX) / 2,
+                            y: (touch1.clientY + touch2.clientY) / 2
+                        };
+                    }
+                }, { passive: false });
+
+                this.container.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+
+                    if (e.touches.length === 1 && this.isPanning) {
+                        // 單指平移
+                        const touch = e.touches[0];
+                        this.offsetX += touch.clientX - this.panStart.x;
+                        this.offsetY += touch.clientY - this.panStart.y;
+                        this.panStart = { x: touch.clientX, y: touch.clientY };
+                        this.render();
+                    } else if (e.touches.length === 2) {
+                        // 雙指：縮放
+                        e.preventDefault();
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+
+                        const distance = Math.hypot(
+                            touch2.clientX - touch1.clientX,
+                            touch2.clientY - touch1.clientY
+                        );
+
+                        if (touchStartDistance === 0) {
+                            touchStartDistance = distance;
+                            touchStartScale = this.scale;
+                            touchStartCenter = {
+                                x: (touch1.clientX + touch2.clientX) / 2,
+                                y: (touch1.clientY + touch2.clientY) / 2
+                            };
+                        } else {
+                            const newScale = (distance / touchStartDistance) * touchStartScale;
+                            const clampedScale = Math.max(0.1, Math.min(5, newScale));
+
+                            const rect = this.container.getBoundingClientRect();
+                            const centerX = touchStartCenter.x - rect.left;
+                            const centerY = touchStartCenter.y - rect.top;
+
+                            this.offsetX = centerX - (centerX - this.offsetX) * (newScale / this.scale);
+                            this.offsetY = centerY - (centerY - this.offsetY) * (newScale / this.scale);
+                            this.scale = newScale;
+                            this.render();
+                        }
+                    }
+                }, { passive: false });
+
+                window.addEventListener('touchend', (e) => {
+                    this.isPanning = false;
+                    this.container.classList.remove('grabbing');
+                    if (e.touches.length < 2) {
+                        touchStartDistance = 0;
+                    }
+                });
+
+                window.addEventListener('touchcancel', () => {
+                    this.isPanning = false;
+                    this.container.classList.remove('grabbing');
+                    touchStartDistance = 0;
+                });
+
                 window.addEventListener('resize', () => this.updateSVGSize());
             }
 
@@ -5164,10 +5284,12 @@
             renderNode(node) {
                 const nodeEl = document.createElement('div');
                 nodeEl.className = 'node';
+                nodeEl.dataset.id = node.id; // Added for connection calculation
                 nodeEl.style.left = node.x + 'px';
                 nodeEl.style.top = node.y + 'px';
                 nodeEl.style.width = node.width + 'px';
                 nodeEl.style.height = node.height + 'px';
+                nodeEl.style.overflow = 'hidden';
                 nodeEl.style.background = node.color || '#3498db';
                 nodeEl.style.textAlign = node.textAlign || 'center';
 
@@ -5188,10 +5310,8 @@
                     nodeEl.classList.add('has-link');
 
                     // 判斷是否為專案 HTML 檔案
-                    const isProjectHtml = !node.link.match(/^[a-zA-Z]+:\\/\\//) &&    // 沒有協議
-                                         !node.link.match(/^\\//) &&                  // 不是 Unix 絕對路徑
-                                         !node.link.match(/^[a-zA-Z]:[\/\\\\]/) &&    // 不是 Windows 絕對路徑
-                                         node.link.match(/\\.html?$/i);               // 結尾是 .html 或 .htm
+                    const isProjectHtml = !node.link.match(/^[a-zA-Z]+:\\/\\/|^\\/|^[a-zA-Z]:[\\/\\\\]/) &&
+                                         node.link.match(/\\.html?$/i);
 
                     nodeEl.addEventListener('click', (e) => {
                         // 如果點擊的是文字內容中的 <a> 標籤，不觸發節點連結
@@ -5215,23 +5335,18 @@
                     nodeEl.appendChild(linkIcon);
                 }
 
-                // 處理文字內容中的 <a> 標籤：專案 HTML 檔案在同一視窗打開，外部連結在新視窗打開
+                // 處理文字內容中的 <a> 標籤
                 const links = nodeEl.querySelectorAll('a');
                 links.forEach(link => {
                     const href = link.getAttribute('href');
                     if (href) {
-                        // 判斷是否為專案 HTML 檔案
-                        const isProjectHtml = !href.match(/^[a-zA-Z]+:\\/\\//) &&    // 沒有協議
-                                             !href.match(/^\\//) &&                  // 不是 Unix 絕對路徑
-                                             !href.match(/^[a-zA-Z]:[\/\\\\]/) &&    // 不是 Windows 絕對路徑
-                                             href.match(/\\.html?$/i);               // 結尾是 .html 或 .htm
+                        const isProjectHtml = !href.match(/^[a-zA-Z]+:\\/\\/|^\\/|^[a-zA-Z]:[\\/\\\\]/) &&
+                                             href.match(/\\.html?$/i);
 
                         if (!isProjectHtml) {
-                            // 外部連結：新視窗打開
                             link.setAttribute('target', '_blank');
                             link.setAttribute('rel', 'noopener noreferrer');
                         }
-                        // 專案 HTML 檔案：不設置 target，在同一視窗打開（預設行為）
                     }
                 });
 
@@ -5261,6 +5376,7 @@
             renderFrame(frame) {
                 const frameEl = document.createElement('div');
                 frameEl.className = 'frame';
+                frameEl.dataset.id = frame.id; // Added for connection calculation
                 frameEl.style.left = frame.x + 'px';
                 frameEl.style.top = frame.y + 'px';
                 frameEl.style.width = frame.width + 'px';
@@ -5348,17 +5464,27 @@
                                    this.frames.find(f => f.id === conn.to);
                     if (!fromNode || !toNode) return;
 
-                    const fromCenter = {
-                        x: fromNode.x + fromNode.width / 2,
-                        y: fromNode.y + fromNode.height / 2
-                    };
-                    const toCenter = {
-                        x: toNode.x + toNode.width / 2,
-                        y: toNode.y + toNode.height / 2
-                    };
+                    // Get DOM elements for actual dimensions (handling min-width/height)
+                    const fromEl = document.querySelector(\`[data-id="\${fromNode.id}"]\`);
+                    const toEl = document.querySelector(\`[data-id="\${toNode.id}"]\`);
 
-                    const fromEdge = this.getEdgePoint(fromNode, fromCenter, toCenter);
-                    const toEdge = this.getEdgePoint(toNode, toCenter, fromCenter);
+                    const fromWidth = fromEl ? fromEl.offsetWidth : fromNode.width;
+                    const fromHeight = fromEl ? fromEl.offsetHeight : fromNode.height;
+                    const toWidth = toEl ? toEl.offsetWidth : toNode.width;
+                    const toHeight = toEl ? toEl.offsetHeight : toNode.height;
+
+                    const fromCenterX = fromNode.x + fromWidth / 2;
+                    const fromCenterY = fromNode.y + fromHeight / 2;
+
+                    const toCenterX = toNode.x + toWidth / 2;
+                    const toCenterY = toNode.y + toHeight / 2;
+
+                    // Update rects with actual dimensions
+                    const fromRect = { x: fromNode.x, y: fromNode.y, width: fromWidth, height: fromHeight };
+                    const toRect = { x: toNode.x, y: toNode.y, width: toWidth, height: toHeight };
+
+                    const fromEdge = this.getEdgePoint(fromRect, toCenterX, toCenterY, fromCenterX, fromCenterY);
+                    const toEdge = this.getEdgePoint(toRect, fromCenterX, fromCenterY, toCenterX, toCenterY);
 
                     const x1 = fromEdge.x * this.scale + this.offsetX;
                     const y1 = fromEdge.y * this.scale + this.offsetY;
@@ -5400,35 +5526,58 @@
                 });
             }
 
-            getEdgePoint(element, center, targetCenter) {
-                const dx = targetCenter.x - center.x;
-                const dy = targetCenter.y - center.y;
+            getEdgePoint(rect, targetX, targetY, refX = null, refY = null) {
+                const left = rect.x;
+                const width = Math.max(50, rect.width || 0);
+                const height = Math.max(30, rect.height || 0);
+                const right = rect.x + width;
+                const top = rect.y;
+                const bottom = rect.y + height;
 
-                const halfWidth = element.width / 2;
-                const halfHeight = element.height / 2;
+                // 如果沒有提供參考點，使用矩形中心
+                const centerX = refX !== null ? refX : (left + right) / 2;
+                const centerY = refY !== null ? refY : (top + bottom) / 2;
 
-                const angle = Math.atan2(dy, dx);
+                // 計算方向向量（從參考點指向目標點）
+                const dx = targetX - centerX;
+                const dy = targetY - centerY;
 
-                const corners = [
-                    { x: halfWidth, y: halfHeight },
-                    { x: -halfWidth, y: halfHeight },
-                    { x: -halfWidth, y: -halfHeight },
-                    { x: halfWidth, y: -halfHeight }
-                ];
+                // 如果目標就是參考點，返回矩形中心
+                if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+                    return { x: (left + right) / 2, y: (top + bottom) / 2 };
+                }
 
-                const edgeAngles = corners.map((corner, i) => {
-                    const nextCorner = corners[(i + 1) % 4];
-                    return Math.atan2(corner.y, corner.x);
-                });
+                // 計算參數 t（射線與各邊相交的距離）
+                const txLeft = dx !== 0 ? (left - centerX) / dx : Infinity;
+                const txRight = dx !== 0 ? (right - centerX) / dx : Infinity;
+                const tyTop = dy !== 0 ? (top - centerY) / dy : Infinity;
+                const tyBottom = dy !== 0 ? (bottom - centerY) / dy : Infinity;
+
+                // 找出最小的正 t 值
+                const candidates = [];
+                if (txLeft > 0.0001) candidates.push({ t: txLeft, edge: 'left', x: left });
+                if (txRight > 0.0001) candidates.push({ t: txRight, edge: 'right', x: right });
+                if (tyTop > 0.0001) candidates.push({ t: tyTop, edge: 'top', y: top });
+                if (tyBottom > 0.0001) candidates.push({ t: tyBottom, edge: 'bottom', y: bottom });
+
+                if (candidates.length === 0) {
+                    return { x: centerX, y: centerY };
+                }
+
+                // 選擇最小 t 值對應的邊
+                candidates.sort((a, b) => a.t - b.t);
+                const chosen = candidates[0];
 
                 let edgeX, edgeY;
 
-                if (Math.abs(dx) / halfWidth > Math.abs(dy) / halfHeight) {
-                    edgeX = center.x + (dx > 0 ? halfWidth : -halfWidth);
-                    edgeY = center.y + (edgeX - center.x) * dy / dx;
+                if (chosen.edge === 'left' || chosen.edge === 'right') {
+                    edgeX = chosen.x;
+                    edgeY = centerY + chosen.t * dy;
+                    edgeY = Math.max(top, Math.min(bottom, edgeY));
                 } else {
-                    edgeY = center.y + (dy > 0 ? halfHeight : -halfHeight);
-                    edgeX = center.x + (edgeY - center.y) * dx / dy;
+                    edgeY = chosen.y;
+                    edgeX = centerX + chosen.t * dx;
+                    edgeX = Math.max(left, Math.min(right, edgeX));
                 }
 
                 return { x: edgeX, y: edgeY };
