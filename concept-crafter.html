@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 2.6.5 概念圖製造機</title>
+    <title>Concept Crafter 2.6.6 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -670,10 +670,10 @@
             <label for="edit-map-filename-display">檔案名稱：</label>
             <div style="position: relative; width: 100%;">
                 <input type="text" id="edit-map-filename-display" readonly
-                       style="width: 100%; background-color: #f0f0f0; cursor: text; padding: 8px; padding-right: 70px; box-sizing: border-box;"
-                       placeholder="檔案名稱">
+                    style="width: 100%; background-color: #f0f0f0; cursor: text; padding: 8px; padding-right: 70px; box-sizing: border-box;"
+                    placeholder="檔案名稱">
                 <button id="copy-filename-btn"
-                        style="position: absolute; right: 8px; top: 4px; padding: 4px 10px; font-size: 12px;">複製</button>
+                    style="position: absolute; right: 8px; top: 4px; padding: 4px 10px; font-size: 12px;">複製</button>
             </div>
             <div class="modal-buttons">
                 <button id="edit-map-cancel">取消</button>
@@ -754,7 +754,8 @@
                 <li><strong>調整大小</strong>：拖曳節點或 Frame 右下角的調整手柄。</li>
                 <li><strong>縮放與平移</strong>：使用滑鼠滾輪縮放，按住滑鼠左鍵拖曳背景可平移畫布。即使滑鼠移出畫布區域，仍可繼續操作。</li>
                 <li><strong>複製與貼上</strong>：右鍵點擊節點或 Frame 選擇「複製」，或使用 <strong>Ctrl+C</strong>。貼上可使用
-                    <strong>Ctrl+V</strong> 或在空白處右鍵選擇「貼上」。</li>
+                    <strong>Ctrl+V</strong> 或在空白處右鍵選擇「貼上」。
+                </li>
                 <li><strong>右鍵選單</strong>：在節點、Frame 或連接線上點擊右鍵，可進行編輯、複製、刪除、變更顏色、文字對齊（節點）或狀態標記（節點/Frame）。</li>
                 <li><strong>狀態標記</strong>：節點和 Frame 都支援狀態標記功能。右鍵選擇「標記為完成」或「標記為放棄」，已標記的元素會在右上角顯示徽章（✓ 完成 / ✗ 放棄）。</li>
             </ul>
@@ -785,7 +786,8 @@
                             如果事先選取了文字，該文字會自動填入連結文字欄位。若未選取文字且未輸入連結文字，則使用網址作為顯示文字。支援 Enter 鍵快速確認。
                         </li>
                         <li><strong>專案內 HTML</strong>：使用相對路徑的 HTML 文件（如
-                            <code>./page.html</code>、<code>doc.htm</code>）會在同一視窗開啟，方便專案內導覽。</li>
+                            <code>./page.html</code>、<code>doc.htm</code>）會在同一視窗開啟，方便專案內導覽。
+                        </li>
                         <li><strong>其他連結</strong>：HTTP/HTTPS 網址、絕對路徑、圖片檔案等都會在新視窗開啟。</li>
                         <li><strong>特殊功能連結</strong>：
                             <ul>
@@ -799,7 +801,9 @@
                 <li><strong>節點連結功能</strong>：
                     <ul>
                         <li><strong>設定節點連結</strong>：右鍵點擊節點，選擇「編輯連結」選項，即可為節點設定超連結。</li>
-                        <li><strong>連結網址</strong>：輸入目標網址或路徑，例如 <code>https://example.com</code> 或 <code>./page.html</code>。</li>
+                        <li><strong>連結網址</strong>：輸入目標網址或路徑，例如 <code>https://example.com</code> 或
+                            <code>./page.html</code>。
+                        </li>
                         <li><strong>點擊導航</strong>：在生成的 map 檔案中，點擊設有連結的節點即可導航到該連結。</li>
                         <li><strong>專案內 HTML</strong>：使用相對路徑的 HTML 文件（如 <code>./page.html</code>）會在同一視窗開啟，方便專案內導覽。</li>
                         <li><strong>外部連結</strong>：HTTP/HTTPS 網址、絕對路徑等會在新視窗開啟。</li>
@@ -847,7 +851,8 @@
                 <li><strong>獨立視圖</strong>：每個 map 會記住自己的視圖位置和縮放級別，切換 map 時會自動恢復上次的視圖狀態。</li>
                 <li><strong>新增 Map</strong>：點擊工具列「新增 Map」按鈕，輸入標題和檔名（可選），新 Map 會自動儲存到專案資料夾。</li>
                 <li><strong>載入 Map</strong>：點擊「載入 Map」按鈕，選擇要開啟的 .html 檔案。Map 列表只顯示本次建立或載入的檔案。</li>
-                <li><strong>修改 Map 資訊</strong>：在右側面板的 Map 列表中，點擊「修改」按鈕可編輯 Map 標題。檔案名稱欄位可複製但不可修改，確保檔案完整性。修改標題後需儲存才會更新。</li>
+                <li><strong>修改 Map 資訊</strong>：在右側面板的 Map 列表中，點擊「修改」按鈕可編輯 Map 標題。檔案名稱欄位可複製但不可修改，確保檔案完整性。修改標題後需儲存才會更新。
+                </li>
                 <li><strong>儲存</strong>：在右側面板的 Map 列表中，點擊「儲存」按鈕。有未儲存變更的 map 會顯示「儲存」按鈕。</li>
                 <li><strong>移除/刪除</strong>：
                     <ul>
@@ -883,6 +888,13 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.6.6</strong>
+                    <ul>
+                        <li>🐛 修正連接線顯示問題：修復節點和框架縮到最小時連接線跑進內部的問題</li>
+                        <li>✨ 改善邊界計算邏輯，確保連接線始終貼近元素邊緣</li>
+                        <li>🎯 提升視覺呈現品質，連接線顯示更加準確</li>
+                    </ul>
+                </li>
                 <li><strong>v2.6.5</strong>
                     <ul>
                         <li>🔗 新增節點超連結功能：節點可設定超連結，點擊節點即可導航</li>
@@ -2041,6 +2053,7 @@
                             sortedFrames.forEach(frame => {
                                 const el = document.createElement('div');
                                 el.className = 'frame';
+                                el.dataset.id = frame.id; // Added standard ID for lookup
                                 el.style.left = frame.x + 'px';
                                 el.style.top = frame.y + 'px';
                                 el.style.width = frame.width + 'px';
@@ -2084,6 +2097,7 @@
                             this.nodes.forEach(node => {
                                 const el = document.createElement('div');
                                 el.className = 'node';
+                                el.dataset.id = node.id; // Added standard ID for lookup
                                 el.style.left = node.x + 'px';
                                 el.style.top = node.y + 'px';
                                 el.style.width = node.width + 'px';
@@ -2164,7 +2178,7 @@
                                 this.canvas.appendChild(el);
                             });
 
-                            // Connections
+                            // Connections - Render LAST to ensure DOM elements exist
                             this.connections.forEach(conn => {
                                 const from = this.nodes.find(n => this.compareId(n.id, conn.from)) || this.frames.find(f => this.compareId(f.id, conn.from));
                                 const to = this.nodes.find(n => this.compareId(n.id, conn.to)) || this.frames.find(f => this.compareId(f.id, conn.to));
@@ -2172,59 +2186,106 @@
                             });
                         }
 
-                        drawConnection(from, to, conn) {
-                            const getCenter = (el) => ({ x: el.x + el.width/2, y: el.y + el.height/2 });
-                            const fromC = getCenter(from);
-                            const toC = getCenter(to);
-                            
-                            const getIntersection = (center, target, rect) => {
-                                const dx = target.x - center.x;
-                                const dy = target.y - center.y;
-                                if (dx === 0 && dy === 0) return center;
-                                
-                                const hw = rect.width / 2;
-                                const hh = rect.height / 2;
-                                
-                                if (Math.abs(dx) / hw > Math.abs(dy) / hh) {
-                                    return {
-                                        x: center.x + (dx > 0 ? hw : -hw),
-                                        y: center.y + (dy / dx) * (dx > 0 ? hw : -hw)
-                                    };
-                                } else {
-                                    return {
-                                        x: center.x + (dx / dy) * (dy > 0 ? hh : -hh),
-                                        y: center.y + (dy > 0 ? hh : -hh)
-                                    };
-                                }
-                            };
+                        getEdgePoint(rect, targetX, targetY, refX = null, refY = null) {
+                            const left = rect.x;
+                            const width = Math.max(50, rect.width || 0);
+                            const height = Math.max(30, rect.height || 0);
+                            const right = rect.x + width;
+                            const top = rect.y;
+                            const bottom = rect.y + height;
 
-                            const start = getIntersection(fromC, toC, from);
-                            const end = getIntersection(toC, fromC, to);
+                            const centerX = refX !== null ? refX : (left + right) / 2;
+                            const centerY = refY !== null ? refY : (top + bottom) / 2;
 
-                            const x1 = start.x * this.scale + this.offsetX;
-                            const y1 = start.y * this.scale + this.offsetY;
-                            const x2 = end.x * this.scale + this.offsetX;
-                            const y2 = end.y * this.scale + this.offsetY;
+                            const dx = targetX - centerX;
+                            const dy = targetY - centerY;
+
+                            if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+                                return { x: (left + right) / 2, y: (top + bottom) / 2 };
+                            }
+
+                            const txLeft = dx !== 0 ? (left - centerX) / dx : Infinity;
+                            const txRight = dx !== 0 ? (right - centerX) / dx : Infinity;
+                            const tyTop = dy !== 0 ? (top - centerY) / dy : Infinity;
+                            const tyBottom = dy !== 0 ? (bottom - centerY) / dy : Infinity;
+
+                            const candidates = [];
+                            if (txLeft > 0.0001) candidates.push({ t: txLeft, edge: 'left', x: left });
+                            if (txRight > 0.0001) candidates.push({ t: txRight, edge: 'right', x: right });
+                            if (tyTop > 0.0001) candidates.push({ t: tyTop, edge: 'top', y: top });
+                            if (tyBottom > 0.0001) candidates.push({ t: tyBottom, edge: 'bottom', y: bottom });
+
+                            if (candidates.length === 0) {
+                                return { x: centerX, y: centerY };
+                            }
+
+                            candidates.sort((a, b) => a.t - b.t);
+                            const chosen = candidates[0];
+
+                            let edgeX, edgeY;
+
+                            if (chosen.edge === 'left' || chosen.edge === 'right') {
+                                edgeX = chosen.x;
+                                edgeY = centerY + chosen.t * dy;
+                                edgeY = Math.max(top, Math.min(bottom, edgeY));
+                            } else {
+                                edgeY = chosen.y;
+                                edgeX = centerX + chosen.t * dx;
+                                edgeX = Math.max(left, Math.min(right, edgeX));
+                            }
+
+                            return { x: edgeX, y: edgeY };
+                        }
+
+                        drawConnection(fromElement, toElement, connection) {
+                            // Try to get DOM elements for measurement
+                            const fromEl = this.canvas.querySelector(\`[data-id="\${fromElement.id}"]\`);
+                            const toEl = this.canvas.querySelector(\`[data-id="\${toElement.id}"]\`);
+
+                            // Use DOM offsetWidth/Height if available (handles text content expansion), otherwise data
+                            const fromWidth = fromEl ? fromEl.offsetWidth : fromElement.width;
+                            const fromHeight = fromEl ? fromEl.offsetHeight : fromElement.height;
+                            const toWidth = toEl ? toEl.offsetWidth : toElement.width;
+                            const toHeight = toEl ? toEl.offsetHeight : toElement.height;
+
+                            // DOM left/top are just styles, so use data x/y for position reference
+                            const fromCenterX = fromElement.x + fromWidth / 2;
+                            const fromCenterY = fromElement.y + fromHeight / 2;
+                            const toCenterX = toElement.x + toWidth / 2;
+                            const toCenterY = toElement.y + toHeight / 2;
+
+                            // Create rect objects describing specific dimensions
+                            const fromRect = { x: fromElement.x, y: fromElement.y, width: fromWidth, height: fromHeight };
+                            const toRect = { x: toElement.x, y: toElement.y, width: toWidth, height: toHeight };
+
+                            // Calculate edge points using getEdgePoint
+                            const fromEdge = this.getEdgePoint(fromRect, toCenterX, toCenterY, fromCenterX, fromCenterY);
+                            const toEdge = this.getEdgePoint(toRect, fromCenterX, fromCenterY, toCenterX, toCenterY);
+
+                            const x1 = fromEdge.x * this.scale + this.offsetX;
+                            const y1 = fromEdge.y * this.scale + this.offsetY;
+                            const x2 = toEdge.x * this.scale + this.offsetX;
+                            const y2 = toEdge.y * this.scale + this.offsetY;
 
                             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                             path.setAttribute('d', \`M \${x1} \${y1} L \${x2} \${y2}\`);
 
-                            const lineColor = conn.color || '#2c3e50';
+                            const lineColor = connection.color || '#2c3e50';
                             path.setAttribute('stroke', lineColor);
                             path.setAttribute('stroke-width', '2');
                             path.setAttribute('fill', 'none');
 
                             // Add arrow markers with matching color
                             const colorId = lineColor.replace('#', '');
-                            if (conn.arrowType === 'single') path.setAttribute('marker-end', \`url(#arrowhead-\${colorId})\`);
-                            else if (conn.arrowType === 'double') {
+                            if (connection.arrowType === 'single') path.setAttribute('marker-end', \`url(#arrowhead-\${colorId})\`);
+                            else if (connection.arrowType === 'double') {
                                 path.setAttribute('marker-start', \`url(#arrowhead-double-\${colorId})\`);
                                 path.setAttribute('marker-end', \`url(#arrowhead-\${colorId})\`);
                             }
                             
                             this.svgLayer.appendChild(path);
 
-                            if (conn.label) {
+                            if (connection.label) {
                                 const midX = (x1 + x2) / 2;
                                 const midY = (y1 + y2) / 2;
                                 const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -2237,7 +2298,7 @@
                                 text.setAttribute('stroke-width', 3 * this.scale);
                                 text.setAttribute('paint-order', 'stroke fill');
                                 text.setAttribute('font-weight', 'bold');
-                                text.textContent = conn.label;
+                                text.textContent = connection.label;
                                 this.svgLayer.appendChild(text);
                             }
                         }
@@ -3584,21 +3645,36 @@
             }
 
             isInNode(x, y, node) {
-                return x >= node.x && x <= node.x + node.width &&
-                    y >= node.y && y <= node.y + node.height;
+                // Try to get DOM element for accurate size
+                const el = this.canvas.querySelector(`[data-id="${node.id}"]`);
+                const width = el ? el.offsetWidth : node.width;
+                const height = el ? el.offsetHeight : node.height;
+
+                return x >= node.x && x <= node.x + width &&
+                    y >= node.y && y <= node.y + height;
             }
 
             isInFrame(x, y, frame) {
-                return x >= frame.x && x <= frame.x + frame.width &&
-                    y >= frame.y && y <= frame.y + frame.height;
+                // Try to get DOM element for accurate size
+                const el = this.canvas.querySelector(`[data-id="${frame.id}"]`);
+                const width = el ? el.offsetWidth : frame.width;
+                const height = el ? el.offsetHeight : frame.height;
+
+                return x >= frame.x && x <= frame.x + width &&
+                    y >= frame.y && y <= frame.y + height;
             }
 
             isInResizeHandle(x, y, element) {
                 const handleSize = 15;
-                return x >= element.x + element.width - handleSize &&
-                    x <= element.x + element.width &&
-                    y >= element.y + element.height - handleSize &&
-                    y <= element.y + element.height;
+                // Try to get DOM element for accurate size
+                const el = this.canvas.querySelector(`[data-id="${element.id}"]`);
+                const width = el ? el.offsetWidth : element.width;
+                const height = el ? el.offsetHeight : element.height;
+
+                return x >= element.x + width - handleSize &&
+                    x <= element.x + width &&
+                    y >= element.y + height - handleSize &&
+                    y <= element.y + height;
             }
 
             findConnectionAtPoint(x, y) {
@@ -3722,6 +3798,7 @@
                 sortedFrames.forEach(frame => {
                     const frameEl = document.createElement('div');
                     frameEl.className = 'frame';
+                    frameEl.dataset.id = frame.id; // Allow finding element by ID
 
                     // Highlight if this is the connection source
                     if (this.connectStart === frame) {
@@ -3777,20 +3854,13 @@
                     this.canvas.appendChild(frameEl);
                 });
 
-                // Render connections
-                this.connections.forEach(conn => {
-                    // Search in both nodes and frames
-                    const fromElement = this.nodes.find(n => this.compareId(n.id, conn.from)) || this.frames.find(f => this.compareId(f.id, conn.from));
-                    const toElement = this.nodes.find(n => this.compareId(n.id, conn.to)) || this.frames.find(f => this.compareId(f.id, conn.to));
-                    if (!fromElement || !toElement) return;
 
-                    this.drawConnection(fromElement, toElement, conn);
-                });
 
                 // Render nodes
                 this.nodes.forEach(node => {
                     const nodeEl = document.createElement('div');
                     nodeEl.className = 'node';
+                    nodeEl.dataset.id = node.id; // Allow finding element by ID
 
                     // Highlight if this is the connection source
                     if (this.connectStart === node) {
@@ -3868,69 +3938,178 @@
 
                     this.canvas.appendChild(nodeEl);
                 });
+
+                // Render connections LAST (so we can measure nodes/frames DOM dimensions)
+                this.connections.forEach(conn => {
+                    // Search in both nodes and frames
+                    const fromElement = this.nodes.find(n => this.compareId(n.id, conn.from)) || this.frames.find(f => this.compareId(f.id, conn.from));
+                    const toElement = this.nodes.find(n => this.compareId(n.id, conn.to)) || this.frames.find(f => this.compareId(f.id, conn.to));
+                    if (!fromElement || !toElement) return;
+
+                    this.drawConnection(fromElement, toElement, conn);
+                });
             }
 
-            // 完全按照參考檔案的算法計算矩形邊緣交點
-            getRectEdgeIntersection(centerX, centerY, targetX, targetY, rectX, rectY, rectWidth, rectHeight) {
+            // Helper: Get robust edge point using DOM dimensions if available
+            getEdgePoint(rect, targetX, targetY, refX = null, refY = null) {
+                const left = rect.x;
+                const width = Math.max(50, rect.width || 0);
+                const height = Math.max(30, rect.height || 0);
+                const right = rect.x + width;
+                const top = rect.y;
+                const bottom = rect.y + height;
+
+                const centerX = refX !== null ? refX : (left + right) / 2;
+                const centerY = refY !== null ? refY : (top + bottom) / 2;
+
                 const dx = targetX - centerX;
                 const dy = targetY - centerY;
 
-                if (dx === 0 && dy === 0) {
+                if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+                    return { x: (left + right) / 2, y: (top + bottom) / 2 };
+                }
+
+                const txLeft = dx !== 0 ? (left - centerX) / dx : Infinity;
+                const txRight = dx !== 0 ? (right - centerX) / dx : Infinity;
+                const tyTop = dy !== 0 ? (top - centerY) / dy : Infinity;
+                const tyBottom = dy !== 0 ? (bottom - centerY) / dy : Infinity;
+
+                const candidates = [];
+                if (txLeft > 0.0001) candidates.push({ t: txLeft, edge: 'left', x: left });
+                if (txRight > 0.0001) candidates.push({ t: txRight, edge: 'right', x: right });
+                if (tyTop > 0.0001) candidates.push({ t: tyTop, edge: 'top', y: top });
+                if (tyBottom > 0.0001) candidates.push({ t: tyBottom, edge: 'bottom', y: bottom });
+
+                if (candidates.length === 0) {
                     return { x: centerX, y: centerY };
                 }
 
-                const halfWidth = rectWidth / 2;
-                const halfHeight = rectHeight / 2;
-                const absDx = Math.abs(dx);
-                const absDy = Math.abs(dy);
+                candidates.sort((a, b) => a.t - b.t);
+                const chosen = candidates[0];
+
                 let edgeX, edgeY;
 
-                // 判斷主要沿著哪個方向
-                if (absDx / halfWidth > absDy / halfHeight) {
-                    // 與左邊或右邊相交
-                    if (dx > 0) {
-                        // 右邊
-                        edgeX = centerX + halfWidth;
-                        edgeY = centerY + (dy / dx) * halfWidth;
-                    } else {
-                        // 左邊
-                        edgeX = centerX - halfWidth;
-                        edgeY = centerY - (dy / dx) * halfWidth;
-                    }
+                if (chosen.edge === 'left' || chosen.edge === 'right') {
+                    edgeX = chosen.x;
+                    edgeY = centerY + chosen.t * dy;
+                    edgeY = Math.max(top, Math.min(bottom, edgeY));
                 } else {
-                    // 與上邊或下邊相交
-                    if (dy > 0) {
-                        // 下邊
-                        edgeX = centerX + (dx / dy) * halfHeight;
-                        edgeY = centerY + halfHeight;
-                    } else {
-                        // 上邊
-                        edgeX = centerX - (dx / dy) * halfHeight;
-                        edgeY = centerY - halfHeight;
-                    }
+                    edgeY = chosen.y;
+                    edgeX = centerX + chosen.t * dx;
+                    edgeX = Math.max(left, Math.min(right, edgeX));
                 }
 
                 return { x: edgeX, y: edgeY };
             }
 
+            // Legacy method kept for safety or if needed, but getEdgePoint is preferred
+            getEdgePointFromLine(rect, x1, y1, x2, y2) {
+                const centerX = rect.x + rect.width / 2;
+                const centerY = rect.y + rect.height / 2;
 
+                // 計算方向向量
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+
+                // 如果沒有方向，返回中心點
+                if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+                    return { x: centerX, y: centerY };
+                }
+
+                // 矩形的四條邊
+                const left = rect.x;
+                const right = rect.x + rect.width;
+                const top = rect.y;
+                const bottom = rect.y + rect.height;
+
+                // 極小值用於浮點數比較
+                const eps = 0.01;
+
+                // 計算與每條邊的交點參數 t
+                const candidates = [];
+
+                // 左邊: x = left
+                if (Math.abs(dx) > eps) {
+                    const t = (left - x1) / dx;
+                    if (t > eps && t < 1.0) {  // 只接受 0 < t < 1 的交點
+                        const y = y1 + t * dy;
+                        // 嚴格檢查：y 必須在 top 和 bottom 之間
+                        if (y >= top && y <= bottom) {
+                            candidates.push({ t, x: left, y, edge: 'left' });
+                        }
+                    }
+                }
+
+                // 右邊: x = right
+                if (Math.abs(dx) > eps) {
+                    const t = (right - x1) / dx;
+                    if (t > eps && t < 1.0) {
+                        const y = y1 + t * dy;
+                        if (y >= top && y <= bottom) {
+                            candidates.push({ t, x: right, y, edge: 'right' });
+                        }
+                    }
+                }
+
+                // 上邊: y = top
+                if (Math.abs(dy) > eps) {
+                    const t = (top - y1) / dy;
+                    if (t > eps && t < 1.0) {
+                        const x = x1 + t * dx;
+                        // 嚴格檢查：x 必須在 left 和 right 之間
+                        if (x >= left && x <= right) {
+                            candidates.push({ t, x, y: top, edge: 'top' });
+                        }
+                    }
+                }
+
+                // 下邊: y = bottom
+                if (Math.abs(dy) > eps) {
+                    const t = (bottom - y1) / dy;
+                    if (t > eps && t < 1.0) {
+                        const x = x1 + t * dx;
+                        if (x >= left && x <= right) {
+                            candidates.push({ t, x, y: bottom, edge: 'bottom' });
+                        }
+                    }
+                }
+
+                // 選擇最小的 t 值（最近的交點）
+                if (candidates.length === 0) {
+                    return { x: centerX, y: centerY };
+                }
+
+                // 按 t 值排序
+                candidates.sort((a, b) => a.t - b.t);
+                const closest = candidates[0];
+
+                return { x: closest.x, y: closest.y };
+            }
 
             drawConnection(fromElement, toElement, connection) {
-                // Get center points in canvas coordinates (before scaling)
-                const fromCenterX = fromElement.x + fromElement.width / 2;
-                const fromCenterY = fromElement.y + fromElement.height / 2;
-                const toCenterX = toElement.x + toElement.width / 2;
-                const toCenterY = toElement.y + toElement.height / 2;
+                // Try to get DOM elements for measurement
+                const fromEl = this.canvas.querySelector(`[data-id="${fromElement.id}"]`);
+                const toEl = this.canvas.querySelector(`[data-id="${toElement.id}"]`);
 
-                // Calculate edge points - 使用參考檔案的算法
-                const fromEdge = this.getRectEdgeIntersection(
-                    fromCenterX, fromCenterY, toCenterX, toCenterY,
-                    fromElement.x, fromElement.y, fromElement.width, fromElement.height
-                );
-                const toEdge = this.getRectEdgeIntersection(
-                    toCenterX, toCenterY, fromCenterX, fromCenterY,
-                    toElement.x, toElement.y, toElement.width, toElement.height
-                );
+                // Use DOM offsetWidth/Height if available (handles text content expansion), otherwise data
+                const fromWidth = fromEl ? fromEl.offsetWidth : fromElement.width;
+                const fromHeight = fromEl ? fromEl.offsetHeight : fromElement.height;
+                const toWidth = toEl ? toEl.offsetWidth : toElement.width;
+                const toHeight = toEl ? toEl.offsetHeight : toElement.height;
+
+                // DOM left/top are just styles, so use data x/y for position reference
+                const fromCenterX = fromElement.x + fromWidth / 2;
+                const fromCenterY = fromElement.y + fromHeight / 2;
+                const toCenterX = toElement.x + toWidth / 2;
+                const toCenterY = toElement.y + toHeight / 2;
+
+                // Create rect objects describing specific dimensions
+                const fromRect = { x: fromElement.x, y: fromElement.y, width: fromWidth, height: fromHeight };
+                const toRect = { x: toElement.x, y: toElement.y, width: toWidth, height: toHeight };
+
+                // Calculate edge points using getEdgePoint
+                const fromEdge = this.getEdgePoint(fromRect, toCenterX, toCenterY, fromCenterX, fromCenterY);
+                const toEdge = this.getEdgePoint(toRect, fromCenterX, fromCenterY, toCenterX, toCenterY);
 
                 // Apply scale and offset for rendering
                 const fromX = fromEdge.x * this.scale + this.offsetX;
