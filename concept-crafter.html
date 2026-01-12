@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter 2.6.6 概念圖製造機</title>
+    <title>Concept Crafter 2.6.7 概念圖製造機</title>
     <style>
         * {
             margin: 0;
@@ -888,6 +888,15 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.6.7</strong>
+                    <ul>
+                        <li>📱 新增手機觸控支援：生成的 map 檔案現在支援手機觸控操作</li>
+                        <li>👆 單指平移：使用單指拖曳畫布進行平移</li>
+                        <li>🤏 雙指縮放：使用雙指捏合手勢進行縮放</li>
+                        <li>🎯 智慧縮放中心：縮放以兩指中心點為基準，操作更自然</li>
+                        <li>✨ 僅影響新生成的 map 檔案，載入的 map 不受影響</li>
+                    </ul>
+                </li>
                 <li><strong>v2.6.6</strong>
                     <ul>
                         <li>🐛 修正連接線顯示問題：修復節點和框架縮到最小時連接線跑進內部的問題</li>
@@ -1945,6 +1954,10 @@
                             this.isPanning = false;
                             this.panStart = { x: 0, y: 0 };
                             
+                            // 觸控相關狀態
+                            this.touches = [];
+                            this.lastTouchDistance = 0;
+                            
                             this.init();
                         }
 
@@ -1990,6 +2003,71 @@
                                 this.offsetY = mouseY - (mouseY - this.offsetY) * delta;
                                 this.scale *= delta;
                                 this.render();
+                            });
+
+                            // 觸控事件處理
+                            this.container.addEventListener('touchstart', (e) => {
+                                this.touches = Array.from(e.touches);
+                                
+                                if (this.touches.length === 1) {
+                                    // 單指：開始平移
+                                    this.isPanning = true;
+                                    this.panStart = { x: this.touches[0].clientX, y: this.touches[0].clientY };
+                                } else if (this.touches.length === 2) {
+                                    // 雙指：準備縮放
+                                    this.isPanning = false;
+                                    const dx = this.touches[0].clientX - this.touches[1].clientX;
+                                    const dy = this.touches[0].clientY - this.touches[1].clientY;
+                                    this.lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+                                }
+                            });
+
+                            this.container.addEventListener('touchmove', (e) => {
+                                e.preventDefault();
+                                this.touches = Array.from(e.touches);
+                                
+                                if (this.touches.length === 1 && this.isPanning) {
+                                    // 單指平移
+                                    this.offsetX += this.touches[0].clientX - this.panStart.x;
+                                    this.offsetY += this.touches[0].clientY - this.panStart.y;
+                                    this.panStart = { x: this.touches[0].clientX, y: this.touches[0].clientY };
+                                    this.render();
+                                } else if (this.touches.length === 2) {
+                                    // 雙指縮放
+                                    const dx = this.touches[0].clientX - this.touches[1].clientX;
+                                    const dy = this.touches[0].clientY - this.touches[1].clientY;
+                                    const distance = Math.sqrt(dx * dx + dy * dy);
+                                    
+                                    if (this.lastTouchDistance > 0) {
+                                        const delta = distance / this.lastTouchDistance;
+                                        
+                                        // 計算縮放中心（兩指中點）
+                                        const rect = this.container.getBoundingClientRect();
+                                        const centerX = (this.touches[0].clientX + this.touches[1].clientX) / 2 - rect.left;
+                                        const centerY = (this.touches[0].clientY + this.touches[1].clientY) / 2 - rect.top;
+                                        
+                                        this.offsetX = centerX - (centerX - this.offsetX) * delta;
+                                        this.offsetY = centerY - (centerY - this.offsetY) * delta;
+                                        this.scale *= delta;
+                                        this.render();
+                                    }
+                                    
+                                    this.lastTouchDistance = distance;
+                                }
+                            });
+
+                            this.container.addEventListener('touchend', (e) => {
+                                this.touches = Array.from(e.touches);
+                                
+                                if (this.touches.length === 0) {
+                                    this.isPanning = false;
+                                    this.lastTouchDistance = 0;
+                                } else if (this.touches.length === 1) {
+                                    // 從雙指變成單指，重新設定平移起點
+                                    this.isPanning = true;
+                                    this.panStart = { x: this.touches[0].clientX, y: this.touches[0].clientY };
+                                    this.lastTouchDistance = 0;
+                                }
                             });
                             
                             this.render();
