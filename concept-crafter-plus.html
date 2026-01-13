@@ -4553,6 +4553,11 @@
                 return;
             }
 
+            // 禁止複製連接線
+            if (selectedElement.type === 'connection') {
+                return;
+            }
+
             const { id, type } = selectedElement;
             let elementData = null;
 
@@ -4735,7 +4740,12 @@
 
             // 更新複製和刪除按鈕狀態（有選中元素時啟用）
             if (selectedElement) {
-                btnCopy.classList.remove('disabled');
+                // 連接線不可複製
+                if (selectedElement.type === 'connection') {
+                    btnCopy.classList.add('disabled');
+                } else {
+                    btnCopy.classList.remove('disabled');
+                }
                 btnDelete.classList.remove('disabled');
             } else {
                 btnCopy.classList.add('disabled');
