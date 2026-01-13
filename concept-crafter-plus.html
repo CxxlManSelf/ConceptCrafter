@@ -443,7 +443,7 @@
 
         .toolbar-buttons {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
             gap: 10px;
         }
 
@@ -724,6 +724,7 @@
             user-select: none;
             touch-action: none;
             /* 關鍵！允許自定義觸控處理 */
+            overflow: hidden;
         }
 
         .frame:hover {
@@ -1360,13 +1361,15 @@
                 <!-- 新增/操作 -->
                 <div class="toolbar-section">
                     <h3><span>🎨</span> 新增/操作</h3>
-                    <div class="toolbar-buttons">
+                    <div class="toolbar-buttons" style="grid-template-columns: 1fr 1fr;">
                         <button class="toolbar-btn primary" id="btn-add-node">
                             <span>➕</span> 節點
                         </button>
                         <button class="toolbar-btn primary" id="btn-add-frame">
                             <span>➕</span> 框架
                         </button>
+                    </div>
+                    <div class="toolbar-buttons" style="grid-template-columns: 1fr 1fr; margin-top: 10px;">
                         <button class="toolbar-btn purple" id="btn-add-connection">
                             <span>🔗</span> 連接
                         </button>
@@ -1376,7 +1379,7 @@
                     </div>
                 </div>
 
-                <!-- 複製/貼上 -->
+                <!-- 複製/貼上/刪除 -->
                 <div class="toolbar-section">
                     <div class="toolbar-buttons">
                         <button class="toolbar-btn disabled" id="btn-copy">
@@ -1384,6 +1387,9 @@
                         </button>
                         <button class="toolbar-btn disabled" id="btn-paste">
                             <span>📄</span> 貼上
+                        </button>
+                        <button class="toolbar-btn accent disabled" id="btn-delete">
+                            <span>🗑️</span> 刪除
                         </button>
                     </div>
                 </div>
@@ -1743,6 +1749,7 @@
             document.getElementById('btn-redo').addEventListener('click', redo);
             document.getElementById('btn-copy').addEventListener('click', copyElements);
             document.getElementById('btn-paste').addEventListener('click', pasteElements);
+            document.getElementById('btn-delete').addEventListener('click', deleteSelectedElement);
 
             // 鍵盤快捷鍵
             document.addEventListener('keydown', handleKeyboardShortcuts);
@@ -2171,9 +2178,6 @@
             // 更新所有項目的 active 狀態，確保只有當前新建的 map 為 active
             updateMapListActiveState(fileName);
 
-            // 切換到編輯標籤
-            switchTab('edit');
-
             // console.log('✓ 新 Map 已創建（已存入記憶體快取）');
         }
 
@@ -2291,8 +2295,7 @@
             // 如果點擊的是當前正在編輯的 map，不需要重新載入
             if (fileName === currentFileName) {
                 // console.log('已經在編輯此 Map，無需重新載入');
-                // 只需要切換到編輯標籤和更新 active 狀態
-                switchTab('edit');
+                // 只需要更新 active 狀態
                 updateMapListActiveState(fileName);
                 return;
             }
@@ -2406,9 +2409,6 @@
 
                 // 更新所有項目的 active 狀態（無論是新增還是已存在）
                 updateMapListActiveState(fileName);
-
-                // 切換到編輯標籤
-                switchTab('edit');
 
                 // console.log('✓ 載入成功:', fileName);
             } catch (err) {
@@ -2657,8 +2657,12 @@
                     const deltaX = currentX - resizeStartInfo.startX;
                     const deltaY = currentY - resizeStartInfo.startY;
 
-                    const newWidth = Math.max(50, resizeStartInfo.startWidth + deltaX);
-                    const newHeight = Math.max(30, resizeStartInfo.startHeight + deltaY);
+                    // 根據元素類型設置最小尺寸
+                    const minWidth = resizeTarget.type === 'frame' ? 150 : 50;
+                    const minHeight = resizeTarget.type === 'frame' ? 150 : 30;
+
+                    const newWidth = Math.max(minWidth, resizeStartInfo.startWidth + deltaX);
+                    const newHeight = Math.max(minHeight, resizeStartInfo.startHeight + deltaY);
 
 
                     resizeTarget.element.width = newWidth;
@@ -2717,8 +2721,12 @@
                     const deltaX = currentX - resizeStartInfo.startX;
                     const deltaY = currentY - resizeStartInfo.startY;
 
-                    const newWidth = Math.max(50, resizeStartInfo.startWidth + deltaX);
-                    const newHeight = Math.max(30, resizeStartInfo.startHeight + deltaY);
+                    // 根據元素類型設置最小尺寸
+                    const minWidth = resizeTarget.type === 'frame' ? 150 : 50;
+                    const minHeight = resizeTarget.type === 'frame' ? 150 : 30;
+
+                    const newWidth = Math.max(minWidth, resizeStartInfo.startWidth + deltaX);
+                    const newHeight = Math.max(minHeight, resizeStartInfo.startHeight + deltaY);
 
                     resizeTarget.element.width = newWidth;
                     resizeTarget.element.height = newHeight;
@@ -3154,8 +3162,12 @@
                     const deltaX = currentX - resizeStartInfo.startX;
                     const deltaY = currentY - resizeStartInfo.startY;
 
-                    const newWidth = Math.max(50, resizeStartInfo.startWidth + deltaX);
-                    const newHeight = Math.max(30, resizeStartInfo.startHeight + deltaY);
+                    // 根據元素類型設置最小尺寸
+                    const minWidth = resizeTarget.type === 'frame' ? 150 : 50;
+                    const minHeight = resizeTarget.type === 'frame' ? 150 : 30;
+
+                    const newWidth = Math.max(minWidth, resizeStartInfo.startWidth + deltaX);
+                    const newHeight = Math.max(minHeight, resizeStartInfo.startHeight + deltaY);
 
                     resizeTarget.element.width = newWidth;
                     resizeTarget.element.height = newHeight;
@@ -3378,8 +3390,12 @@
                     const deltaX = currentX - resizeStartInfo.startX;
                     const deltaY = currentY - resizeStartInfo.startY;
 
-                    const newWidth = Math.max(50, resizeStartInfo.startWidth + deltaX);
-                    const newHeight = Math.max(30, resizeStartInfo.startHeight + deltaY);
+                    // 根據元素類型設置最小尺寸
+                    const minWidth = resizeTarget.type === 'frame' ? 150 : 50;
+                    const minHeight = resizeTarget.type === 'frame' ? 150 : 30;
+
+                    const newWidth = Math.max(minWidth, resizeStartInfo.startWidth + deltaX);
+                    const newHeight = Math.max(minHeight, resizeStartInfo.startHeight + deltaY);
 
                     resizeTarget.element.width = newWidth;
                     resizeTarget.element.height = newHeight;
@@ -3852,9 +3868,6 @@
                         </label>
                     </div>
                 </div>
-                <div class="property-group" style="margin-top: 20px;">
-                    <button class="toolbar-btn accent" id="btn-delete-element" style="width: 100%;">🗑️ 刪除節點</button>
-                </div>
             `;
         }
 
@@ -3883,11 +3896,11 @@
                     <div style="display: flex; gap: 8px;">
                         <div style="flex: 1;">
                             <label style="font-size: 12px; color: var(--gray-color);">寬</label>
-                            <input type="number" class="property-input" id="prop-frame-width" value="${frame.width}" min="100">
+                            <input type="number" class="property-input" id="prop-frame-width" value="${frame.width}" min="150">
                         </div>
                         <div style="flex: 1;">
                             <label style="font-size: 12px; color: var(--gray-color);">高</label>
-                            <input type="number" class="property-input" id="prop-frame-height" value="${frame.height}" min="100">
+                            <input type="number" class="property-input" id="prop-frame-height" value="${frame.height}" min="150">
                         </div>
                     </div>
                 </div>
@@ -3907,9 +3920,6 @@
                             <span>✗ 已放棄</span>
                         </label>
                     </div>
-                </div>
-                <div class="property-group" style="margin-top: 20px;">
-                    <button class="toolbar-btn accent" id="btn-delete-element" style="width: 100%;">🗑️ 刪除框架</button>
                 </div>
             `;
         }
@@ -3966,21 +3976,6 @@
                 renderCanvas();
                 markMapAsModified();
             });
-
-            document.getElementById('btn-delete-element').addEventListener('click', () => {
-                if (confirm('確定要刪除這個節點嗎？')) {
-                    const index = currentMapData.data.nodes.findIndex(n => n.id === node.id);
-                    if (index !== -1) {
-                        currentMapData.data.nodes.splice(index, 1);
-                        selectedElement = null;
-                        updatePropertyEditor();
-                        updateCopyPasteButtons(); // 更新複製貼上按鈕狀態
-                        renderCanvas();
-                        saveHistory();
-                        markMapAsModified();
-                    }
-                }
-            });
         }
 
         function bindFramePropertyEvents(frame) {
@@ -4025,21 +4020,6 @@
                 renderCanvas();
                 markMapAsModified();
             });
-
-            document.getElementById('btn-delete-element').addEventListener('click', () => {
-                if (confirm('確定要刪除這個框架嗎？')) {
-                    const index = currentMapData.data.frames.findIndex(f => f.id === frame.id);
-                    if (index !== -1) {
-                        currentMapData.data.frames.splice(index, 1);
-                        selectedElement = null;
-                        updatePropertyEditor();
-                        updateCopyPasteButtons(); // 更新複製貼上按鈕狀態
-                        renderCanvas();
-                        saveHistory();
-                        markMapAsModified();
-                    }
-                }
-            });
         }
 
         function createConnectionPropertyEditor(connection) {
@@ -4059,11 +4039,6 @@
                         <option value="double" ${connection.arrowType === 'double' ? 'selected' : ''}>雙箭頭</option>
                         <option value="none" ${connection.arrowType === 'none' ? 'selected' : ''}>無箭頭</option>
                     </select>
-                </div>
-                <div class="property-group">
-                    <button class="toolbar-btn danger" id="btn-delete-element" style="width: 100%; margin-top: 12px;">
-                        🗑️ 刪除連接線
-                    </button>
                 </div>
             `;
         }
@@ -4085,21 +4060,6 @@
                 connection.arrowType = e.target.value;
                 renderCanvas();
                 markMapAsModified();
-            });
-
-            document.getElementById('btn-delete-element').addEventListener('click', () => {
-                if (confirm('確定要刪除這條連接線嗎？')) {
-                    const index = currentMapData.data.connections.findIndex(c => c.id === connection.id);
-                    if (index !== -1) {
-                        currentMapData.data.connections.splice(index, 1);
-                        selectedElement = null;
-                        updatePropertyEditor();
-                        updateCopyPasteButtons(); // 更新複製貼上按鈕狀態
-                        renderCanvas();
-                        saveHistory();
-                        markMapAsModified();
-                    }
-                }
             });
         }
 
@@ -4702,6 +4662,61 @@
             autoHideSidebarOnSmallScreen();
         }
 
+        function deleteSelectedElement() {
+            if (!selectedElement) {
+                alert('請先選擇一個元素');
+                return;
+            }
+
+            const { id, type } = selectedElement;
+            let confirmMsg = '';
+            let index = -1;
+
+            // 根據類型找到元素並確認刪除
+            if (type === 'node') {
+                confirmMsg = '確定要刪除這個節點嗎？';
+                index = currentMapData.data.nodes.findIndex(n => n.id === id);
+                if (index !== -1 && confirm(confirmMsg)) {
+                    // 刪除節點
+                    currentMapData.data.nodes.splice(index, 1);
+
+                    // 同時刪除所有連接到此節點的連接線
+                    currentMapData.data.connections = currentMapData.data.connections.filter(
+                        conn => conn.from !== id && conn.to !== id
+                    );
+                }
+            } else if (type === 'frame') {
+                confirmMsg = '確定要刪除這個框架嗎？';
+                index = currentMapData.data.frames.findIndex(f => f.id === id);
+                if (index !== -1 && confirm(confirmMsg)) {
+                    // 刪除框架
+                    currentMapData.data.frames.splice(index, 1);
+
+                    // 同時刪除所有連接到此框架的連接線
+                    currentMapData.data.connections = currentMapData.data.connections.filter(
+                        conn => conn.from !== id && conn.to !== id
+                    );
+                }
+            } else if (type === 'connection') {
+                confirmMsg = '確定要刪除這條連接線嗎？';
+                index = currentMapData.data.connections.findIndex(c => c.id === id);
+                if (index !== -1 && confirm(confirmMsg)) {
+                    currentMapData.data.connections.splice(index, 1);
+                }
+            }
+
+            // 如果刪除成功
+            if (index !== -1) {
+                selectedElement = null;
+                updatePropertyEditor();
+                updateCopyPasteButtons();
+                renderCanvas();
+                saveHistory();
+                markMapAsModified();
+                showToast('✓ 已刪除');
+            }
+        }
+
         function updatePasteButtonState() {
             const btnPaste = document.getElementById('btn-paste');
             const clipboardStr = localStorage.getItem('conceptCrafterClipboard');
@@ -4716,12 +4731,15 @@
         function updateCopyPasteButtons() {
             const btnCopy = document.getElementById('btn-copy');
             const btnPaste = document.getElementById('btn-paste');
+            const btnDelete = document.getElementById('btn-delete');
 
-            // 更新複製按鈕狀態（有選中元素時啟用）
+            // 更新複製和刪除按鈕狀態（有選中元素時啟用）
             if (selectedElement) {
                 btnCopy.classList.remove('disabled');
+                btnDelete.classList.remove('disabled');
             } else {
                 btnCopy.classList.add('disabled');
+                btnDelete.classList.add('disabled');
             }
 
             // 更新貼上按鈕狀態（localStorage 有資料時啟用）
@@ -4768,6 +4786,15 @@
                 if (!isInputFocused()) {
                     e.preventDefault();
                     pasteElements();
+                }
+            }
+
+            // Delete 或 Backspace：刪除選中元素
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                // 只有在沒有選中輸入框時才觸發
+                if (!isInputFocused()) {
+                    e.preventDefault();
+                    deleteSelectedElement();
                 }
             }
         }
@@ -4939,6 +4966,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>${normalizedData.title} - Concept Map Viewer</title>
     <link rel="icon" type="image/png" href="./concept-crafter_icon.png">
     <style>
@@ -5064,6 +5092,7 @@
             border: 2px dashed #95a5a6;
             background: rgba(149, 165, 166, 0.1);
             border-radius: 4px;
+            overflow: hidden;
         }
 
         .frame-label {
