@@ -734,7 +734,21 @@
 
         .frame.selected {
             border-color: var(--warning-color);
-            border-width: 3px;
+            border-width: 4px;
+            background: rgba(243, 156, 18, 0.15);
+            box-shadow: 0 0 0 2px var(--warning-color);
+        }
+
+        /* 多選樣式 */
+        .node.multi-selected {
+            box-shadow: 0 0 0 3px var(--purple-color), 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .frame.multi-selected {
+            border-color: var(--purple-color);
+            border-width: 4px;
+            background: rgba(155, 89, 182, 0.25);
+            box-shadow: 0 0 0 2px var(--purple-color);
         }
 
         .frame-label {
@@ -1611,6 +1625,7 @@
         let dragTarget = null;
         let dragStart = { x: 0, y: 0 };
         let dragOffset = { x: 0, y: 0 };
+        let dragOffsets = {}; // 多選拖曳時，記錄所有元素的初始位置
 
         // 連接模式狀態
         let isConnecting = false;
@@ -1620,6 +1635,15 @@
         let isResizing = false;
         let resizeTarget = null; // { type, element }
         let resizeStartInfo = null; // { startX, startY, startWidth, startHeight, elementX, elementY }
+
+        // 多選狀態
+        let isMultiSelectMode = false; // 是否進入多選模式
+        let multiSelectedElements = []; // 多選模式下選中的元素 [{id, type}]
+        let isBoxSelecting = false; // 是否正在框選
+        let boxSelectStart = { x: 0, y: 0 }; // 框選起點
+        let selectionBox = null; // 框選矩形元素
+        let resizeOriginalCenters = {}; // 記住 resize 開始時所有元素的中心點 { id: {x, y} }
+        let multiSelectClickStart = null; // 多選模式下的點擊起始位置，用於區分點擊和拖曳
 
 
         // ==================== 初始化 ====================
@@ -1745,6 +1769,7 @@
             document.getElementById('btn-add-node').addEventListener('click', addNode);
             document.getElementById('btn-add-frame').addEventListener('click', addFrame);
             document.getElementById('btn-add-connection').addEventListener('click', toggleConnectionMode);
+            document.getElementById('btn-multi-select').addEventListener('click', toggleMultiSelectMode);
             document.getElementById('btn-undo').addEventListener('click', undo);
             document.getElementById('btn-redo').addEventListener('click', redo);
             document.getElementById('btn-copy').addEventListener('click', copyElements);
@@ -2633,6 +2658,29 @@
             // 平移事件和取消選擇
             container.addEventListener('mousedown', (e) => {
                 if (e.target === container || e.target === frameLayer || e.target === nodeLayer) {
+                    // 如果在多選模式下，開始框選
+                    if (isMultiSelectMode) {
+                        isBoxSelecting = true;
+                        const rect = container.getBoundingClientRect();
+                        boxSelectStart = {
+                            x: (e.clientX - rect.left - offsetX) / scale,
+                            y: (e.clientY - rect.top - offsetY) / scale
+                        };
+
+                        // 創建選擇框元素
+                        if (!selectionBox) {
+                            selectionBox = document.createElement('div');
+                            selectionBox.style.position = 'absolute';
+                            selectionBox.style.border = '2px dashed var(--purple-color)';
+                            selectionBox.style.background = 'rgba(155, 89, 182, 0.1)';
+                            selectionBox.style.pointerEvents = 'none';
+                            selectionBox.style.zIndex = '9999';
+                            container.appendChild(selectionBox);
+                        }
+                        selectionBox.style.display = 'block';
+                        return;
+                    }
+
                     // 取消選擇元素
                     selectedElement = null;
                     updatePropertyEditor();
@@ -2646,7 +2694,37 @@
             });
 
             window.addEventListener('mousemove', (e) => {
-                if (isResizing && resizeTarget && resizeStartInfo) {
+                // 檢查多選模式下是否應該開始拖曳
+                if (isMultiSelectMode && multiSelectClickStart && !isDragging && dragTarget) {
+                    const dx = Math.abs(e.clientX - multiSelectClickStart.x);
+                    const dy = Math.abs(e.clientY - multiSelectClickStart.y);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // 如果移動距離超過5px，開始拖曳
+                    if (distance > 5) {
+                        isDragging = true;
+                        multiSelectClickStart = null; // 清除點擊記錄
+                    }
+                }
+
+                if (isBoxSelecting && selectionBox) {
+                    // 更新框選矩形
+                    const container = document.getElementById('canvas-container');
+                    const rect = container.getBoundingClientRect();
+                    const currentX = (e.clientX - rect.left - offsetX) / scale;
+                    const currentY = (e.clientY - rect.top - offsetY) / scale;
+
+                    const left = Math.min(boxSelectStart.x, currentX);
+                    const top = Math.min(boxSelectStart.y, currentY);
+                    const width = Math.abs(currentX - boxSelectStart.x);
+                    const height = Math.abs(currentY - boxSelectStart.y);
+
+                    // 應用變換
+                    selectionBox.style.left = (left * scale + offsetX) + 'px';
+                    selectionBox.style.top = (top * scale + offsetY) + 'px';
+                    selectionBox.style.width = (width * scale) + 'px';
+                    selectionBox.style.height = (height * scale) + 'px';
+                } else if (isResizing && resizeTarget && resizeStartInfo) {
                     // 縮放元素 - 使用絕對位置計算，避免累積誤差
                     // 計算滑鼠相對於節點左上角的位移
                     const currentX = (e.clientX - offsetX) / scale;
@@ -2675,8 +2753,28 @@
                     const dx = (e.clientX - dragStart.x) / scale;
                     const dy = (e.clientY - dragStart.y) / scale;
 
-                    dragTarget.element.x = dragOffset.x + dx;
-                    dragTarget.element.y = dragOffset.y + dy;
+                    if (dragTarget.type === 'multi-select') {
+                        // 多選拖曳：移動所有選中的元素
+                        dragTarget.elements.forEach(el => {
+                            if (el.type === 'node') {
+                                const node = currentMapData.data.nodes.find(n => n.id === el.id);
+                                if (node && dragOffsets[el.id]) {
+                                    node.x = dragOffsets[el.id].x + dx;
+                                    node.y = dragOffsets[el.id].y + dy;
+                                }
+                            } else if (el.type === 'frame') {
+                                const frame = currentMapData.data.frames.find(f => f.id === el.id);
+                                if (frame && dragOffsets[el.id]) {
+                                    frame.x = dragOffsets[el.id].x + dx;
+                                    frame.y = dragOffsets[el.id].y + dy;
+                                }
+                            }
+                        });
+                    } else {
+                        // 單選拖曳
+                        dragTarget.element.x = dragOffset.x + dx;
+                        dragTarget.element.y = dragOffset.y + dy;
+                    }
 
                     renderCanvas();
                 } else if (isPanning) {
@@ -2688,7 +2786,62 @@
                 }
             });
 
-            window.addEventListener('mouseup', () => {
+            window.addEventListener('mouseup', (e) => {
+                // 檢查多選模式下是否為點擊（未發生拖曳）
+                if (isMultiSelectMode && multiSelectClickStart) {
+                    // 未發生拖曳，切換選擇狀態
+                    toggleElementMultiSelection(multiSelectClickStart.elementId, multiSelectClickStart.elementType);
+                    multiSelectClickStart = null;
+                    dragTarget = null;
+                    return;
+                }
+
+                if (isBoxSelecting) {
+                    // 結束框選，選擇所有在矩形內的元素
+                    const container = document.getElementById('canvas-container');
+                    const rect = container.getBoundingClientRect();
+                    const currentX = (e.clientX - rect.left - offsetX) / scale;
+                    const currentY = (e.clientY - rect.top - offsetY) / scale;
+
+                    const left = Math.min(boxSelectStart.x, currentX);
+                    const top = Math.min(boxSelectStart.y, currentY);
+                    const width = Math.abs(currentX - boxSelectStart.x);
+                    const height = Math.abs(currentY - boxSelectStart.y);
+
+                    // 選擇所有在矩形內的元素
+                    if (currentMapData) {
+                        // 檢查節點
+                        currentMapData.data.nodes.forEach(node => {
+                            if (isElementInRect(node, left, top, width, height)) {
+                                if (!isElementMultiSelected(node.id, 'node')) {
+                                    multiSelectedElements.push({ id: node.id, type: 'node' });
+                                }
+                            }
+                        });
+
+                        // 檢查框架
+                        currentMapData.data.frames.forEach(frame => {
+                            if (isElementInRect(frame, left, top, width, height)) {
+                                if (!isElementMultiSelected(frame.id, 'frame')) {
+                                    multiSelectedElements.push({ id: frame.id, type: 'frame' });
+                                }
+                            }
+                        });
+                    }
+
+                    // 隱藏選擇框
+                    if (selectionBox) {
+                        selectionBox.style.display = 'none';
+                    }
+                    isBoxSelecting = false;
+
+                    // 更新UI
+                    updatePropertyEditor();
+                    updateCopyPasteButtons();
+                    renderCanvas();
+                    return;
+                }
+
                 if (isResizing) {
                     isResizing = false;
                     resizeTarget = null;
@@ -2809,6 +2962,29 @@
                     // 單指觸控：準備平移或點擊元素
                     const touch = e.touches[0];
                     if (e.target === container || e.target === frameLayer || e.target === nodeLayer) {
+                        // 如果在多選模式下，開始框選
+                        if (isMultiSelectMode) {
+                            isBoxSelecting = true;
+                            const rect = container.getBoundingClientRect();
+                            boxSelectStart = {
+                                x: (touch.clientX - rect.left - offsetX) / scale,
+                                y: (touch.clientY - rect.top - offsetY) / scale
+                            };
+
+                            // 創建選擇框元素
+                            if (!selectionBox) {
+                                selectionBox = document.createElement('div');
+                                selectionBox.style.position = 'absolute';
+                                selectionBox.style.border = '2px dashed var(--purple-color)';
+                                selectionBox.style.background = 'rgba(155, 89, 182, 0.1)';
+                                selectionBox.style.pointerEvents = 'none';
+                                selectionBox.style.zIndex = '9999';
+                                container.appendChild(selectionBox);
+                            }
+                            selectionBox.style.display = 'block';
+                            return;
+                        }
+
                         // 取消選擇元素
                         selectedElement = null;
                         updatePropertyEditor();
@@ -2843,6 +3019,27 @@
 
             // 觸控移動
             container.addEventListener('touchmove', (e) => {
+                // 如果正在框選
+                if (isBoxSelecting && selectionBox && e.touches.length === 1) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const rect = container.getBoundingClientRect();
+                    const currentX = (touch.clientX - rect.left - offsetX) / scale;
+                    const currentY = (touch.clientY - rect.top - offsetY) / scale;
+
+                    const left = Math.min(boxSelectStart.x, currentX);
+                    const top = Math.min(boxSelectStart.y, currentY);
+                    const width = Math.abs(currentX - boxSelectStart.x);
+                    const height = Math.abs(currentY - boxSelectStart.y);
+
+                    // 應用變換
+                    selectionBox.style.left = (left * scale + offsetX) + 'px';
+                    selectionBox.style.top = (top * scale + offsetY) + 'px';
+                    selectionBox.style.width = (width * scale) + 'px';
+                    selectionBox.style.height = (height * scale) + 'px';
+                    return;
+                }
+
                 // 如果正在拖曳節點/框架，阻止默認行為（讓 window touchmove 處理）
                 if (isDragging) {
                     e.preventDefault();
@@ -2896,6 +3093,52 @@
 
             // 觸控結束
             container.addEventListener('touchend', (e) => {
+                if (isBoxSelecting && e.touches.length === 0) {
+                    // 結束框選，選擇所有在矩形內的元素
+                    const touch = e.changedTouches[0];
+                    const rect = container.getBoundingClientRect();
+                    const currentX = (touch.clientX - rect.left - offsetX) / scale;
+                    const currentY = (touch.clientY - rect.top - offsetY) / scale;
+
+                    const left = Math.min(boxSelectStart.x, currentX);
+                    const top = Math.min(boxSelectStart.y, currentY);
+                    const width = Math.abs(currentX - boxSelectStart.x);
+                    const height = Math.abs(currentY - boxSelectStart.y);
+
+                    // 選擇所有在矩形內的元素
+                    if (currentMapData) {
+                        // 檢查節點
+                        currentMapData.data.nodes.forEach(node => {
+                            if (isElementInRect(node, left, top, width, height)) {
+                                if (!isElementMultiSelected(node.id, 'node')) {
+                                    multiSelectedElements.push({ id: node.id, type: 'node' });
+                                }
+                            }
+                        });
+
+                        // 檢查框架
+                        currentMapData.data.frames.forEach(frame => {
+                            if (isElementInRect(frame, left, top, width, height)) {
+                                if (!isElementMultiSelected(frame.id, 'frame')) {
+                                    multiSelectedElements.push({ id: frame.id, type: 'frame' });
+                                }
+                            }
+                        });
+                    }
+
+                    // 隱藏選擇框
+                    if (selectionBox) {
+                        selectionBox.style.display = 'none';
+                    }
+                    isBoxSelecting = false;
+
+                    // 更新UI
+                    updatePropertyEditor();
+                    updateCopyPasteButtons();
+                    renderCanvas();
+                    return;
+                }
+
                 if (e.touches.length === 0) {
                     isPanning = false;
                     container.classList.remove('grabbing');
@@ -3021,6 +3264,36 @@
                     return;
                 }
 
+                // 如果處於多選模式
+                if (isMultiSelectMode) {
+                    // 記錄點擊位置，稍後判斷是點擊還是拖曳
+                    multiSelectClickStart = {
+                        x: e.clientX,
+                        y: e.clientY,
+                        elementId: node.id,
+                        elementType: 'node',
+                        isSelected: isElementMultiSelected(node.id, 'node')
+                    };
+                    dragStart = { x: e.clientX, y: e.clientY };
+
+                    // 如果點擊的是已選中的元素，準備拖曳（但還不開始）
+                    if (multiSelectClickStart.isSelected) {
+                        dragTarget = { type: 'multi-select', elements: multiSelectedElements };
+                        // 記錄所有選中元素的初始位置
+                        dragOffsets = {};
+                        multiSelectedElements.forEach(el => {
+                            if (el.type === 'node') {
+                                const n = currentMapData.data.nodes.find(node => node.id === el.id);
+                                if (n) dragOffsets[el.id] = { x: n.x, y: n.y };
+                            } else if (el.type === 'frame') {
+                                const f = currentMapData.data.frames.find(frame => frame.id === el.id);
+                                if (f) dragOffsets[el.id] = { x: f.x, y: f.y };
+                            }
+                        });
+                    }
+                    return;
+                }
+
                 // 選擇元素
                 selectElement(node.id, 'node');
 
@@ -3044,6 +3317,50 @@
                 // 如果處於連接模式
                 if (isConnecting) {
                     handleConnectionClick(node.id, 'node');
+                    return;
+                }
+
+                // 如果處於多選模式
+                if (isMultiSelectMode) {
+                    const touch = e.touches[0];
+                    const containerEl = document.getElementById('canvas-container');
+                    const rect = containerEl.getBoundingClientRect();
+                    const containerX = touch.clientX - rect.left;
+                    const containerY = touch.clientY - rect.top;
+                    const canvasX = (containerX - offsetX) / scale;
+                    const canvasY = (containerY - offsetY) / scale;
+
+                    // 記錄點擊位置，稍後判斷是點擊還是拖曳
+                    multiSelectClickStart = {
+                        x: touch.clientX,
+                        y: touch.clientY,
+                        elementId: node.id,
+                        elementType: 'node',
+                        isSelected: isElementMultiSelected(node.id, 'node')
+                    };
+
+                    // 如果點擊的是已選中的元素，準備拖曳（但還不開始）
+                    if (multiSelectClickStart.isSelected) {
+                        isPanning = false;
+                        dragTarget = {
+                            type: 'multi-select',
+                            elements: multiSelectedElements,
+                            startX: canvasX,
+                            startY: canvasY
+                        };
+
+                        // 記錄所有選中元素的初始位置
+                        dragOffsets = {};
+                        multiSelectedElements.forEach(el => {
+                            if (el.type === 'node') {
+                                const n = currentMapData.data.nodes.find(node => node.id === el.id);
+                                if (n) dragOffsets[el.id] = { x: n.x, y: n.y };
+                            } else if (el.type === 'frame') {
+                                const f = currentMapData.data.frames.find(frame => frame.id === el.id);
+                                if (f) dragOffsets[el.id] = { x: f.x, y: f.y };
+                            }
+                        });
+                    }
                     return;
                 }
 
@@ -3075,7 +3392,29 @@
 
             // 觸控拖曳
             nodeEl.addEventListener('touchmove', (e) => {
-                if (!isDragging || !dragTarget || dragTarget.element.id !== node.id) {
+                // 檢查多選模式下是否應該開始拖曳
+                if (isMultiSelectMode && multiSelectClickStart && !isDragging && dragTarget) {
+                    const touch = e.touches[0];
+                    const dx = Math.abs(touch.clientX - multiSelectClickStart.x);
+                    const dy = Math.abs(touch.clientY - multiSelectClickStart.y);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // 如果移動距離超過10px，開始拖曳
+                    if (distance > 10) {
+                        isDragging = true;
+                        multiSelectClickStart = null; // 清除點擊記錄
+                    }
+                }
+
+                if (!isDragging || !dragTarget) {
+                    return;
+                }
+
+                // 檢查是單選拖曳還是多選拖曳
+                if (dragTarget.type === 'node' && dragTarget.element.id !== node.id) {
+                    return;
+                }
+                if (dragTarget.type === 'multi-select' && !dragTarget.elements.some(el => el.id === node.id && el.type === 'node')) {
                     return;
                 }
 
@@ -3098,15 +3437,44 @@
                 const dx = canvasX - dragTarget.startX;
                 const dy = canvasY - dragTarget.startY;
 
-                // 更新節點數據位置（使用初始位置加偏移）
-                node.x = dragTarget.initialNodeX + dx;
-                node.y = dragTarget.initialNodeY + dy;
+                if (dragTarget.type === 'multi-select') {
+                    // 多選拖曳：移動所有選中的元素
+                    dragTarget.elements.forEach(el => {
+                        if (el.type === 'node') {
+                            const n = currentMapData.data.nodes.find(node => node.id === el.id);
+                            if (n && dragOffsets[el.id]) {
+                                n.x = dragOffsets[el.id].x + dx;
+                                n.y = dragOffsets[el.id].y + dy;
+                                const nodeEl = document.querySelector(`[data-id="${el.id}"]`);
+                                if (nodeEl) {
+                                    nodeEl.style.left = n.x + 'px';
+                                    nodeEl.style.top = n.y + 'px';
+                                }
+                            }
+                        } else if (el.type === 'frame') {
+                            const f = currentMapData.data.frames.find(frame => frame.id === el.id);
+                            if (f && dragOffsets[el.id]) {
+                                f.x = dragOffsets[el.id].x + dx;
+                                f.y = dragOffsets[el.id].y + dy;
+                                const frameEl = document.querySelector(`[data-id="${el.id}"]`);
+                                if (frameEl) {
+                                    frameEl.style.left = f.x + 'px';
+                                    frameEl.style.top = f.y + 'px';
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    // 單選拖曳：更新節點數據位置（使用初始位置加偏移）
+                    node.x = dragTarget.initialNodeX + dx;
+                    node.y = dragTarget.initialNodeY + dy;
 
-                // 重新查找當前的 DOM 元素（避免閉包引用失效）
-                const currentNodeEl = document.querySelector(`[data-id="${node.id}"]`);
-                if (currentNodeEl) {
-                    currentNodeEl.style.left = node.x + 'px';
-                    currentNodeEl.style.top = node.y + 'px';
+                    // 重新查找當前的 DOM 元素（避免閉包引用失效）
+                    const currentNodeEl = document.querySelector(`[data-id="${node.id}"]`);
+                    if (currentNodeEl) {
+                        currentNodeEl.style.left = node.x + 'px';
+                        currentNodeEl.style.top = node.y + 'px';
+                    }
                 }
 
                 // 更新連接線
@@ -3114,6 +3482,15 @@
             }, { passive: false });
 
             nodeEl.addEventListener('touchend', (e) => {
+                // 檢查多選模式下是否為點擊（未發生拖曳）
+                if (isMultiSelectMode && multiSelectClickStart && !isDragging) {
+                    // 未發生拖曳，切換選擇狀態
+                    toggleElementMultiSelection(multiSelectClickStart.elementId, multiSelectClickStart.elementType);
+                    multiSelectClickStart = null;
+                    dragTarget = null;
+                    return;
+                }
+
                 if (!isDragging) return;
 
                 isDragging = false;
@@ -3126,6 +3503,11 @@
             // 如果是當前選中的元素，添加 selected 類
             if (selectedElement && selectedElement.id === node.id) {
                 nodeEl.classList.add('selected');
+            }
+
+            // 如果在多選模式下被選中，添加 multi-selected 類
+            if (isMultiSelectMode && isElementMultiSelected(node.id, 'node')) {
+                nodeEl.classList.add('multi-selected');
             }
 
             // 如果是連接模式的起點，添加 connecting-start 類
@@ -3248,6 +3630,36 @@
                     return;
                 }
 
+                // 如果處於多選模式
+                if (isMultiSelectMode) {
+                    // 記錄點擊位置，稍後判斷是點擊還是拖曳
+                    multiSelectClickStart = {
+                        x: e.clientX,
+                        y: e.clientY,
+                        elementId: frame.id,
+                        elementType: 'frame',
+                        isSelected: isElementMultiSelected(frame.id, 'frame')
+                    };
+                    dragStart = { x: e.clientX, y: e.clientY };
+
+                    // 如果點擊的是已選中的元素，準備拖曳（但還不開始）
+                    if (multiSelectClickStart.isSelected) {
+                        dragTarget = { type: 'multi-select', elements: multiSelectedElements };
+                        // 記錄所有選中元素的初始位置
+                        dragOffsets = {};
+                        multiSelectedElements.forEach(el => {
+                            if (el.type === 'node') {
+                                const n = currentMapData.data.nodes.find(node => node.id === el.id);
+                                if (n) dragOffsets[el.id] = { x: n.x, y: n.y };
+                            } else if (el.type === 'frame') {
+                                const f = currentMapData.data.frames.find(frame => frame.id === el.id);
+                                if (f) dragOffsets[el.id] = { x: f.x, y: f.y };
+                            }
+                        });
+                    }
+                    return;
+                }
+
                 // 選擇元素
                 selectElement(frame.id, 'frame');
 
@@ -3271,6 +3683,50 @@
                 // 如果處於連接模式
                 if (isConnecting) {
                     handleConnectionClick(frame.id, 'frame');
+                    return;
+                }
+
+                // 如果處於多選模式
+                if (isMultiSelectMode) {
+                    const touch = e.touches[0];
+                    const containerEl = document.getElementById('canvas-container');
+                    const rect = containerEl.getBoundingClientRect();
+                    const containerX = touch.clientX - rect.left;
+                    const containerY = touch.clientY - rect.top;
+                    const canvasX = (containerX - offsetX) / scale;
+                    const canvasY = (containerY - offsetY) / scale;
+
+                    // 記錄點擊位置，稍後判斷是點擊還是拖曳
+                    multiSelectClickStart = {
+                        x: touch.clientX,
+                        y: touch.clientY,
+                        elementId: frame.id,
+                        elementType: 'frame',
+                        isSelected: isElementMultiSelected(frame.id, 'frame')
+                    };
+
+                    // 如果點擊的是已選中的元素，準備拖曳（但還不開始）
+                    if (multiSelectClickStart.isSelected) {
+                        isPanning = false;
+                        dragTarget = {
+                            type: 'multi-select',
+                            elements: multiSelectedElements,
+                            startX: canvasX,
+                            startY: canvasY
+                        };
+
+                        // 記錄所有選中元素的初始位置
+                        dragOffsets = {};
+                        multiSelectedElements.forEach(el => {
+                            if (el.type === 'node') {
+                                const n = currentMapData.data.nodes.find(node => node.id === el.id);
+                                if (n) dragOffsets[el.id] = { x: n.x, y: n.y };
+                            } else if (el.type === 'frame') {
+                                const f = currentMapData.data.frames.find(frame => frame.id === el.id);
+                                if (f) dragOffsets[el.id] = { x: f.x, y: f.y };
+                            }
+                        });
+                    }
                     return;
                 }
 
@@ -3302,7 +3758,29 @@
 
             // 觸控拖曳
             frameEl.addEventListener('touchmove', (e) => {
-                if (!isDragging || !dragTarget || dragTarget.element.id !== frame.id) {
+                // 檢查多選模式下是否應該開始拖曳
+                if (isMultiSelectMode && multiSelectClickStart && !isDragging && dragTarget) {
+                    const touch = e.touches[0];
+                    const dx = Math.abs(touch.clientX - multiSelectClickStart.x);
+                    const dy = Math.abs(touch.clientY - multiSelectClickStart.y);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // 如果移動距離超過10px，開始拖曳
+                    if (distance > 10) {
+                        isDragging = true;
+                        multiSelectClickStart = null; // 清除點擊記錄
+                    }
+                }
+
+                if (!isDragging || !dragTarget) {
+                    return;
+                }
+
+                // 檢查是單選拖曳還是多選拖曳
+                if (dragTarget.type === 'frame' && dragTarget.element.id !== frame.id) {
+                    return;
+                }
+                if (dragTarget.type === 'multi-select' && !dragTarget.elements.some(el => el.id === frame.id && el.type === 'frame')) {
                     return;
                 }
 
@@ -3325,15 +3803,44 @@
                 const dx = canvasX - dragTarget.startX;
                 const dy = canvasY - dragTarget.startY;
 
-                // 更新框架數據位置（使用初始位置加偏移）
-                frame.x = dragTarget.initialNodeX + dx;
-                frame.y = dragTarget.initialNodeY + dy;
+                if (dragTarget.type === 'multi-select') {
+                    // 多選拖曳：移動所有選中的元素
+                    dragTarget.elements.forEach(el => {
+                        if (el.type === 'node') {
+                            const n = currentMapData.data.nodes.find(node => node.id === el.id);
+                            if (n && dragOffsets[el.id]) {
+                                n.x = dragOffsets[el.id].x + dx;
+                                n.y = dragOffsets[el.id].y + dy;
+                                const nodeEl = document.querySelector(`[data-id="${el.id}"]`);
+                                if (nodeEl) {
+                                    nodeEl.style.left = n.x + 'px';
+                                    nodeEl.style.top = n.y + 'px';
+                                }
+                            }
+                        } else if (el.type === 'frame') {
+                            const f = currentMapData.data.frames.find(frame => frame.id === el.id);
+                            if (f && dragOffsets[el.id]) {
+                                f.x = dragOffsets[el.id].x + dx;
+                                f.y = dragOffsets[el.id].y + dy;
+                                const frameEl = document.querySelector(`[data-id="${el.id}"]`);
+                                if (frameEl) {
+                                    frameEl.style.left = f.x + 'px';
+                                    frameEl.style.top = f.y + 'px';
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    // 單選拖曳：更新框架數據位置（使用初始位置加偏移）
+                    frame.x = dragTarget.initialNodeX + dx;
+                    frame.y = dragTarget.initialNodeY + dy;
 
-                // 重新查找當前的 DOM 元素（避免閉包引用失效）
-                const currentFrameEl = document.querySelector(`[data-id="${frame.id}"]`);
-                if (currentFrameEl) {
-                    currentFrameEl.style.left = frame.x + 'px';
-                    currentFrameEl.style.top = frame.y + 'px';
+                    // 重新查找當前的 DOM 元素（避免閉包引用失效）
+                    const currentFrameEl = document.querySelector(`[data-id="${frame.id}"]`);
+                    if (currentFrameEl) {
+                        currentFrameEl.style.left = frame.x + 'px';
+                        currentFrameEl.style.top = frame.y + 'px';
+                    }
                 }
 
                 // 更新連接線
@@ -3341,6 +3848,15 @@
             }, { passive: false });
 
             frameEl.addEventListener('touchend', (e) => {
+                // 檢查多選模式下是否為點擊（未發生拖曳）
+                if (isMultiSelectMode && multiSelectClickStart && !isDragging) {
+                    // 未發生拖曳，切換選擇狀態
+                    toggleElementMultiSelection(multiSelectClickStart.elementId, multiSelectClickStart.elementType);
+                    multiSelectClickStart = null;
+                    dragTarget = null;
+                    return;
+                }
+
                 if (!isDragging) return;
 
                 isDragging = false;
@@ -3353,6 +3869,11 @@
             // 如果是當前選中的元素，添加 selected 類
             if (selectedElement && selectedElement.id === frame.id) {
                 frameEl.classList.add('selected');
+            }
+
+            // 如果在多選模式下被選中，添加 multi-selected 類
+            if (isMultiSelectMode && isElementMultiSelected(frame.id, 'frame')) {
+                frameEl.classList.add('multi-selected');
             }
 
             // 如果是連接模式的起點，添加 connecting-start 類
@@ -3493,6 +4014,13 @@
                 // 點擊事件
                 hitArea.addEventListener('click', (e) => {
                     e.stopPropagation();
+
+                    // 如果在多選模式下
+                    if (isMultiSelectMode) {
+                        toggleConnectionMultiSelection(connection.id, connection.from, connection.to);
+                        return;
+                    }
+
                     selectElement(connection.id, 'connection');
                 });
 
@@ -3520,6 +4048,12 @@
                 if (selectedElement && selectedElement.id === connection.id && selectedElement.type === 'connection') {
                     line.setAttribute('stroke-width', 4 * scale);
                     line.setAttribute('stroke', '#e74c3c');
+                }
+
+                // 如果在多選模式下被選中，添加紫色高亮效果
+                if (isMultiSelectMode && isElementMultiSelected(connection.id, 'connection')) {
+                    line.setAttribute('stroke-width', 4 * scale);
+                    line.setAttribute('stroke', 'var(--purple-color)');
                 }
 
                 svg.appendChild(hitArea);
@@ -3779,6 +4313,19 @@
 
         function updatePropertyEditor() {
             const editor = document.getElementById('property-editor');
+
+            // 在多選模式下，顯示多選信息而不是屬性編輯器
+            if (isMultiSelectMode) {
+                if (multiSelectedElements.length === 0) {
+                    editor.innerHTML = '<div class="property-editor-empty">多選模式：點擊元素選擇，或拖曳框選多個元素</div>';
+                } else {
+                    const nodeCount = multiSelectedElements.filter(el => el.type === 'node').length;
+                    const frameCount = multiSelectedElements.filter(el => el.type === 'frame').length;
+                    const connCount = multiSelectedElements.filter(el => el.type === 'connection').length;
+                    editor.innerHTML = `<div class="property-editor-empty">已選擇 ${multiSelectedElements.length} 個元素<br>節點: ${nodeCount}, 框架: ${frameCount}, 連接線: ${connCount}</div>`;
+                }
+                return;
+            }
 
             if (!selectedElement) {
                 editor.innerHTML = '<div class="property-editor-empty">請選擇一個元素來編輯屬性</div>';
@@ -4470,6 +5017,173 @@
             renderCanvas();
         }
 
+        function toggleMultiSelectMode() {
+            if (!currentMapData) {
+                alert('請先建立或開啟一個概念圖');
+                return;
+            }
+
+            // 如果正在連接模式，先退出
+            if (isConnecting) {
+                toggleConnectionMode();
+            }
+
+            // 切換多選模式
+            isMultiSelectMode = !isMultiSelectMode;
+
+            // 如果關閉多選模式，清除所有選中元素
+            if (!isMultiSelectMode) {
+                multiSelectedElements = [];
+                selectedElement = null;
+            } else {
+                // 進入多選模式時，清除單選狀態
+                selectedElement = null;
+            }
+
+            // 更新按鈕樣式
+            const btn = document.getElementById('btn-multi-select');
+            if (isMultiSelectMode) {
+                btn.classList.add('active');
+                btn.style.background = 'var(--warning-color)';
+                btn.style.color = 'white';
+            } else {
+                btn.classList.remove('active');
+                btn.style.background = '';
+                btn.style.color = '';
+            }
+
+            // 更新按鈕狀態（禁用/啟用）
+            updateButtonStates();
+
+            // 更新屬性編輯器
+            updatePropertyEditor();
+
+            // 更新複製貼上刪除按鈕狀態
+            updateCopyPasteButtons();
+
+            // 重新渲染畫布
+            renderCanvas();
+
+            // 在小螢幕上自動收起側邊欄
+            if (isMultiSelectMode && window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebar');
+                const floatingToggle = document.getElementById('floating-sidebar-toggle');
+                if (!sidebar.classList.contains('hidden')) {
+                    sidebar.classList.add('hidden');
+                    floatingToggle.classList.add('show');
+                }
+            }
+        }
+
+        function updateButtonStates() {
+            // 在多選模式下，禁用某些按鈕
+            const btnAddNode = document.getElementById('btn-add-node');
+            const btnAddFrame = document.getElementById('btn-add-frame');
+            const btnAddConnection = document.getElementById('btn-add-connection');
+            const btnPaste = document.getElementById('btn-paste');
+
+            if (isMultiSelectMode) {
+                // 禁用：新增節點、框架、連接、貼上
+                btnAddNode.classList.add('disabled');
+                btnAddFrame.classList.add('disabled');
+                btnAddConnection.classList.add('disabled');
+                btnPaste.classList.add('disabled');
+            } else {
+                // 啟用
+                btnAddNode.classList.remove('disabled');
+                btnAddFrame.classList.remove('disabled');
+                btnAddConnection.classList.remove('disabled');
+                // 貼上按鈕根據剪貼簿狀態決定
+                updatePasteButtonState();
+            }
+        }
+
+        // 多選輔助函數
+        function isElementMultiSelected(id, type) {
+            return multiSelectedElements.some(el => el.id === id && el.type === type);
+        }
+
+        function toggleElementMultiSelection(id, type) {
+            const index = multiSelectedElements.findIndex(el => el.id === id && el.type === type);
+            if (index >= 0) {
+                // 已選中，移除
+                multiSelectedElements.splice(index, 1);
+
+                // 如果是節點或框架，也要移除所有與它連接的連接線
+                if (type === 'node' || type === 'frame') {
+                    if (currentMapData && currentMapData.data.connections) {
+                        currentMapData.data.connections.forEach(conn => {
+                            if (conn.from === id || conn.to === id) {
+                                const connIndex = multiSelectedElements.findIndex(el => el.id === conn.id && el.type === 'connection');
+                                if (connIndex >= 0) {
+                                    multiSelectedElements.splice(connIndex, 1);
+                                }
+                            }
+                        });
+                    }
+                }
+            } else {
+                // 未選中，添加
+                multiSelectedElements.push({ id, type });
+            }
+
+            // 更新屬性編輯器和按鈕狀態
+            updatePropertyEditor();
+            updateCopyPasteButtons();
+            renderCanvas();
+        }
+
+        function isElementInRect(element, rectLeft, rectTop, rectWidth, rectHeight) {
+            // 檢查元素是否與選擇矩形相交
+            const elemRight = element.x + element.width;
+            const elemBottom = element.y + element.height;
+            const rectRight = rectLeft + rectWidth;
+            const rectBottom = rectTop + rectHeight;
+
+            // 檢查是否有交集
+            return !(element.x > rectRight ||
+                     elemRight < rectLeft ||
+                     element.y > rectBottom ||
+                     elemBottom < rectTop);
+        }
+
+        function toggleConnectionMultiSelection(connectionId, fromId, toId) {
+            const index = multiSelectedElements.findIndex(el => el.id === connectionId && el.type === 'connection');
+
+            if (index >= 0) {
+                // 已選中，移除連接線（不移除兩端元素）
+                multiSelectedElements.splice(index, 1);
+            } else {
+                // 未選中，添加連接線和兩端元素
+                multiSelectedElements.push({ id: connectionId, type: 'connection' });
+
+                // 找出兩端元素的類型
+                const fromNode = currentMapData.data.nodes.find(n => n.id === fromId);
+                const fromFrame = currentMapData.data.frames.find(f => f.id === fromId);
+                const toNode = currentMapData.data.nodes.find(n => n.id === toId);
+                const toFrame = currentMapData.data.frames.find(f => f.id === toId);
+
+                // 添加起點元素
+                if (fromNode && !isElementMultiSelected(fromId, 'node')) {
+                    multiSelectedElements.push({ id: fromId, type: 'node' });
+                } else if (fromFrame && !isElementMultiSelected(fromId, 'frame')) {
+                    multiSelectedElements.push({ id: fromId, type: 'frame' });
+                }
+
+                // 添加終點元素
+                if (toNode && !isElementMultiSelected(toId, 'node')) {
+                    multiSelectedElements.push({ id: toId, type: 'node' });
+                } else if (toFrame && !isElementMultiSelected(toId, 'frame')) {
+                    multiSelectedElements.push({ id: toId, type: 'frame' });
+                }
+            }
+
+            // 更新屬性編輯器和按鈕狀態
+            updatePropertyEditor();
+            updateCopyPasteButtons();
+            renderCanvas();
+        }
+
         function startResize(e, element, type) {
             e.preventDefault();
             e.stopPropagation();
@@ -4548,6 +5262,58 @@
 
         // ==================== 複製貼上功能 ====================
         function copyElements() {
+            // 如果在多選模式下
+            if (isMultiSelectMode) {
+                if (multiSelectedElements.length === 0) {
+                    alert('請先選擇元素');
+                    return;
+                }
+
+                // 收集所有選中的節點和框架（不包括連接線）
+                const elementsToCopy = [];
+                multiSelectedElements.forEach(el => {
+                    if (el.type === 'node') {
+                        const node = currentMapData.data.nodes.find(n => n.id === el.id);
+                        if (node) {
+                            elementsToCopy.push({
+                                type: 'node',
+                                data: JSON.parse(JSON.stringify(node))
+                            });
+                        }
+                    } else if (el.type === 'frame') {
+                        const frame = currentMapData.data.frames.find(f => f.id === el.id);
+                        if (frame) {
+                            elementsToCopy.push({
+                                type: 'frame',
+                                data: JSON.parse(JSON.stringify(frame))
+                            });
+                        }
+                    }
+                });
+
+                if (elementsToCopy.length === 0) {
+                    alert('沒有可複製的元素（連接線不能複製）');
+                    return;
+                }
+
+                // 存儲多個元素
+                const clipboardData = {
+                    type: 'multi',
+                    elements: elementsToCopy,
+                    timestamp: Date.now()
+                };
+
+                try {
+                    localStorage.setItem('conceptCrafterClipboard', JSON.stringify(clipboardData));
+                    updatePasteButtonState();
+                    showToast(`✓ 已複製 ${elementsToCopy.length} 個元素`);
+                } catch (error) {
+                    alert('複製失敗：' + error.message);
+                }
+                return;
+            }
+
+            // 單選模式的原有邏輯
             if (!selectedElement) {
                 alert('請先選擇一個元素');
                 return;
@@ -4618,6 +5384,41 @@
                 return;
             }
 
+            // 處理多元素貼上
+            if (clipboardData.type === 'multi' && clipboardData.elements) {
+                const pastedElements = [];
+                clipboardData.elements.forEach(item => {
+                    const { type, data } = item;
+                    const newElement = JSON.parse(JSON.stringify(data));
+                    newElement.id = type + '-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+
+                    // 調整位置（偏移一點避免完全重疊）
+                    if (type === 'node' || type === 'frame') {
+                        newElement.x += 30;
+                        newElement.y += 30;
+                    }
+
+                    // 將新元素加入當前 map
+                    if (type === 'node') {
+                        currentMapData.data.nodes.push(newElement);
+                        pastedElements.push({ id: newElement.id, type: 'node' });
+                    } else if (type === 'frame') {
+                        currentMapData.data.frames.push(newElement);
+                        pastedElements.push({ id: newElement.id, type: 'frame' });
+                    }
+                });
+
+                renderCanvas();
+                saveHistory();
+                markMapAsModified();
+                updatePropertyEditor();
+
+                showToast(`✓ 已貼上 ${pastedElements.length} 個元素`);
+                autoHideSidebarOnSmallScreen();
+                return;
+            }
+
+            // 單元素貼上的原有邏輯
             const { type, data } = clipboardData;
 
             // 創建新元素（深拷貝並生成新 ID）
@@ -4668,6 +5469,80 @@
         }
 
         function deleteSelectedElement() {
+            // 如果在多選模式下
+            if (isMultiSelectMode) {
+                if (multiSelectedElements.length === 0) {
+                    alert('請先選擇元素');
+                    return;
+                }
+
+                const nodeCount = multiSelectedElements.filter(el => el.type === 'node').length;
+                const frameCount = multiSelectedElements.filter(el => el.type === 'frame').length;
+                const connCount = multiSelectedElements.filter(el => el.type === 'connection').length;
+
+                const confirmMsg = `確定要刪除 ${multiSelectedElements.length} 個元素嗎？\n(節點: ${nodeCount}, 框架: ${frameCount}, 連接線: ${connCount})`;
+
+                if (!confirm(confirmMsg)) {
+                    return;
+                }
+
+                // 收集要刪除的元素ID
+                const nodesToDelete = [];
+                const framesToDelete = [];
+                const connectionsToDelete = [];
+
+                multiSelectedElements.forEach(el => {
+                    if (el.type === 'node') {
+                        nodesToDelete.push(el.id);
+                    } else if (el.type === 'frame') {
+                        framesToDelete.push(el.id);
+                    } else if (el.type === 'connection') {
+                        connectionsToDelete.push(el.id);
+                    }
+                });
+
+                // 刪除節點
+                nodesToDelete.forEach(id => {
+                    const index = currentMapData.data.nodes.findIndex(n => n.id === id);
+                    if (index !== -1) {
+                        currentMapData.data.nodes.splice(index, 1);
+                    }
+                });
+
+                // 刪除框架
+                framesToDelete.forEach(id => {
+                    const index = currentMapData.data.frames.findIndex(f => f.id === id);
+                    if (index !== -1) {
+                        currentMapData.data.frames.splice(index, 1);
+                    }
+                });
+
+                // 刪除連接線（包括選中的連接線和連接到被刪除元素的連接線）
+                const allDeletedIds = [...nodesToDelete, ...framesToDelete];
+                currentMapData.data.connections = currentMapData.data.connections.filter(conn => {
+                    // 刪除選中的連接線
+                    if (connectionsToDelete.includes(conn.id)) {
+                        return false;
+                    }
+                    // 刪除連接到被刪除元素的連接線
+                    if (allDeletedIds.includes(conn.from) || allDeletedIds.includes(conn.to)) {
+                        return false;
+                    }
+                    return true;
+                });
+
+                // 清空多選狀態
+                multiSelectedElements = [];
+                updatePropertyEditor();
+                updateCopyPasteButtons();
+                renderCanvas();
+                saveHistory();
+                markMapAsModified();
+                showToast('✓ 已刪除');
+                return;
+            }
+
+            // 單選模式的原有邏輯
             if (!selectedElement) {
                 alert('請先選擇一個元素');
                 return;
@@ -4738,6 +5613,29 @@
             const btnPaste = document.getElementById('btn-paste');
             const btnDelete = document.getElementById('btn-delete');
 
+            // 在多選模式下的特殊處理
+            if (isMultiSelectMode) {
+                // 複製按鈕：有選中元素時啟用（連接線除外）
+                const hasNonConnectionElements = multiSelectedElements.some(el => el.type !== 'connection');
+                if (multiSelectedElements.length > 0 && hasNonConnectionElements) {
+                    btnCopy.classList.remove('disabled');
+                } else {
+                    btnCopy.classList.add('disabled');
+                }
+
+                // 刪除按鈕：有選中元素時啟用
+                if (multiSelectedElements.length > 0) {
+                    btnDelete.classList.remove('disabled');
+                } else {
+                    btnDelete.classList.add('disabled');
+                }
+
+                // 貼上按鈕：在多選模式下始終禁用
+                btnPaste.classList.add('disabled');
+                return;
+            }
+
+            // 單選模式的正常邏輯
             // 更新複製和刪除按鈕狀態（有選中元素時啟用）
             if (selectedElement) {
                 // 連接線不可複製
