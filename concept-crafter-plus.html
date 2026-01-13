@@ -489,6 +489,11 @@
             border-color: var(--warning-color);
         }
 
+        /* 多選按鈕啟用時的閃爍效果 */
+        .toolbar-btn.blinking {
+            animation: multi-select-blink 1.5s ease-in-out infinite;
+        }
+
         .toolbar-btn.disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -705,6 +710,16 @@
 
             50% {
                 box-shadow: 0 0 0 8px var(--success-color);
+            }
+        }
+
+        /* 多選按鈕閃爍動畫 */
+        @keyframes multi-select-blink {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
             }
         }
 
@@ -5044,10 +5059,12 @@
             const btn = document.getElementById('btn-multi-select');
             if (isMultiSelectMode) {
                 btn.classList.add('active');
+                btn.classList.add('blinking');
                 btn.style.background = 'var(--warning-color)';
                 btn.style.color = 'white';
             } else {
                 btn.classList.remove('active');
+                btn.classList.remove('blinking');
                 btn.style.background = '';
                 btn.style.color = '';
             }
