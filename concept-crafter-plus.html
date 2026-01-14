@@ -715,9 +715,12 @@
 
         /* 多選按鈕閃爍動畫 */
         @keyframes multi-select-blink {
-            0%, 100% {
+
+            0%,
+            100% {
                 opacity: 1;
             }
+
             50% {
                 opacity: 0.5;
             }
@@ -1659,6 +1662,9 @@
         let selectionBox = null; // 框選矩形元素
         let resizeOriginalCenters = {}; // 記住 resize 開始時所有元素的中心點 { id: {x, y} }
         let multiSelectClickStart = null; // 多選模式下的點擊起始位置，用於區分點擊和拖曳
+        let multiSelectBaseIndex = -1; // 多選模式的起始歷史索引
+        let multiSelectHasNewHistory = false; // 多選模式下是否已產生新的歷史
+
 
 
         // ==================== 初始化 ====================
@@ -2842,6 +2848,70 @@
                                 }
                             }
                         });
+
+                        // 檢查連接線
+                        if (currentMapData.data.connections) {
+                            currentMapData.data.connections.forEach(conn => {
+                                // 獲取起點和終點元素
+                                const fromNode = currentMapData.data.nodes.find(n => n.id === conn.from);
+                                const fromFrame = currentMapData.data.frames.find(f => f.id === conn.from);
+                                const toNode = currentMapData.data.nodes.find(n => n.id === conn.to);
+                                const toFrame = currentMapData.data.frames.find(f => f.id === conn.to);
+
+                                const fromEl = fromNode || fromFrame;
+                                const toEl = toNode || toFrame;
+
+                                if (fromEl && toEl) {
+                                    // 計算兩個元素的中心點
+                                    const cx1 = fromEl.x + fromEl.width / 2;
+                                    const cy1 = fromEl.y + fromEl.height / 2;
+                                    const cx2 = toEl.x + toEl.width / 2;
+                                    const cy2 = toEl.y + toEl.height / 2;
+
+                                    // 創建虛擬的連接線邊界框
+                                    // 使用兩個中心點構成的矩形作為連接線的範圍
+                                    const connRect = {
+                                        x: Math.min(cx1, cx2),
+                                        y: Math.min(cy1, cy2),
+                                        width: Math.abs(cx1 - cx2),
+                                        height: Math.abs(cy1 - cy2)
+                                    };
+
+                                    // 如果寬度或高度為0，給予一個微小值以利於檢測
+                                    if (connRect.width < 1) connRect.width = 1;
+                                    if (connRect.height < 1) connRect.height = 1;
+
+                                    // 檢查是否與框選範圍相交
+                                    // 使用精確的線段檢測（基於元素邊緣交點）
+                                    const fromRect = { x: fromEl.x, y: fromEl.y, width: fromEl.width, height: fromEl.height };
+                                    const toRect = { x: toEl.x, y: toEl.y, width: toEl.width, height: toEl.height };
+
+                                    const p1 = getEdgePoint(fromRect, cx2, cy2, cx1, cy1);
+                                    const p2 = getEdgePoint(toRect, cx1, cy1, cx2, cy2);
+
+                                    const isIntersect = isLineInRect(p1.x, p1.y, p2.x, p2.y, left, top, width, height);
+
+                                    if (isIntersect) {
+                                        if (!isElementMultiSelected(conn.id, 'connection')) {
+                                            multiSelectedElements.push({ id: conn.id, type: 'connection' });
+
+                                            // 自動選取兩端元素
+                                            if (fromNode && !isElementMultiSelected(fromNode.id, 'node')) {
+                                                multiSelectedElements.push({ id: fromNode.id, type: 'node' });
+                                            } else if (fromFrame && !isElementMultiSelected(fromFrame.id, 'frame')) {
+                                                multiSelectedElements.push({ id: fromFrame.id, type: 'frame' });
+                                            }
+
+                                            if (toNode && !isElementMultiSelected(toNode.id, 'node')) {
+                                                multiSelectedElements.push({ id: toNode.id, type: 'node' });
+                                            } else if (toFrame && !isElementMultiSelected(toFrame.id, 'frame')) {
+                                                multiSelectedElements.push({ id: toFrame.id, type: 'frame' });
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        }
                     }
 
                     // 隱藏選擇框
@@ -3139,6 +3209,54 @@
                                 }
                             }
                         });
+
+                        // 檢查連接線
+                        if (currentMapData.data.connections) {
+                            currentMapData.data.connections.forEach(conn => {
+                                // 獲取起點和終點元素
+                                const fromNode = currentMapData.data.nodes.find(n => n.id === conn.from);
+                                const fromFrame = currentMapData.data.frames.find(f => f.id === conn.from);
+                                const toNode = currentMapData.data.nodes.find(n => n.id === conn.to);
+                                const toFrame = currentMapData.data.frames.find(f => f.id === conn.to);
+
+                                const fromEl = fromNode || fromFrame;
+                                const toEl = toNode || toFrame;
+
+                                if (fromEl && toEl) {
+                                    // 計算兩個元素的中心點
+                                    const cx1 = fromEl.x + fromEl.width / 2;
+                                    const cy1 = fromEl.y + fromEl.height / 2;
+                                    const cx2 = toEl.x + toEl.width / 2;
+                                    const cy2 = toEl.y + toEl.height / 2;
+
+                                    // 使用精確的線段與矩形相交檢測（基於元素邊緣交點）
+                                    const fromRect = { x: fromEl.x, y: fromEl.y, width: fromEl.width, height: fromEl.height };
+                                    const toRect = { x: toEl.x, y: toEl.y, width: toEl.width, height: toEl.height };
+
+                                    const p1 = getEdgePoint(fromRect, cx2, cy2, cx1, cy1);
+                                    const p2 = getEdgePoint(toRect, cx1, cy1, cx2, cy2);
+
+                                    if (isLineInRect(p1.x, p1.y, p2.x, p2.y, left, top, width, height)) {
+                                        if (!isElementMultiSelected(conn.id, 'connection')) {
+                                            multiSelectedElements.push({ id: conn.id, type: 'connection' });
+
+                                            // 自動選取兩端元素
+                                            if (fromNode && !isElementMultiSelected(fromNode.id, 'node')) {
+                                                multiSelectedElements.push({ id: fromNode.id, type: 'node' });
+                                            } else if (fromFrame && !isElementMultiSelected(fromFrame.id, 'frame')) {
+                                                multiSelectedElements.push({ id: fromFrame.id, type: 'frame' });
+                                            }
+
+                                            if (toNode && !isElementMultiSelected(toNode.id, 'node')) {
+                                                multiSelectedElements.push({ id: toNode.id, type: 'node' });
+                                            } else if (toFrame && !isElementMultiSelected(toFrame.id, 'frame')) {
+                                                multiSelectedElements.push({ id: toFrame.id, type: 'frame' });
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        }
                     }
 
                     // 隱藏選擇框
@@ -5050,9 +5168,14 @@
             if (!isMultiSelectMode) {
                 multiSelectedElements = [];
                 selectedElement = null;
+                // 退出多選模式，重置 Undo 限制
+                multiSelectBaseIndex = -1;
             } else {
                 // 進入多選模式時，清除單選狀態
                 selectedElement = null;
+                // 設置 Undo 限制基準點
+                multiSelectBaseIndex = historyIndex;
+                multiSelectHasNewHistory = false;
             }
 
             // 更新按鈕樣式
@@ -5077,6 +5200,9 @@
 
             // 更新複製貼上刪除按鈕狀態
             updateCopyPasteButtons();
+
+            // 更新 Undo/Redo 按鈕狀態（確保進入多選模式時正確反映狀態）
+            updateUndoRedoButtons();
 
             // 重新渲染畫布
             renderCanvas();
@@ -5159,9 +5285,9 @@
 
             // 檢查是否有交集
             return !(element.x > rectRight ||
-                     elemRight < rectLeft ||
-                     element.y > rectBottom ||
-                     elemBottom < rectTop);
+                elemRight < rectLeft ||
+                element.y > rectBottom ||
+                elemBottom < rectTop);
         }
 
         function toggleConnectionMultiSelection(connectionId, fromId, toId) {
@@ -5199,6 +5325,41 @@
             updatePropertyEditor();
             updateCopyPasteButtons();
             renderCanvas();
+        }
+
+        // 判斷兩線段是否相交
+        function lineIntersectsLine(x1, y1, x2, y2, x3, y3, x4, y4) {
+            const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+            if (denom === 0) return false;
+
+            const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
+            const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
+
+            return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
+        }
+
+        // 判斷線段是否在矩形內（包含相交）
+        function isLineInRect(x1, y1, x2, y2, rectLeft, rectTop, rectWidth, rectHeight) {
+            const rectRight = rectLeft + rectWidth;
+            const rectBottom = rectTop + rectHeight;
+
+            // 1. 檢查線段端點是否在矩形內
+            if ((x1 >= rectLeft && x1 <= rectRight && y1 >= rectTop && y1 <= rectBottom) ||
+                (x2 >= rectLeft && x2 <= rectRight && y2 >= rectTop && y2 <= rectBottom)) {
+                return true;
+            }
+
+            // 2. 檢查線段是否與矩形的四條邊相交
+            // 上邊
+            if (lineIntersectsLine(x1, y1, x2, y2, rectLeft, rectTop, rectRight, rectTop)) return true;
+            // 下邊
+            if (lineIntersectsLine(x1, y1, x2, y2, rectLeft, rectBottom, rectRight, rectBottom)) return true;
+            // 左邊
+            if (lineIntersectsLine(x1, y1, x2, y2, rectLeft, rectTop, rectLeft, rectBottom)) return true;
+            // 右邊
+            if (lineIntersectsLine(x1, y1, x2, y2, rectRight, rectTop, rectRight, rectBottom)) return true;
+
+            return false;
         }
 
         function startResize(e, element, type) {
@@ -5680,15 +5841,40 @@
             const btnUndo = document.getElementById('btn-undo');
             const btnRedo = document.getElementById('btn-redo');
 
-            // 更新 Undo 按鈕狀態（有歷史可以回復時啟用）
-            if (historyIndex > 0) {
+            let canUndo = false;
+            let canRedo = false;
+
+            if (isMultiSelectMode) {
+                // 多選模式下：只有當前索引大於進入時的基準點才允許 Undo
+                if (historyIndex > multiSelectBaseIndex) {
+                    canUndo = true;
+                }
+
+                // 多選模式下：只有當前索引小於歷史長度，且該歷史是在多選模式下產生的才允許 Redo
+                // 這裡簡化判斷：只要有新歷史且不是最後一個就可以 Redo
+                // (注意：因為我們隔離了舊歷史，所以理論上只能 Redo 到多選模式內的操作)
+                if (historyIndex < history.length - 1) {
+                    canRedo = true;
+                }
+            } else {
+                // 正常模式
+                if (historyIndex > 0) {
+                    canUndo = true;
+                }
+                if (historyIndex < history.length - 1) {
+                    canRedo = true;
+                }
+            }
+
+            // 更新 Undo 按鈕狀態
+            if (canUndo) {
                 btnUndo.classList.remove('disabled');
             } else {
                 btnUndo.classList.add('disabled');
             }
 
-            // 更新 Redo 按鈕狀態（有歷史可以重做時啟用）
-            if (historyIndex < history.length - 1) {
+            // 更新 Redo 按鈕狀態
+            if (canRedo) {
                 btnRedo.classList.remove('disabled');
             } else {
                 btnRedo.classList.add('disabled');
@@ -5772,10 +5958,20 @@
             history.push(JSON.stringify(currentMapData));
             historyIndex++;
 
+            // 如果在多選模式下，標記已產生新歷史
+            if (isMultiSelectMode) {
+                multiSelectHasNewHistory = true;
+            }
+
             // 限制歷史記錄數量
             if (history.length > 50) {
                 history.shift();
                 historyIndex--;
+
+                // 如果歷史記錄被移位，基準點也要調整
+                if (isMultiSelectMode && multiSelectBaseIndex >= 0) {
+                    multiSelectBaseIndex--;
+                }
             }
 
             // 同時更新記憶體快取
@@ -5788,7 +5984,15 @@
         }
 
         function undo() {
-            if (historyIndex > 0) {
+            // 檢查是否可以 Undo
+            let canUndo = false;
+            if (isMultiSelectMode) {
+                if (historyIndex > multiSelectBaseIndex) canUndo = true;
+            } else {
+                if (historyIndex > 0) canUndo = true;
+            }
+
+            if (canUndo) {
                 historyIndex--;
                 currentMapData = JSON.parse(history[historyIndex]);
                 renderCanvas();
