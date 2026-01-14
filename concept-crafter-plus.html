@@ -2199,7 +2199,8 @@
             selectedElement = null;
             updatePropertyEditor();
 
-            // 清空畫布
+            // 清空畫布並重置視圖
+            centerCanvasContent();
             renderCanvas();
 
             // 更新複製貼上按鈕狀態
@@ -2424,6 +2425,9 @@
                 // 清除選擇狀態
                 selectedElement = null;
                 updatePropertyEditor();
+
+                // 重置視圖並居中顯示
+                centerCanvasContent();
 
                 // 重新渲染畫布
                 renderCanvas();
@@ -3313,6 +3317,52 @@
             scaleIndicatorTimer = setTimeout(() => {
                 indicator.classList.remove('show');
             }, 1500);
+        }
+
+        function centerCanvasContent() {
+            if (!currentMapData || !currentMapData.data.nodes || !currentMapData.data.frames) return;
+
+            const nodes = currentMapData.data.nodes;
+            const frames = currentMapData.data.frames;
+
+            if (nodes.length === 0 && frames.length === 0) {
+                offsetX = 0;
+                offsetY = 0;
+                scale = 1;
+                if (typeof showScaleIndicator === 'function') showScaleIndicator();
+                return;
+            }
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+            const allElements = [...nodes, ...frames];
+            allElements.forEach(el => {
+                minX = Math.min(minX, el.x);
+                minY = Math.min(minY, el.y);
+                maxX = Math.max(maxX, el.x + el.width);
+                maxY = Math.max(maxY, el.y + el.height);
+            });
+
+            const contentWidth = maxX - minX;
+            const contentHeight = maxY - minY;
+            const contentCenterX = minX + contentWidth / 2;
+            const contentCenterY = minY + contentHeight / 2;
+
+            const container = document.getElementById('canvas-container');
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+
+            // 重置縮放
+            scale = 1;
+
+            // 計算置中偏移
+            offsetX = (containerWidth / 2) - contentCenterX * scale;
+            offsetY = (containerHeight / 2) - contentCenterY * scale;
+
+            // 更新縮放指示器
+            if (typeof showScaleIndicator === 'function') {
+                showScaleIndicator();
+            }
         }
 
         function renderCanvas() {
