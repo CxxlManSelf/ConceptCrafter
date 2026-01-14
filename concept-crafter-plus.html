@@ -6294,7 +6294,33 @@
             init() {
                 this.updateSVGSize();
                 this.setupEventListeners();
+                this.centerContent();
                 this.render();
+            }
+
+            centerContent() {
+                if (this.nodes.length === 0 && this.frames.length === 0) return;
+
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+                const allElements = [...this.nodes, ...this.frames];
+                allElements.forEach(el => {
+                    minX = Math.min(minX, el.x);
+                    minY = Math.min(minY, el.y);
+                    maxX = Math.max(maxX, el.x + el.width);
+                    maxY = Math.max(maxY, el.y + el.height);
+                });
+
+                const contentWidth = maxX - minX;
+                const contentHeight = maxY - minY;
+                const contentCenterX = minX + contentWidth / 2;
+                const contentCenterY = minY + contentHeight / 2;
+
+                const containerWidth = this.container.clientWidth;
+                const containerHeight = this.container.clientHeight;
+
+                this.offsetX = (containerWidth / 2) - contentCenterX;
+                this.offsetY = (containerHeight / 2) - contentCenterY;
             }
 
             setupEventListeners() {
