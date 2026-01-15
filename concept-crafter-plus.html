@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Concept-Crafter Plus v1.0</title>
+    <title>Concept-Crafter Plus v1.1</title>
     <link rel="icon" type="image/png" href="./concept-crafter_icon.png">
     <style>
         * {
@@ -1329,7 +1329,7 @@
             <div class="sidebar-header">
                 <div class="sidebar-title">
                     <h1>Concept-Crafter Plus</h1>
-                    <span class="version-badge">v1.0</span>
+                    <span class="version-badge">v1.1</span>
                 </div>
                 <button class="menu-toggle-sidebar" id="menu-toggle-sidebar">☰</button>
             </div>
@@ -5449,9 +5449,19 @@
                 return;
             }
 
-            // 如果點擊的是同一個元素（不能連接自己）
+            // 如果點擊的是同一個元素（不能連接自己），直接忽略
             if (connectionStart.id === id) {
-                alert('不能連接自己');
+                return;
+            }
+
+            // 檢查是否已經存在連接（避免重複連接）
+            // 只要兩點之間有連接（無論方向），就視為已存在，直接忽略
+            const connectionExists = currentMapData.data.connections.some(conn =>
+                (conn.from === connectionStart.id && conn.to === id) ||
+                (conn.from === id && conn.to === connectionStart.id)
+            );
+
+            if (connectionExists) {
                 return;
             }
 
