@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter v2.6.11</title>
+    <title>Concept Crafter v2.6.12</title>
     <style>
         * {
             margin: 0;
@@ -322,7 +322,14 @@
 
         .connection:hover {
             stroke-width: 4px;
-            /* 懸停時加粗 */
+            stroke: #9b59b6;
+            filter: drop-shadow(0 0 3px #9b59b6);
+            marker-end: url(#arrowhead-9b59b6);
+            z-index: 100;
+        }
+
+        .connection[marker-start]:hover {
+            marker-start: url(#arrowhead-double-9b59b6);
         }
 
         .frame .resize-handle {
@@ -927,6 +934,11 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.6.12</strong>
+                    <ul>
+                        <li><strong>連接線視覺增強</strong>：懸停時顯示與選取狀態一致的紫色發光效果，箭頭同步變色，大幅提升辨識度。</li>
+                    </ul>
+                </li>
                 <li><strong>v2.6.11</strong>
                     <ul>
                         <li><strong>選取模式 (Selection Mode) 改進：</strong>

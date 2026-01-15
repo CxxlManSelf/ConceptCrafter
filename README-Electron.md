@@ -48,9 +48,9 @@ npm run build:linux
 
 打包後的檔案會在 `dist/` 目錄中：
 
-- **Windows**: `ConceptCrafter-2.6.11-win.exe`
-- **macOS**: `ConceptCrafter-2.6.11-mac.dmg`
-- **Linux**: `ConceptCrafter-2.6.11-linux.AppImage`
+- **Windows**: `ConceptCrafter-2.6.12-win.exe`
+- **macOS**: `ConceptCrafter-2.6.12-mac.dmg`
+- **Linux**: `ConceptCrafter-2.6.12-linux.AppImage`
 
 ## 使用說明
 
