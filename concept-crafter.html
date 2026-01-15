@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter v2.6.8</title>
+    <title>Concept Crafter v2.6.9</title>
     <style>
         * {
             margin: 0;
@@ -888,6 +888,13 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.6.9</strong>
+                    <ul>
+                        <li>📱 <strong>手機版/獨立瀏覽器地圖偏移修復</strong>：解決在小螢幕上開啟 Map 時內容未置中的問題</li>
+                        <li>✨ <strong>自動置中 (Auto Center)</strong>：生成的 Map 檔案在初始化時會自動計算內容邊界並將畫面置中</li>
+                        <li>🎯 <strong>改善閱讀體驗</strong>：無論地圖畫在哪個位置，開啟時都能立即看到重點內容</li>
+                    </ul>
+                </li>
                 <li><strong>v2.6.8</strong>
                     <ul>
                         <li>✨ <strong>選取模式優化</strong>：全方位提升選取體驗</li>
@@ -1999,7 +2006,44 @@
                             return id1 == id2;
                         }
 
+                        centerContent() {
+                            if (this.nodes.length === 0 && this.frames.length === 0) return;
+
+                            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+                            // Calculate bounds from nodes
+                            this.nodes.forEach(node => {
+                                minX = Math.min(minX, node.x);
+                                minY = Math.min(minY, node.y);
+                                maxX = Math.max(maxX, node.x + node.width);
+                                maxY = Math.max(maxY, node.y + node.height);
+                            });
+
+                            // Calculate bounds from frames
+                            this.frames.forEach(frame => {
+                                minX = Math.min(minX, frame.x);
+                                minY = Math.min(minY, frame.y);
+                                maxX = Math.max(maxX, frame.x + frame.width);
+                                maxY = Math.max(maxY, frame.y + frame.height);
+                            });
+
+                            if (minX === Infinity) return;
+
+                            // Calculate centers
+                            const contentCenterX = (minX + maxX) / 2;
+                            const contentCenterY = (minY + maxY) / 2;
+
+                            const rect = this.container.getBoundingClientRect();
+                            const viewportCenterX = rect.width / 2;
+                            const viewportCenterY = rect.height / 2;
+
+                            // Apply offset to center the content
+                            this.offsetX = viewportCenterX - contentCenterX;
+                            this.offsetY = viewportCenterY - contentCenterY;
+                        }
+
                         init() {
+                            this.centerContent();
                             this.updateSVGSize();
                             window.addEventListener('resize', () => this.updateSVGSize());
                             
