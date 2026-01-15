@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(copy:*)",
+      "Bash(node generate-test-map.js:*)",
+      "Bash(git restore:*)",
+      "Bash(dir:*)"
+    ]
+  }
+}

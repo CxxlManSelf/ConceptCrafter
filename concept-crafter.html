@@ -1191,7 +1191,7 @@
                 const hasProject = this.projectPath !== null;
                 const hasMap = this.currentMap !== null;
 
-                // 如果在連接模式下，禁用除了連接模式按鈕以外的所有按鈕
+                // 如果在連接模式或選取模式下，禁用其他按鈕
                 if (this.connectMode) {
                     document.getElementById('select-folder').disabled = true;
                     document.getElementById('new-map').disabled = true;
@@ -1200,6 +1200,17 @@
                     document.getElementById('add-frame').disabled = true;
                     document.getElementById('connect-mode').disabled = false; // 保持開啟以供取消
                     document.getElementById('select-mode').disabled = true;
+                    return;
+                }
+
+                if (this.selectMode) {
+                    document.getElementById('select-folder').disabled = true;
+                    document.getElementById('new-map').disabled = true;
+                    document.getElementById('load-map').disabled = true;
+                    document.getElementById('add-node').disabled = true;
+                    document.getElementById('add-frame').disabled = true;
+                    document.getElementById('connect-mode').disabled = true;
+                    document.getElementById('select-mode').disabled = false; // 保持開啟以供取消
                     return;
                 }
 
@@ -2725,11 +2736,18 @@
                 btn.style.background = this.selectMode ? '#e74c3c' : '#3498db';
                 btn.textContent = this.selectMode ? '取消選取' : '選取模式';
 
-                if (!this.selectMode) {
+                if (this.selectMode) {
+                    // 如果進入選取模式，確保退出連接模式
+                    if (this.connectMode) {
+                        this.toggleConnectMode();
+                        // toggleConnectMode 會呼叫 updateButtonStates，但我們這裡也會呼叫，所以沒關係
+                    }
+                } else {
                     // 離開選取模式時清除所有選取
                     this.clearSelection();
                 }
 
+                this.updateButtonStates(); // 更新按鈕狀態
                 this.render(); // Update visual state
             }
 
@@ -2739,9 +2757,8 @@
             }
 
             toggleElementSelection(type, element) {
-                // 檢查元素是否已經被選取
+                // Check if element is already selected
                 let found = null;
-
                 for (let item of this.selectedElements) {
                     if (item.type === type && this.compareId(item.element.id, element.id)) {
                         found = item;
@@ -2750,9 +2767,58 @@
                 }
 
                 if (found) {
+                    // ------ 取消選取邏輯 ------
                     this.selectedElements.delete(found);
+
+                    // 規則：取消了節點或是 Frame 的選取，也要一併取消相關連接線的選取
+                    if (type === 'node' || type === 'frame') {
+                        const connectionsToRemove = [];
+                        for (let item of this.selectedElements) {
+                            if (item.type === 'connection') {
+                                const conn = item.element;
+                                // 檢查此連接線是否連接到剛剛取消選取的元素
+                                if (this.compareId(conn.from, element.id) || this.compareId(conn.to, element.id)) {
+                                    connectionsToRemove.push(item);
+                                }
+                            }
+                        }
+                        // 移除相關連接線
+                        connectionsToRemove.forEach(connItem => {
+                            this.selectedElements.delete(connItem);
+                        });
+                    }
+
                 } else {
+                    // ------ 新增選取邏輯 ------
                     this.selectedElements.add({ type, element });
+
+                    // 規則：若選取的是連接線，則兩端的元素也必須選取
+                    if (type === 'connection') {
+                        const fromId = element.from;
+                        const toId = element.to;
+
+                        // 查找兩端的元素 (可能是 Node 或 Frame)
+                        const fromNode = this.nodes.find(n => this.compareId(n.id, fromId));
+                        const fromFrame = this.frames.find(f => this.compareId(f.id, fromId));
+                        const toNode = this.nodes.find(n => this.compareId(n.id, toId));
+                        const toFrame = this.frames.find(f => this.compareId(f.id, toId));
+
+                        const fromElement = fromNode || fromFrame;
+                        const toElement = toNode || toFrame;
+
+                        if (fromElement) {
+                            // 遞迴呼叫以確保加入選取集合，且避免重複邏輯
+                            // 注意：遞迴呼叫時不會觸發「連接線」邏輯，因為這次選的是 node/frame
+                            if (!this.isElementSelected(fromNode ? 'node' : 'frame', fromElement)) {
+                                this.toggleElementSelection(fromNode ? 'node' : 'frame', fromElement);
+                            }
+                        }
+                        if (toElement) {
+                            if (!this.isElementSelected(toNode ? 'node' : 'frame', toElement)) {
+                                this.toggleElementSelection(toNode ? 'node' : 'frame', toElement);
+                            }
+                        }
+                    }
                 }
 
                 this.render();
@@ -2878,13 +2944,28 @@
                     if (this.selectMode) {
                         // 選取模式：如果已選取則拖動，未選取則切換選取狀態
                         if (this.isElementSelected('node', clickedNode)) {
-                            // 已選取，準備拖動所有選取的元素
+                            // 已選取，可能是要取消選取，也可能是要拖曳
+                            // 記錄點擊位置，用於判斷是否為點擊操作
+                            this.potentialDeselect = {
+                                type: 'node',
+                                element: clickedNode,
+                                startX: e.clientX,
+                                startY: e.clientY
+                            };
+
+                            // 準備拖動所有選取的元素
                             this.dragElement = { type: 'multiple', element: null };
                             this.dragOffset = { x: x, y: y };
                             this.historyManager.beginGroup('移動元素');
                         } else {
                             // 未選取，切換選取狀態
                             this.toggleElementSelection('node', clickedNode);
+                            // 選取後也允許立即拖曳
+                            if (this.isElementSelected('node', clickedNode)) {
+                                this.dragElement = { type: 'multiple', element: null };
+                                this.dragOffset = { x: x, y: y };
+                                this.historyManager.beginGroup('移動元素');
+                            }
                         }
                         return;
                     } else if (this.connectMode) {
@@ -2921,13 +3002,27 @@
                     if (this.selectMode) {
                         // 選取模式：如果已選取則拖動，未選取則切換選取狀態
                         if (this.isElementSelected('frame', clickedFrame)) {
-                            // 已選取，準備拖動所有選取的元素
+                            // 已選取，可能是要取消選取，也可能是要拖曳
+                            this.potentialDeselect = {
+                                type: 'frame',
+                                element: clickedFrame,
+                                startX: e.clientX,
+                                startY: e.clientY
+                            };
+
+                            // 準備拖動所有選取的元素
                             this.dragElement = { type: 'multiple', element: null };
                             this.dragOffset = { x: x, y: y };
                             this.historyManager.beginGroup('移動元素');
                         } else {
                             // 未選取，切換選取狀態
                             this.toggleElementSelection('frame', clickedFrame);
+                            // 選取後也允許立即拖曳
+                            if (this.isElementSelected('frame', clickedFrame)) {
+                                this.dragElement = { type: 'multiple', element: null };
+                                this.dragOffset = { x: x, y: y };
+                                this.historyManager.beginGroup('移動元素');
+                            }
                         }
                         return;
                     } else if (this.connectMode) {
@@ -2981,6 +3076,16 @@
             }
 
             onCanvasMouseMove(e) {
+                // 檢查是否為拖曳操作而取消潛在的 deselect
+                if (this.potentialDeselect) {
+                    const moveThreshold = 5;
+                    const dx = Math.abs(e.clientX - this.potentialDeselect.startX);
+                    const dy = Math.abs(e.clientY - this.potentialDeselect.startY);
+                    if (dx > moveThreshold || dy > moveThreshold) {
+                        this.potentialDeselect = null; // 確認為拖曳，取消點擊切換
+                    }
+                }
+
                 const rect = this.canvasContainer.getBoundingClientRect();
                 const x = (e.clientX - rect.left - this.offsetX) / this.scale;
                 const y = (e.clientY - rect.top - this.offsetY) / this.scale;
@@ -3025,6 +3130,14 @@
             }
 
             onCanvasMouseUp(e) {
+                // 處理選取模式下的點擊切換（如果沒有發生拖曳）
+                if (this.selectMode && this.potentialDeselect) {
+                    this.toggleElementSelection(this.potentialDeselect.type, this.potentialDeselect.element);
+                    this.potentialDeselect = null;
+                }
+                // 清除潛在標記
+                this.potentialDeselect = null;
+
                 // 結束批量操作
                 if (this.dragElement || this.resizeElement) {
                     this.historyManager.endGroup();
