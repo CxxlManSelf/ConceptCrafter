@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter v2.6.9</title>
+    <title>Concept Crafter v2.6.11</title>
     <style>
         * {
             margin: 0;
@@ -197,7 +197,26 @@
             z-index: 50;
         }
 
+        .layer-frames,
+        .layer-nodes {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .layer-frames {
+            z-index: 10;
+        }
+
+        .layer-nodes {
+            z-index: 20;
+        }
+
         .node {
+            pointer-events: auto;
             position: absolute;
             background: #3498db;
             color: white;
@@ -285,6 +304,25 @@
             padding: 5px 10px;
             border-radius: 4px;
             font-size: 12px;
+        }
+
+        .frame {
+            position: absolute;
+            border-radius: 4px;
+            box-sizing: border-box;
+            pointer-events: auto;
+        }
+
+        .connection {
+            cursor: pointer;
+            pointer-events: stroke;
+            /* 確保路徑本身接收事件 */
+            transition: stroke-width 0.2s;
+        }
+
+        .connection:hover {
+            stroke-width: 4px;
+            /* 懸停時加粗 */
         }
 
         .frame .resize-handle {
@@ -814,7 +852,8 @@
 
             <h3>4. 連接與關聯</h3>
             <ul>
-                <li><strong>建立連接</strong>：點擊「連接模式」按鈕（變紅色），然後依序點擊兩個物件即可建立連線。完成後請再次點擊按鈕取消模式。</li>
+                <li><strong>建立連接</strong>：點擊「連接模式」按鈕（變紅色），然後依序點擊兩個物件即可建立連線。若嘗試連接到自己或連接已存在的路徑，系統會忽略並保持連接模式，方便您繼續選擇正確的對象。完成後請再次點擊按鈕取消模式。
+                </li>
                 <li><strong>編輯連線</strong>：右鍵點擊連線可編輯標籤文字或更改箭頭樣式（單向/雙向/無）。</li>
             </ul>
 
@@ -888,6 +927,34 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.6.11</strong>
+                    <ul>
+                        <li><strong>選取模式 (Selection Mode) 改進：</strong>
+                            <ul>
+                                <li>嚴格限制操作：僅允許移動、複製 (Ctrl+C)、刪除 (Delete)。禁止雙擊編輯和右鍵選單修改。</li>
+                                <li>Undo屏障：進入選取模式前的操作無法被撤銷，確保編輯歷程安全。</li>
+                            </ul>
+                        </li>
+                        <li><strong>層級結構重構：</strong>
+                            <ul>
+                                <li>明確視覺層級：連接線 (上層) > 節點 (中層) > Frame (下層)。解決了連接線被遮擋的問題。</li>
+                            </ul>
+                        </li>
+                        <li><strong>連接線選取優化：</strong>
+                            <ul>
+                                <li>優先選取：在重疊區域優先選取連接線。</li>
+                                <li>視覺回饋：滑鼠懸停時顯示手指游標並加粗線條。</li>
+                                <li>防誤觸：修正點擊延伸路線誤觸的問題；限制僅在選取模式下可選取連接線。</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>v2.6.10</strong>
+                    <ul>
+                        <li>🔗 <strong>連接線體驗優化</strong>：嘗試連接到自身或建立重複連接時，系統會靜默忽略並保持連接模式，讓操作更流暢</li>
+                        <li>📚 <strong>文件更新</strong>：更新說明文件與版本資訊</li>
+                    </ul>
+                </li>
                 <li><strong>v2.6.9</strong>
                     <ul>
                         <li>📱 <strong>手機版/獨立瀏覽器地圖偏移修復</strong>：解決在小螢幕上開啟 Map 時內容未置中的問題</li>
@@ -993,6 +1060,7 @@
                 this.maxSize = 50;
                 this.isApplying = false;  // 防止 undo/redo 時觸發新記錄
                 this.pendingGroup = null; // 批量操作暫存
+                this.barrierIndex = -1;   // Undo 屏障索引
             }
 
             recordState(snapshot, description) {
@@ -1097,7 +1165,18 @@
                 }
             }
 
+            setBarrier() {
+                this.barrierIndex = this.undoStack.length;
+            }
+
+            clearBarrier() {
+                this.barrierIndex = -1;
+            }
+
             canUndo() {
+                if (this.barrierIndex !== -1 && this.undoStack.length <= this.barrierIndex) {
+                    return false;
+                }
                 return this.undoStack.length > 0;
             }
 
@@ -1160,6 +1239,17 @@
 
             init() {
                 this.canvasContainer = document.getElementById('canvas-container');
+
+                // 初始化圖層容器
+                this.framesLayer = document.createElement('div');
+                this.framesLayer.className = 'layer-frames';
+                this.nodesLayer = document.createElement('div');
+                this.nodesLayer.className = 'layer-nodes';
+
+                // 將圖層加入 canvas
+                this.canvas.appendChild(this.framesLayer);
+                this.canvas.appendChild(this.nodesLayer);
+
                 this.setupEventListeners();
                 this.updateSVGSize();
                 this.updateButtonStates();
@@ -2790,12 +2880,18 @@
                 btn.textContent = this.selectMode ? '取消選取' : '選取模式';
 
                 if (this.selectMode) {
+                    // 設定 Undo 屏障，防止回到進入選取模式之前的狀態
+                    this.historyManager.setBarrier();
+
                     // 如果進入選取模式，確保退出連接模式
                     if (this.connectMode) {
                         this.toggleConnectMode();
                         // toggleConnectMode 會呼叫 updateButtonStates，但我們這裡也會呼叫，所以沒關係
                     }
                 } else {
+                    // 清除 Undo 屏障
+                    this.historyManager.clearBarrier();
+
                     // 離開選取模式時清除所有選取
                     this.clearSelection();
                 }
@@ -2967,6 +3063,35 @@
                 const x = (e.clientX - rect.left - this.offsetX) / this.scale;
                 const y = (e.clientY - rect.top - this.offsetY) / this.scale;
 
+                // PRIORITY: Check for connections FIRST (User Request)
+                // This ensures connections can be selected even if they overlap with nodes/frames
+                // 增加檢測範圍以方便選取
+                const clickedConnection = this.findConnectionAtPoint(x, y);
+                if (clickedConnection) {
+                    if (this.selectMode) {
+                        if (this.isElementSelected('connection', clickedConnection)) {
+                            this.potentialDeselect = {
+                                type: 'connection',
+                                element: clickedConnection,
+                                startX: e.clientX,
+                                startY: e.clientY
+                            };
+                            // Ready to drag multiple
+                            this.dragElement = { type: 'multiple', element: null };
+                            this.dragOffset = { x: x, y: y };
+                            this.historyManager.beginGroup('移動元素');
+                        } else {
+                            this.toggleElementSelection('connection', clickedConnection);
+                            if (this.isElementSelected('connection', clickedConnection)) {
+                                this.dragElement = { type: 'multiple', element: null };
+                                this.dragOffset = { x: x, y: y };
+                                this.historyManager.beginGroup('移動元素');
+                            }
+                        }
+                        return;
+                    }
+                }
+
                 // Check for resize handles
                 const resizeNode = this.nodes.find(node => this.isInResizeHandle(x, y, node));
                 if (resizeNode) {
@@ -3029,8 +3154,6 @@
                             if (this.createConnection(this.connectStart, clickedNode)) {
                                 this.toggleConnectMode(); // 連接成功後自動退出連接模式
                             }
-                            this.connectStart = null;
-                            this.render(); // Remove highlight after connection
                         }
                     } else {
                         // 檢查是否點擊了已選取的元素
@@ -3086,8 +3209,6 @@
                             if (this.createConnection(this.connectStart, clickedFrame)) {
                                 this.toggleConnectMode(); // 連接成功後自動退出連接模式
                             }
-                            this.connectStart = null;
-                            this.render(); // Remove highlight after connection
                         }
                     } else {
                         // 檢查是否點擊了已選取的元素
@@ -3227,6 +3348,11 @@
                 // 如果有多個選取的元素，顯示多選選單
                 if (this.selectedElements.size > 0) {
                     this.showMultiSelectionContextMenu(e.clientX, e.clientY);
+                    return;
+                }
+
+                // 在選取模式下，如果沒有選取任何元素，不顯示右鍵選單（禁止編輯）
+                if (this.selectMode) {
                     return;
                 }
 
@@ -3395,6 +3521,7 @@
             }
 
             editNodeText(nodeId) {
+                if (this.selectMode) return;
                 const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (!node) return;
 
@@ -3407,6 +3534,7 @@
             }
 
             editNodeLink(nodeId) {
+                if (this.selectMode) return;
                 const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (!node) return;
 
@@ -3447,6 +3575,7 @@
             }
 
             editFrameLabel(frameId) {
+                if (this.selectMode) return;
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (!frame) return;
 
@@ -3464,6 +3593,7 @@
             }
 
             changeNodeColor(nodeId, color) {
+                if (this.selectMode) return;
                 const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     this.recordBeforeModify('變更節點顏色');
@@ -3474,6 +3604,7 @@
             }
 
             changeNodeTextAlign(nodeId, align) {
+                if (this.selectMode) return;
                 const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     this.recordBeforeModify('變更文字對齊');
@@ -3484,6 +3615,7 @@
             }
 
             toggleNodeCompleted(nodeId) {
+                if (this.selectMode) return;
                 const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     this.recordBeforeModify('切換節點完成狀態');
@@ -3494,6 +3626,7 @@
             }
 
             toggleNodeAbandoned(nodeId) {
+                if (this.selectMode) return;
                 const node = this.nodes.find(n => this.compareId(n.id, nodeId));
                 if (node) {
                     this.recordBeforeModify('切換節點放棄狀態');
@@ -3504,6 +3637,7 @@
             }
 
             toggleFrameCompleted(frameId) {
+                if (this.selectMode) return;
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (frame) {
                     this.recordBeforeModify('切換 Frame 完成狀態');
@@ -3514,6 +3648,7 @@
             }
 
             toggleFrameAbandoned(frameId) {
+                if (this.selectMode) return;
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (frame) {
                     this.recordBeforeModify('切換 Frame 放棄狀態');
@@ -3524,6 +3659,7 @@
             }
 
             changeFrameColor(frameId, borderColor, bgColor) {
+                if (this.selectMode) return;
                 const frame = this.frames.find(f => this.compareId(f.id, frameId));
                 if (frame) {
                     this.recordBeforeModify('變更 Frame 顏色');
@@ -3535,6 +3671,7 @@
             }
 
             editConnectionLabel(connectionId) {
+                if (this.selectMode) return;
                 const connection = this.connections.find(c => this.compareId(c.id, connectionId));
                 if (!connection) return;
 
@@ -3552,6 +3689,7 @@
             }
 
             changeArrowType(connectionId, arrowType) {
+                if (this.selectMode) return;
                 const connection = this.connections.find(c => this.compareId(c.id, connectionId));
                 if (connection) {
                     this.recordBeforeModify('變更箭頭類型');
@@ -3562,6 +3700,7 @@
             }
 
             changeConnectionColor(connectionId, color) {
+                if (this.selectMode) return;
                 const connection = this.connections.find(c => this.compareId(c.id, connectionId));
                 if (connection) {
                     this.recordBeforeModify('變更連接線顏色');
@@ -3742,7 +3881,16 @@
             createConnection(fromNode, toNode) {
                 // 驗證起點和終點不能是同一個元素
                 if (fromNode.id === toNode.id) {
-                    // alert('連接線的起點和終點不能是同一個節點或框架'); // 靜默忽略
+                    return false;
+                }
+
+                // 檢查是否已存在連接線 (雙向檢查)
+                const exists = this.connections.some(conn =>
+                    (conn.from === fromNode.id && conn.to === toNode.id) ||
+                    (conn.from === toNode.id && conn.to === fromNode.id)
+                );
+
+                if (exists) {
                     return false;
                 }
 
@@ -3947,19 +4095,51 @@
             }
 
             findConnectionAtPoint(x, y) {
-                const threshold = 5;
+                const threshold = 10; // Increase threshold for easier selection
                 for (const conn of this.connections) {
                     // Search in both nodes and frames
                     const fromElement = this.nodes.find(n => this.compareId(n.id, conn.from)) || this.frames.find(f => this.compareId(f.id, conn.from));
                     const toElement = this.nodes.find(n => this.compareId(n.id, conn.to)) || this.frames.find(f => this.compareId(f.id, conn.to));
                     if (!fromElement || !toElement) continue;
 
-                    const fromX = fromElement.x + fromElement.width / 2;
-                    const fromY = fromElement.y + fromElement.height / 2;
-                    const toX = toElement.x + toElement.width / 2;
-                    const toY = toElement.y + toElement.height / 2;
+                    // Try to get actual DOM dimensions if available (for precise visual match)
+                    // Note: layers are now separate, search in specific layers
+                    let fromEl, toEl;
 
-                    const dist = this.pointToLineDistance(x, y, fromX, fromY, toX, toY);
+                    if (this.nodes.includes(fromElement)) {
+                        fromEl = this.nodesLayer.querySelector(`[data-id="${fromElement.id}"]`);
+                    } else {
+                        fromEl = this.framesLayer.querySelector(`[data-id="${fromElement.id}"]`);
+                    }
+
+                    if (this.nodes.includes(toElement)) {
+                        toEl = this.nodesLayer.querySelector(`[data-id="${toElement.id}"]`);
+                    } else {
+                        toEl = this.framesLayer.querySelector(`[data-id="${toElement.id}"]`);
+                    }
+
+                    // Use DOM offsetWidth/Height if available, otherwise data
+                    const fromWidth = fromEl ? fromEl.offsetWidth : fromElement.width;
+                    const fromHeight = fromEl ? fromEl.offsetHeight : fromElement.height;
+                    const toWidth = toEl ? toEl.offsetWidth : toElement.width;
+                    const toHeight = toEl ? toEl.offsetHeight : toElement.height;
+
+                    const fromCenterX = fromElement.x + fromWidth / 2;
+                    const fromCenterY = fromElement.y + fromHeight / 2;
+                    const toCenterX = toElement.x + toWidth / 2;
+                    const toCenterY = toElement.y + toHeight / 2;
+
+                    // Calculate edge points (Visual start/end) instead of centers (Bug 1 Fix)
+                    const fromRect = { x: fromElement.x, y: fromElement.y, width: fromWidth, height: fromHeight };
+                    const toRect = { x: toElement.x, y: toElement.y, width: toWidth, height: toHeight };
+
+                    const fromEdge = this.getEdgePoint(fromRect, toCenterX, toCenterY, fromCenterX, fromCenterY);
+                    const toEdge = this.getEdgePoint(toRect, fromCenterX, fromCenterY, toCenterX, toCenterY);
+
+                    // Use edge points for distance calculation
+                    // This prevents clicking "inside" the node (on the extension line) from selecting the connection
+                    const dist = this.pointToLineDistance(x, y, fromEdge.x, fromEdge.y, toEdge.x, toEdge.y);
+
                     if (dist < threshold) {
                         return conn;
                     }
@@ -3998,8 +4178,16 @@
             }
 
             render() {
-                // Clear canvas
-                this.canvas.innerHTML = '';
+                // Clear layers instead of entire canvas
+                // 確保層級容器存在（防止被意外清除）
+                if (!this.framesLayer || !this.framesLayer.parentNode) {
+                    this.canvas.innerHTML = '';
+                    this.canvas.appendChild(this.framesLayer);
+                    this.canvas.appendChild(this.nodesLayer);
+                }
+
+                this.framesLayer.innerHTML = '';
+                this.nodesLayer.innerHTML = '';
                 this.svgLayer.innerHTML = '';
 
                 // Recreate arrow marker definitions (they were cleared by innerHTML = '')
@@ -4120,7 +4308,7 @@
                     handle.className = 'resize-handle';
                     frameEl.appendChild(handle);
 
-                    this.canvas.appendChild(frameEl);
+                    this.framesLayer.appendChild(frameEl);
                 });
 
 
@@ -4205,7 +4393,7 @@
                     handle.className = 'resize-handle';
                     nodeEl.appendChild(handle);
 
-                    this.canvas.appendChild(nodeEl);
+                    this.nodesLayer.appendChild(nodeEl);
                 });
 
                 // Render connections LAST (so we can measure nodes/frames DOM dimensions)

@@ -48,9 +48,9 @@ npm run build:linux
 
 打包後的檔案會在 `dist/` 目錄中：
 
-- **Windows**: `ConceptCrafter-1.0.0-win.exe`
-- **macOS**: `ConceptCrafter-1.0.0-mac.dmg`
-- **Linux**: `ConceptCrafter-1.0.0-linux.AppImage`
+- **Windows**: `ConceptCrafter-2.6.11-win.exe`
+- **macOS**: `ConceptCrafter-2.6.11-mac.dmg`
+- **Linux**: `ConceptCrafter-2.6.11-linux.AppImage`
 
 ## 使用說明
 
@@ -62,26 +62,26 @@ npm run build:linux
 
 ## 使用者工作流程
 
-```
-1. 啟動應用程式
-   ↓
-2. 點擊「選擇專案資料夾」設定工作目錄
-   ↓
-3. 點擊「新增 Map」建立新概念圖 或 點擊「載入 Map」開啟現有檔案
-   ↓
-4. 編輯 Map（新增節點、框架、連接線等）
-   ↓
-5. 點擊右側列表的「儲存」按鈕保存變更
+```mermaid
+graph TD
+    A[1. 啟動應用程式] --> B[2. 點擊「選擇專案資料夾」<br>設定工作目錄]
+    B --> C{3. 選擇操作}
+    C -->|新增| D[點擊「新增 Map」<br>建立新概念圖]
+    C -->|載入| E[點擊「載入 Map」<br>開啟現有檔案]
+    D --> F[4. 編輯 Map<br>（新增節點、框架、連接線等）]
+    E --> F
+    F --> G[5. 點擊右側列表的<br>「儲存」按鈕保存變更]
 ```
 
 **重要提示**：
+
 - 選擇專案資料夾後**不會自動掃描**或載入任何檔案
 - 必須手動建立新 Map 或載入現有檔案
 - Map 列表只顯示本次工作階段中建立或載入的 Maps
 
 ## 專案結構
 
-```
+```text
 ConceptCrafter/
 ├── main.js                  # Electron 主進程
 ├── preload.js              # 預載腳本（安全橋接）
