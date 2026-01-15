@@ -1191,6 +1191,19 @@
                 const hasProject = this.projectPath !== null;
                 const hasMap = this.currentMap !== null;
 
+                // 如果在連接模式下，禁用除了連接模式按鈕以外的所有按鈕
+                if (this.connectMode) {
+                    document.getElementById('select-folder').disabled = true;
+                    document.getElementById('new-map').disabled = true;
+                    document.getElementById('load-map').disabled = true;
+                    document.getElementById('add-node').disabled = true;
+                    document.getElementById('add-frame').disabled = true;
+                    document.getElementById('connect-mode').disabled = false; // 保持開啟以供取消
+                    document.getElementById('select-mode').disabled = true;
+                    return;
+                }
+
+                document.getElementById('select-folder').disabled = false;
                 document.getElementById('new-map').disabled = !hasProject;
                 document.getElementById('load-map').disabled = !hasProject;
                 document.getElementById('add-node').disabled = !hasMap;
@@ -2691,6 +2704,13 @@
                 btn.style.background = this.connectMode ? '#e74c3c' : '#3498db';
                 btn.textContent = this.connectMode ? '取消連接' : '連接模式';
                 this.connectStart = null;
+
+                // 如果進入連接模式，確保退出選取模式
+                if (this.connectMode && this.selectMode) {
+                    this.toggleSelectMode();
+                }
+
+                this.updateButtonStates(); // 更新按鈕狀態（禁用/啟用其他按鈕）
                 this.render(); // Update visual state
             }
 
@@ -2872,7 +2892,9 @@
                             this.connectStart = clickedNode;
                             this.render(); // Show highlight on first click
                         } else {
-                            this.createConnection(this.connectStart, clickedNode);
+                            if (this.createConnection(this.connectStart, clickedNode)) {
+                                this.toggleConnectMode(); // 連接成功後自動退出連接模式
+                            }
                             this.connectStart = null;
                             this.render(); // Remove highlight after connection
                         }
@@ -2913,7 +2935,9 @@
                             this.connectStart = clickedFrame;
                             this.render(); // Show highlight on first click
                         } else {
-                            this.createConnection(this.connectStart, clickedFrame);
+                            if (this.createConnection(this.connectStart, clickedFrame)) {
+                                this.toggleConnectMode(); // 連接成功後自動退出連接模式
+                            }
                             this.connectStart = null;
                             this.render(); // Remove highlight after connection
                         }
@@ -3552,8 +3576,8 @@
             createConnection(fromNode, toNode) {
                 // 驗證起點和終點不能是同一個元素
                 if (fromNode.id === toNode.id) {
-                    alert('連接線的起點和終點不能是同一個節點或框架');
-                    return;
+                    // alert('連接線的起點和終點不能是同一個節點或框架'); // 靜默忽略
+                    return false;
                 }
 
                 this.recordBeforeModify('建立連接線');
@@ -3568,6 +3592,7 @@
                 this.connections.push(connection);
                 this.markAsModified();
                 this.render();
+                return true;
             }
 
             showModal(currentText, callback, mode = 'rich') {
