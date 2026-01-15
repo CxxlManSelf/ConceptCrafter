@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Concept-Crafter Plus v1.1</title>
+    <title>Concept-Crafter Plus v1.1.1</title>
     <link rel="icon" type="image/png" href="./concept-crafter_icon.png">
     <style>
         * {
@@ -1329,7 +1329,7 @@
             <div class="sidebar-header">
                 <div class="sidebar-title">
                     <h1>Concept-Crafter Plus</h1>
-                    <span class="version-badge">v1.1</span>
+                    <span class="version-badge">v1.1.1</span>
                 </div>
                 <button class="menu-toggle-sidebar" id="menu-toggle-sidebar">☰</button>
             </div>
@@ -4662,6 +4662,10 @@
                 markMapAsModified();
             });
 
+            document.getElementById('prop-node-text').addEventListener('change', (e) => {
+                saveHistory();
+            });
+
             // 進階編輯按鈕
             document.getElementById('btn-advanced-editor').addEventListener('click', () => {
                 openAdvancedEditor(node);
@@ -4673,9 +4677,14 @@
                 markMapAsModified();
             });
 
+            document.getElementById('prop-node-color').addEventListener('change', (e) => {
+                saveHistory();
+            });
+
             document.getElementById('prop-node-align').addEventListener('change', (e) => {
                 node.textAlign = e.target.value;
                 renderCanvas();
+                saveHistory(); // Added saveHistory
                 markMapAsModified();
             });
 
@@ -4685,10 +4694,18 @@
                 markMapAsModified();
             });
 
+            document.getElementById('prop-node-width').addEventListener('change', (e) => {
+                saveHistory();
+            });
+
             document.getElementById('prop-node-height').addEventListener('input', (e) => {
                 node.height = parseInt(e.target.value);
                 renderCanvas();
                 markMapAsModified();
+            });
+
+            document.getElementById('prop-node-height').addEventListener('change', (e) => {
+                saveHistory();
             });
 
             document.getElementById('prop-node-link').addEventListener('input', (e) => {
@@ -4696,15 +4713,21 @@
                 markMapAsModified();
             });
 
+            document.getElementById('prop-node-link').addEventListener('change', (e) => {
+                saveHistory();
+            });
+
             document.getElementById('prop-node-completed').addEventListener('change', (e) => {
                 node.completed = e.target.checked;
                 renderCanvas();
+                saveHistory(); // Added saveHistory
                 markMapAsModified();
             });
 
             document.getElementById('prop-node-abandoned').addEventListener('change', (e) => {
                 node.abandoned = e.target.checked;
                 renderCanvas();
+                saveHistory(); // Added saveHistory
                 markMapAsModified();
             });
         }
@@ -4716,10 +4739,18 @@
                 markMapAsModified();
             });
 
+            document.getElementById('prop-frame-label').addEventListener('change', (e) => {
+                saveHistory();
+            });
+
             document.getElementById('prop-frame-color').addEventListener('input', (e) => {
                 frame.borderColor = e.target.value;
                 renderCanvas();
                 markMapAsModified();
+            });
+
+            document.getElementById('prop-frame-color').addEventListener('change', (e) => {
+                saveHistory();
             });
 
             document.getElementById('prop-frame-width').addEventListener('input', (e) => {
@@ -4728,10 +4759,18 @@
                 markMapAsModified();
             });
 
+            document.getElementById('prop-frame-width').addEventListener('change', (e) => {
+                saveHistory();
+            });
+
             document.getElementById('prop-frame-height').addEventListener('input', (e) => {
                 frame.height = parseInt(e.target.value);
                 renderCanvas();
                 markMapAsModified();
+            });
+
+            document.getElementById('prop-frame-height').addEventListener('change', (e) => {
+                saveHistory();
             });
 
             document.getElementById('prop-frame-zindex').addEventListener('input', (e) => {
@@ -4740,15 +4779,21 @@
                 markMapAsModified();
             });
 
+            document.getElementById('prop-frame-zindex').addEventListener('change', (e) => {
+                saveHistory();
+            });
+
             document.getElementById('prop-frame-completed').addEventListener('change', (e) => {
                 frame.completed = e.target.checked;
                 renderCanvas();
+                saveHistory(); // Added saveHistory
                 markMapAsModified();
             });
 
             document.getElementById('prop-frame-abandoned').addEventListener('change', (e) => {
                 frame.abandoned = e.target.checked;
                 renderCanvas();
+                saveHistory(); // Added saveHistory
                 markMapAsModified();
             });
         }
@@ -4781,15 +4826,24 @@
                 markMapAsModified();
             });
 
+            document.getElementById('prop-connection-label').addEventListener('change', (e) => {
+                saveHistory();
+            });
+
             document.getElementById('prop-connection-color').addEventListener('input', (e) => {
                 connection.color = e.target.value;
                 renderCanvas();
                 markMapAsModified();
             });
 
+            document.getElementById('prop-connection-color').addEventListener('change', (e) => {
+                saveHistory();
+            });
+
             document.getElementById('prop-connection-arrow').addEventListener('change', (e) => {
                 connection.arrowType = e.target.value;
                 renderCanvas();
+                saveHistory(); // Added saveHistory
                 markMapAsModified();
             });
         }
@@ -4998,6 +5052,7 @@
                 }
 
                 renderCanvas();
+                saveHistory(); // Added saveHistory
                 markMapAsModified();
             }
             closeAdvancedEditor();
