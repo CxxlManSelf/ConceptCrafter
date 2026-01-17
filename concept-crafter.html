@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter v2.6.13</title>
+    <title>Concept Crafter v2.6.14</title>
     <style>
         * {
             margin: 0;
@@ -874,7 +874,7 @@
             <ul>
                 <li><strong>建立連接</strong>：點擊「連接模式」按鈕（變紅色），然後依序點擊兩個物件即可建立連線。若嘗試連接到自己或連接已存在的路徑，系統會忽略並保持連接模式，方便您繼續選擇正確的對象。完成後請再次點擊按鈕取消模式。
                 </li>
-                <li><strong>編輯連線</strong>：右鍵點擊連線可編輯標籤文字或更改箭頭樣式（單向/雙向/無）。</li>
+                <li><strong>編輯連線</strong>：右鍵點擊連線可編輯標籤文字或更改箭頭樣式（單向/雙向/無/虛線註解）。</li>
             </ul>
 
             <h3>5. 選取模式（多選功能）</h3>
@@ -3535,6 +3535,7 @@
                             <div class="context-menu-item" onclick="app.changeNodeColor('${node.id}', '#f39c12')">橙色</div>
                             <div class="context-menu-item" onclick="app.changeNodeColor('${node.id}', '#9b59b6')">紫色</div>
                             <div class="context-menu-item" onclick="app.changeNodeColor('${node.id}', '#95a5a6')">灰色</div>
+                            <div class="context-menu-item" onclick="app.changeNodeColor('${node.id}', '#ffffff')">白色</div>
                         </div>
                     </div>
                     <div class="context-menu-item context-menu-submenu">
@@ -3595,6 +3596,7 @@
                             <div class="context-menu-item" onclick="app.changeArrowType('${connection.id}', 'single')">單向箭頭</div>
                             <div class="context-menu-item" onclick="app.changeArrowType('${connection.id}', 'double')">雙向箭頭</div>
                             <div class="context-menu-item" onclick="app.changeArrowType('${connection.id}', 'none')">無箭頭</div>
+                            <div class="context-menu-item" onclick="app.changeArrowType('${connection.id}', 'dashed')">虛線（註解）</div>
                         </div>
                     </div>
                     <div class="context-menu-item context-menu-submenu">
@@ -4699,6 +4701,9 @@
                 } else if (connection.arrowType === 'double') {
                     line.setAttribute('marker-start', `url(#arrowhead-double-${colorId})`);
                     line.setAttribute('marker-end', `url(#arrowhead-${colorId})`);
+                } else if (connection.arrowType === 'dashed') {
+                    // 虛線樣式，無箭頭，用於註解連接
+                    line.setAttribute('stroke-dasharray', '8,4');
                 }
 
                 this.svgLayer.appendChild(line);
