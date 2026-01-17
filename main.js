@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs').promises;
 
 let mainWindow;
+let forceClose = false; // 用於強制關閉視窗（使用者確認不儲存後）
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -21,10 +22,27 @@ function createWindow() {
     // 開發模式下開啟開發者工具
     // mainWindow.webContents.openDevTools();
 
+    // 攔截視窗關閉事件，檢查是否有未儲存的 Map
+    mainWindow.on('close', (e) => {
+        if (!forceClose) {
+            e.preventDefault();
+            // 通知 renderer 檢查未儲存的 Map
+            mainWindow.webContents.send('check-unsaved-before-close');
+        }
+    });
+
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
 }
+
+// 處理 renderer 回報可以關閉視窗
+ipcMain.on('close-confirmed', () => {
+    forceClose = true;
+    if (mainWindow) {
+        mainWindow.close();
+    }
+});
 
 // 當 Electron 完成初始化時
 app.whenReady().then(createWindow);

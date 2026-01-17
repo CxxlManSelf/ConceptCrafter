@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter v2.6.12</title>
+    <title>Concept Crafter v2.6.13</title>
     <style>
         * {
             margin: 0;
@@ -768,6 +768,19 @@
         </div>
     </div>
 
+    <div id="unsaved-confirm-modal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <h2 style="color: #f39c12;">⚠️ 有未儲存的變更</h2>
+            <p style="margin: 15px 0; font-size: 15px;">以下 Map 有未儲存的變更：</p>
+            <ul id="unsaved-maps-list" style="margin: 10px 0; padding-left: 25px; max-height: 150px; overflow-y: auto;"></ul>
+            <p style="margin: 15px 0; font-size: 14px; color: #666;">確定要不儲存就離開嗎？</p>
+            <div class="modal-buttons">
+                <button id="unsaved-cancel" style="background: #95a5a6;">取消</button>
+                <button id="unsaved-discard" style="background: #e74c3c;">不儲存離開</button>
+            </div>
+        </div>
+    </div>
+
     <div id="help-modal" class="modal">
         <div class="modal-content">
             <h2>Concept Crafter 使用說明</h2>
@@ -934,6 +947,11 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.6.13</strong>
+                    <ul>
+                        <li><strong>未儲存提醒功能</strong>：切換專案資料夾或關閉應用程式時，若有未儲存的 Map 變更，會顯示確認對話框，防止意外遺失資料。</li>
+                    </ul>
+                </li>
                 <li><strong>v2.6.12</strong>
                     <ul>
                         <li><strong>連接線視覺增強</strong>：懸停時顯示與選取狀態一致的紫色發光效果，箭頭同步變色，大幅提升辨識度。</li>
@@ -1593,6 +1611,14 @@
             async browseForFolder() {
                 const modal = document.getElementById('recent-projects-modal');
                 modal.style.display = 'none';
+
+                // 檢查是否有未儲存的 Map
+                if (this.hasUnsavedMaps()) {
+                    const canProceed = await this.showUnsavedConfirm();
+                    if (!canProceed) {
+                        return; // 使用者取消，不切換資料夾
+                    }
+                }
 
                 try {
                     const folderPath = await window.electronAPI.selectFolder();
@@ -2784,6 +2810,14 @@
                 const modal = document.getElementById('recent-projects-modal');
                 modal.style.display = 'none';
 
+                // 檢查是否有未儲存的 Map
+                if (this.hasUnsavedMaps()) {
+                    const canProceed = await this.showUnsavedConfirm();
+                    if (!canProceed) {
+                        return; // 使用者取消，不切換專案
+                    }
+                }
+
                 try {
                     // Check if folder still exists
                     const exists = await window.electronAPI.fileExists(path);
@@ -3058,6 +3092,63 @@
                     this.currentMap.modified = true;
                     this.updateMapList();
                 }
+            }
+
+            // 檢查是否有未儲存的 Map
+            hasUnsavedMaps() {
+                return this.maps.some(map => map.modified);
+            }
+
+            // 取得未儲存的 Map 名稱列表
+            getUnsavedMapNames() {
+                return this.maps
+                    .filter(map => map.modified)
+                    .map(map => map.title || map.name);
+            }
+
+            // 顯示未儲存確認對話框
+            showUnsavedConfirm() {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById('unsaved-confirm-modal');
+                    const listEl = document.getElementById('unsaved-maps-list');
+                    const cancelBtn = document.getElementById('unsaved-cancel');
+                    const discardBtn = document.getElementById('unsaved-discard');
+
+                    // 填入未儲存的 Map 列表
+                    const unsavedNames = this.getUnsavedMapNames();
+                    listEl.innerHTML = unsavedNames.map(name => `<li>${name}</li>`).join('');
+
+                    // 清理事件處理器的函數
+                    const cleanup = () => {
+                        cancelBtn.removeEventListener('click', onCancel);
+                        discardBtn.removeEventListener('click', onDiscard);
+                        modal.style.display = 'none';
+                    };
+
+                    const onCancel = () => {
+                        cleanup();
+                        resolve(false); // 使用者取消，不離開
+                    };
+
+                    const onDiscard = () => {
+                        cleanup();
+                        resolve(true); // 使用者確認不儲存離開
+                    };
+
+                    cancelBtn.addEventListener('click', onCancel);
+                    discardBtn.addEventListener('click', onDiscard);
+
+                    modal.style.display = 'block';
+                    cancelBtn.focus();
+                });
+            }
+
+            // 檢查未儲存並確認是否繼續（用於切換專案資料夾）
+            async checkUnsavedBeforeAction() {
+                if (this.hasUnsavedMaps()) {
+                    return await this.showUnsavedConfirm();
+                }
+                return true; // 沒有未儲存的 Map，可以繼續
             }
 
             onCanvasMouseDown(e) {
@@ -4638,6 +4729,24 @@
 
         // Initialize app
         const app = new ConceptCrafter();
+
+        // 監聽視窗關閉前的檢查事件
+        if (window.electronAPI && window.electronAPI.onCheckUnsavedBeforeClose) {
+            window.electronAPI.onCheckUnsavedBeforeClose(async () => {
+                if (app.hasUnsavedMaps()) {
+                    // 有未儲存的 Map，顯示確認對話框
+                    const canClose = await app.showUnsavedConfirm();
+                    if (canClose) {
+                        // 使用者確認不儲存離開
+                        window.electronAPI.confirmClose();
+                    }
+                    // 如果使用者取消，什麼都不做，視窗保持開啟
+                } else {
+                    // 沒有未儲存的 Map，直接關閉
+                    window.electronAPI.confirmClose();
+                }
+            });
+        }
     </script>
 </body>
 

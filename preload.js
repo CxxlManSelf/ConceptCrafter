@@ -36,5 +36,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     generateFavicon: () => ipcRenderer.invoke('generate-favicon'),
 
     // 檢查是否在 Electron 環境中
-    isElectron: true
+    isElectron: true,
+
+    // 監聽關閉前檢查事件
+    onCheckUnsavedBeforeClose: (callback) => ipcRenderer.on('check-unsaved-before-close', callback),
+
+    // 確認可以關閉視窗
+    confirmClose: () => ipcRenderer.send('close-confirmed')
 });
