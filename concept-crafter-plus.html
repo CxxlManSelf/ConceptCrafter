@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Concept-Crafter Plus v1.1.1</title>
+    <title>Concept-Crafter Plus v1.1.2</title>
     <link rel="icon" type="image/png" href="./concept-crafter_icon.png">
     <style>
         * {
@@ -1329,7 +1329,7 @@
             <div class="sidebar-header">
                 <div class="sidebar-title">
                     <h1>Concept-Crafter Plus</h1>
-                    <span class="version-badge">v1.1.1</span>
+                    <span class="version-badge">v1.1.2</span>
                 </div>
                 <button class="menu-toggle-sidebar" id="menu-toggle-sidebar">☰</button>
             </div>
@@ -1632,6 +1632,32 @@
         let editTargetFileName = null; // 待修改的檔案名稱
         let mapTitlePatterns = {}; // 追蹤每個 Map 的標題前後綴模式 { prefix, suffix }
 
+        // ==================== 未儲存檢查輔助函數 ====================
+        // 檢查是否有任何 Map 有未儲存的更動
+        function hasUnsavedMaps() {
+            return Object.values(mapModifiedStatus).some(v => v === true);
+        }
+
+        // 獲取所有未儲存的 Map 檔案名稱列表
+        function getUnsavedMapList() {
+            return Object.entries(mapModifiedStatus)
+                .filter(([_, isModified]) => isModified)
+                .map(([fileName, _]) => fileName);
+        }
+
+        // 顯示未儲存 Map 的確認對話框
+        function confirmUnsavedMaps(action) {
+            const unsavedMaps = getUnsavedMapList();
+            if (unsavedMaps.length === 0) {
+                return true; // 沒有未儲存的 Map，直接允許操作
+            }
+
+            const mapListText = unsavedMaps.map(name => `  • ${name}`).join('\n');
+            const message = `以下 Map 有未儲存的更動：\n\n${mapListText}\n\n確定要${action}嗎？未儲存的更動將會遺失。`;
+
+            return confirm(message);
+        }
+
         // 畫布狀態
         let scale = 1;
         let offsetX = 0;
@@ -1699,6 +1725,16 @@
                 sidebar.classList.add('hidden');
                 floatingToggle.classList.add('show');
             }
+
+            // 監聽頁面關閉/離開事件，提示未儲存的 Map
+            window.addEventListener('beforeunload', (e) => {
+                if (hasUnsavedMaps()) {
+                    // 標準做法：設定 returnValue 來觸發瀏覽器的預設確認對話框
+                    e.preventDefault();
+                    e.returnValue = '您有 Map 尚未儲存，確定要離開嗎？';
+                    return e.returnValue;
+                }
+            });
         }
 
         // ==================== 瀏覽器支援檢查 ====================
@@ -2090,6 +2126,18 @@
             if (!window.showDirectoryPicker) {
                 alert('您的瀏覽器不支援 File System Access API\n\n請使用：\n- Chrome 86+\n- Edge 86+\n- Opera 72+\n\n或確認：\n1. 使用 HTTPS 或 localhost\n2. 允許網頁存取檔案系統');
                 return;
+            }
+
+            // 檢查是否有未儲存的 Map
+            if (hasUnsavedMaps()) {
+                if (!confirmUnsavedMaps('更換專案資料夾')) {
+                    return; // 使用者取消操作
+                }
+                // 使用者確認要離開，清除所有未儲存狀態
+                mapModifiedStatus = {};
+                mapCache = {};
+                mapSourceTracking = {};
+                mapTitlePatterns = {};
             }
 
             try {
