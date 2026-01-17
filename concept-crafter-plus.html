@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Concept-Crafter Plus v1.1.2</title>
+    <title>Concept-Crafter Plus v1.1.3</title>
     <link rel="icon" type="image/png" href="./concept-crafter_icon.png">
     <style>
         * {
@@ -1329,7 +1329,7 @@
             <div class="sidebar-header">
                 <div class="sidebar-title">
                     <h1>Concept-Crafter Plus</h1>
-                    <span class="version-badge">v1.1.2</span>
+                    <span class="version-badge">v1.1.3</span>
                 </div>
                 <button class="menu-toggle-sidebar" id="menu-toggle-sidebar">☰</button>
             </div>
@@ -4265,12 +4265,15 @@
                 line.setAttribute('stroke', connection.color || '#7f8c8d');
                 line.setAttribute('stroke-width', 2 * scale);
 
-                // 根據 arrowType 添加箭頭
+                // 根據 arrowType 添加箭頭或虛線樣式
                 if (connection.arrowType === 'single') {
                     line.setAttribute('marker-end', 'url(#arrowhead)');
                 } else if (connection.arrowType === 'double') {
                     line.setAttribute('marker-start', 'url(#arrowhead-reverse)');
                     line.setAttribute('marker-end', 'url(#arrowhead)');
+                } else if (connection.arrowType === 'dashed') {
+                    // 虛線無箭頭（註解用）
+                    line.setAttribute('stroke-dasharray', `${6 * scale},${4 * scale}`);
                 }
                 // arrowType === 'none' 時不添加任何箭頭
 
@@ -4862,6 +4865,7 @@
                         <option value="single" ${connection.arrowType === 'single' ? 'selected' : ''}>單箭頭</option>
                         <option value="double" ${connection.arrowType === 'double' ? 'selected' : ''}>雙箭頭</option>
                         <option value="none" ${connection.arrowType === 'none' ? 'selected' : ''}>無箭頭</option>
+                        <option value="dashed" ${connection.arrowType === 'dashed' ? 'selected' : ''}>虛線（註解用）</option>
                     </select>
                 </div>
             `;
@@ -6855,6 +6859,9 @@
                     } else if (conn.arrowType === 'double') {
                         line.setAttribute('marker-start', \`url(#arrowhead-double-\${colorId})\`);
                         line.setAttribute('marker-end', \`url(#arrowhead-single-\${colorId})\`);
+                    } else if (conn.arrowType === 'dashed') {
+                        // 虛線無箭頭（註解用）
+                        line.setAttribute('stroke-dasharray', '6,4');
                     }
 
                     this.svgLayer.appendChild(line);
