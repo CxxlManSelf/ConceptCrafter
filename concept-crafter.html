@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter v2.6.14</title>
+    <title>Concept Crafter v2.7</title>
     <style>
         * {
             margin: 0;
@@ -240,6 +240,14 @@
 
         .node.selected {
             box-shadow: 0 0 0 3px #9b59b6, 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .node.node-label-mode {
+            padding: 4px !important;
+            width: auto !important;
+            height: auto !important;
+            min-width: unset !important;
+            min-height: unset !important;
         }
 
         .node-status-badge {
@@ -947,6 +955,11 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.7</strong>
+                    <ul>
+                        <li><strong>節點標籤樣式</strong>：節點右鍵選單新增「標籤樣式」開關，開啟後節點以緊湊的標籤形式呈現（內容更接近邊緣），適合作為連接線的註解標籤使用。</li>
+                    </ul>
+                </li>
                 <li><strong>v2.6.13</strong>
                     <ul>
                         <li><strong>未儲存提醒功能</strong>：切換專案資料夾或關閉應用程式時，若有未儲存的 Map 變更，會顯示確認對話框，防止意外遺失資料。</li>
@@ -2045,13 +2058,21 @@
                     `$1\n${jsonData}\n$3`
                 );
 
-                // 2. 替換 <title> 標籤的內容 - 使用原始格式的 prefix 和 suffix
+                // 2. 確保 CSS 包含 .node.node-label-mode 樣式
+                if (!updatedHTML.includes('.node.node-label-mode')) {
+                    updatedHTML = updatedHTML.replace(
+                        /(<style>)([\s\S]*?)(<\/style>)/,
+                        `$1$2\n                    .node.node-label-mode { padding: 4px !important; width: auto !important; height: auto !important; min-width: unset !important; min-height: unset !important; }\n                $3`
+                    );
+                }
+
+                // 3. 替換 <title> 標籤的內容 - 使用原始格式的 prefix 和 suffix
                 updatedHTML = updatedHTML.replace(
                     /(<title>)([^<]*)(<\/title>)/,
                     `$1${fullHtmlTitle}$3`
                 );
 
-                // 3. 替換 <div id="map-title"> 的內容 - 只顯示標題本身
+                // 4. 替換 <div id="map-title"> 的內容 - 只顯示標題本身
                 updatedHTML = updatedHTML.replace(
                     /(<div id="map-title">)([^<]*)(<\/div>)/,
                     `$1${displayTitle}$3`
@@ -2101,6 +2122,7 @@
                     .node-status-badge { position: absolute; top: 5px; right: 5px; font-size: 18px; font-weight: bold; padding: 2px 6px; border-radius: 3px; pointer-events: none; display: flex; gap: 3px; }
                     .status-completed { background: rgba(46, 204, 113, 0.9); color: white; }
                     .status-abandoned { background: rgba(231, 76, 60, 0.9); color: white; }
+                    .node.node-label-mode { padding: 4px !important; width: auto !important; height: auto !important; min-width: unset !important; min-height: unset !important; }
                 `;
 
                 // Viewer Script
@@ -2115,7 +2137,7 @@
                             this.nodes = this.data.data.nodes || [];
                             this.frames = this.data.data.frames || [];
                             this.connections = this.data.data.connections || [];
-                            
+
                             this.scale = 1;
                             this.offsetX = 0;
                             this.offsetY = 0;
@@ -2381,6 +2403,12 @@
                                 const el = document.createElement('div');
                                 el.className = 'node';
                                 el.dataset.id = node.id; // Added standard ID for lookup
+
+                                // 標籤樣式
+                                if (node.isLabel) {
+                                    el.classList.add('node-label-mode');
+                                }
+
                                 el.style.left = node.x + 'px';
                                 el.style.top = node.y + 'px';
                                 el.style.width = node.width + 'px';
@@ -3521,6 +3549,7 @@
             showNodeContextMenu(x, y, node) {
                 const completedText = node.completed ? '取消完成' : '標記為完成';
                 const abandonedText = node.abandoned ? '取消放棄' : '標記為放棄';
+                const labelStyleText = node.isLabel ? '✓ 標籤樣式' : '標籤樣式';
 
                 this.contextMenu.innerHTML = `
                     <div class="context-menu-item" onclick="app.editNodeText('${node.id}')">編輯文字</div>
@@ -3546,6 +3575,7 @@
                             <div class="context-menu-item" onclick="app.changeNodeTextAlign('${node.id}', 'right')">靠右對齊</div>
                         </div>
                     </div>
+                    <div class="context-menu-item" onclick="app.toggleNodeLabelStyle('${node.id}')">${labelStyleText}</div>
                     <div class="context-menu-item" onclick="app.toggleNodeCompleted('${node.id}')">${completedText}</div>
                     <div class="context-menu-item" onclick="app.toggleNodeAbandoned('${node.id}')">${abandonedText}</div>
                     <div class="context-menu-item" onclick="app.deleteNode('${node.id}')">刪除節點</div>
@@ -3736,6 +3766,17 @@
                 if (node) {
                     this.recordBeforeModify('切換節點放棄狀態');
                     node.abandoned = !node.abandoned;
+                    this.markAsModified();
+                    this.render();
+                }
+            }
+
+            toggleNodeLabelStyle(nodeId) {
+                if (this.selectMode) return;
+                const node = this.nodes.find(n => this.compareId(n.id, nodeId));
+                if (node) {
+                    this.recordBeforeModify('切換節點標籤樣式');
+                    node.isLabel = !node.isLabel;
                     this.markAsModified();
                     this.render();
                 }
@@ -4432,6 +4473,11 @@
                     // Highlight if selected
                     if (this.isElementSelected('node', node)) {
                         nodeEl.classList.add('selected');
+                    }
+
+                    // 標籤樣式
+                    if (node.isLabel) {
+                        nodeEl.classList.add('node-label-mode');
                     }
 
                     nodeEl.style.left = node.x + 'px';
