@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Concept-Crafter Plus v1.1.4</title>
+    <title>Concept-Crafter Plus v1.2.0</title>
     <link rel="icon" type="image/png" href="./concept-crafter_icon.png">
     <style>
         * {
@@ -688,12 +688,13 @@
             /* 關鍵！允許自定義觸控處理 */
         }
 
-        .node.node-label-mode {
-            padding: 4px !important;
-            width: auto !important;
-            height: auto !important;
+        /* 緊湊型標籤節點 - 用於連接線拐點標籤 */
+        .node-compact {
+            padding: 3px 6px !important;
             min-width: unset !important;
             min-height: unset !important;
+            border-radius: 4px !important;
+            font-size: 12px !important;
         }
 
         .node:hover {
@@ -1337,7 +1338,7 @@
             <div class="sidebar-header">
                 <div class="sidebar-title">
                     <h1>Concept-Crafter Plus</h1>
-                    <span class="version-badge">v1.1.3</span>
+                    <span class="version-badge">v1.2.0</span>
                 </div>
                 <button class="menu-toggle-sidebar" id="menu-toggle-sidebar">☰</button>
             </div>
@@ -2620,60 +2621,26 @@
                 titleElement.textContent = (pattern.prefix || '') + mapData.title + (pattern.suffix || '');
             }
 
-            // 準備數據：收集 labelModeNodeIds 並淨化 mapData
-            const labelModeNodeIds = (mapData.data.nodes || [])
-                .filter(node => node.isLabel)
-                .map(node => node.id);
-            const labelModeNodeIdsString = JSON.stringify(labelModeNodeIds);
-
-            // 創建淨化的 mapData（移除 isLabel）
-            const cleanMapData = JSON.parse(JSON.stringify(mapData));
-            if (cleanMapData.data && cleanMapData.data.nodes) {
-                cleanMapData.data.nodes.forEach(node => {
-                    delete node.isLabel;
-                });
-            }
-
-            // 2. 更新 <script id="map-data"> 中的 JSON 數據
+            // 2. 更新 <script id="map-data"> 中的 JSON 數據（直接保留 isLabel 屬性）
             const scriptElement = doc.querySelector('script#map-data');
             if (scriptElement) {
                 // 使用 JSON.stringify 安全地生成 JSON
-                const jsonData = JSON.stringify(cleanMapData, null, 4);
+                const jsonData = JSON.stringify(mapData, null, 4);
                 scriptElement.textContent = jsonData;
             }
 
-            // 3. 更新或創建 <script id="label-mode-node-ids">
-            let labelScript = doc.querySelector('script#label-mode-node-ids');
-            if (!labelScript) {
-                // 如果不存在，創建一個並插入到 map-data 之後
-                labelScript = doc.createElement('script');
-                labelScript.id = 'label-mode-node-ids';
-                labelScript.type = 'application/json';
-
-                if (scriptElement && scriptElement.parentNode) {
-                    // 插入到 map-data 之後
-                    scriptElement.parentNode.insertBefore(labelScript, scriptElement.nextSibling);
-                    // 插入一個換行符，保持排版美觀
-                    const newline = doc.createTextNode('\n    ');
-                    scriptElement.parentNode.insertBefore(newline, labelScript);
-                } else {
-                    // Fallback to head
-                    doc.head.appendChild(labelScript);
-                }
-            }
-            labelScript.textContent = labelModeNodeIdsString;
-
-            // 4. 檢查並更新 CSS (補上 .node-label-mode)
+            // 3. 檢查並更新 CSS（補上 .node-compact 標籤樣式）
             const styleElement = doc.querySelector('style');
             if (styleElement) {
-                if (!styleElement.textContent.includes('.node.node-label-mode')) {
+                if (!styleElement.textContent.includes('.node-compact')) {
                     styleElement.textContent += `
-        .node.node-label-mode {
-            padding: 4px !important;
-            width: auto !important;
-            height: auto !important;
+        /* 緊湊型標籤節點 - 用於連接線拐點標籤 */
+        .node-compact {
+            padding: 3px 6px !important;
             min-width: unset !important;
             min-height: unset !important;
+            border-radius: 4px !important;
+            font-size: 12px !important;
         }
 `;
                 }
@@ -3522,8 +3489,9 @@
                 nodeEl.style.alignItems = 'center';
             }
 
+            // 標籤樣式：套用緊湊標籤節點樣式
             if (node.isLabel) {
-                nodeEl.classList.add('node-label-mode');
+                nodeEl.classList.add('node-compact');
             }
 
             nodeEl.innerHTML = node.text || '';
@@ -4701,10 +4669,10 @@
                     <input type="text" class="property-input" id="prop-node-link" value="${node.link || ''}" placeholder="http://...">
                 </div>
                 <div class="property-group">
-                    <label class="property-label">標籤檢視：</label>
+                    <label class="property-label">標籤樣式：</label>
                     <label style="display: flex; align-items: center; cursor: pointer;">
                         <input type="checkbox" id="prop-node-is-label" ${node.isLabel ? 'checked' : ''} style="margin-right: 8px;">
-                        <span>啟用標籤樣式</span>
+                        <span>套用緊湊標籤樣式</span>
                     </label>
                 </div>
                 <div class="property-group">
@@ -5304,7 +5272,7 @@
                 completed: false,
                 abandoned: false,
                 link: '',
-                isLabel: false // 標籤檢視模式（僅執行期，不儲存）
+                isLabel: false // 標籤樣式（套用緊湊標籤節點樣式）
             };
 
             currentMapData.data.nodes.push(node);
@@ -6292,12 +6260,6 @@
         // ==================== 匯出功能 ====================
         function generateMapHTML(mapData) {
             // ⚠️ 重要：確保所有元素包含所有必須的屬性
-            // 收集標籤模式的節點 ID
-            const labelModeNodeIds = (mapData.data.nodes || [])
-                .filter(node => node.isLabel)
-                .map(node => node.id);
-            const labelModeNodeIdsString = JSON.stringify(labelModeNodeIds);
-
             const normalizedData = {
                 title: mapData.title,
                 data: {
@@ -6312,7 +6274,8 @@
                         textAlign: node.textAlign || 'center',
                         completed: node.completed || false,
                         abandoned: node.abandoned || false,
-                        link: node.link || ''
+                        link: node.link || '',
+                        isLabel: node.isLabel || false
                     })),
                     frames: (mapData.data.frames || []).map(frame => ({
                         id: frame.id,
@@ -6445,12 +6408,13 @@
             /* align-items 由 JavaScript 動態設置 */
         }
 
-        .node.node-label-mode {
-            padding: 4px !important;
-            width: auto !important;
-            height: auto !important;
+        /* 緊湊型標籤節點 - 用於連接線拐點標籤 */
+        .node-compact {
+            padding: 3px 6px !important;
             min-width: unset !important;
             min-height: unset !important;
+            border-radius: 4px !important;
+            font-size: 12px !important;
         }
 
         .node.has-link {
@@ -6523,9 +6487,6 @@
     ${scriptOpen} id="map-data" type="application/json">
     ${jsonString}
     ${scriptClose}
-    ${scriptOpen} id="label-mode-node-ids" type="application/json">
-    ${labelModeNodeIdsString}
-    ${scriptClose}
 </head>
 <body>
     <div id="map-title">${normalizedData.title}</div>
@@ -6546,12 +6507,6 @@
                 this.nodes = this.data.data.nodes || [];
                 this.frames = this.data.data.frames || [];
                 this.connections = this.data.data.connections || [];
-                
-                try {
-                    this.labelModeNodeIds = JSON.parse(document.getElementById('label-mode-node-ids').textContent);
-                } catch (e) {
-                    this.labelModeNodeIds = [];
-                }
 
                 this.scale = 1;
                 this.offsetX = 0;
@@ -6757,9 +6712,9 @@
                     nodeEl.style.alignItems = 'center';
                 }
 
-                // *** 處理標籤檢視模式 ***
-                if (this.labelModeNodeIds && this.labelModeNodeIds.includes(node.id)) {
-                    nodeEl.classList.add('node-label-mode');
+                // 標籤樣式：套用緊湊標籤節點樣式
+                if (node.isLabel) {
+                    nodeEl.classList.add('node-compact');
                 }
 
                 nodeEl.innerHTML = node.text || '';
