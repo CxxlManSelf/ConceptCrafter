@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter v2.7.1</title>
+    <title>Concept Crafter v2.7.2</title>
     <style>
         * {
             margin: 0;
@@ -771,6 +771,27 @@
             <p id="error-message" style="margin: 20px 0; font-size: 16px;"></p>
             <div class="modal-buttons">
                 <button id="error-ok" style="background: #3498db;">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alert-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h2 id="alert-title" style="color: #3498db;">ℹ️ 提示</h2>
+            <p id="alert-message" style="margin: 20px 0; font-size: 16px; white-space: pre-wrap;"></p>
+            <div class="modal-buttons">
+                <button id="alert-ok" style="background: #3498db;">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <h2 id="confirm-title" style="color: #f39c12;">⚠️ 確認</h2>
+            <p id="confirm-message" style="margin: 20px 0; font-size: 16px; white-space: pre-wrap;"></p>
+            <div class="modal-buttons">
+                <button id="confirm-cancel" style="background: #95a5a6;">取消</button>
+                <button id="confirm-ok" style="background: #e74c3c;">確定</button>
             </div>
         </div>
     </div>
@@ -1646,7 +1667,7 @@
                     }
                 } catch (err) {
                     console.error('選擇資料夾錯誤:', err);
-                    alert('無法選擇資料夾: ' + err.message);
+                    this.showAlert('無法選擇資料夾: ' + err.message, '錯誤');
                 }
             }
 
@@ -1684,6 +1705,93 @@
                 }
 
                 setTimeout(() => okBtn.focus(), 100);
+            }
+
+            // 通用警告對話框（取代原生 alert）
+            showAlert(message, title = '提示') {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById('alert-modal');
+                    const titleEl = document.getElementById('alert-title');
+                    const messageEl = document.getElementById('alert-message');
+                    const okBtn = document.getElementById('alert-ok');
+
+                    // 根據標題設定圖示和顏色
+                    if (title.includes('成功')) {
+                        titleEl.innerHTML = '✅ ' + title;
+                        titleEl.style.color = '#27ae60';
+                    } else if (title.includes('失敗') || title.includes('錯誤')) {
+                        titleEl.innerHTML = '❌ ' + title;
+                        titleEl.style.color = '#e74c3c';
+                    } else if (title.includes('警告') || title.includes('注意')) {
+                        titleEl.innerHTML = '⚠️ ' + title;
+                        titleEl.style.color = '#f39c12';
+                    } else {
+                        titleEl.innerHTML = 'ℹ️ ' + title;
+                        titleEl.style.color = '#3498db';
+                    }
+
+                    messageEl.textContent = message;
+                    modal.style.display = 'block';
+
+                    const handler = () => {
+                        modal.style.display = 'none';
+                        okBtn.removeEventListener('click', handler);
+                        resolve();
+                    };
+                    okBtn.addEventListener('click', handler);
+                    setTimeout(() => okBtn.focus(), 100);
+                });
+            }
+
+            // 通用確認對話框（取代原生 confirm）
+            showConfirm(message, title = '確認', okText = '確定', cancelText = '取消') {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById('confirm-modal');
+                    const titleEl = document.getElementById('confirm-title');
+                    const messageEl = document.getElementById('confirm-message');
+                    const okBtn = document.getElementById('confirm-ok');
+                    const cancelBtn = document.getElementById('confirm-cancel');
+
+                    // 根據標題設定圖示和顏色
+                    if (title.includes('刪除')) {
+                        titleEl.innerHTML = '🗑️ ' + title;
+                        titleEl.style.color = '#e74c3c';
+                        okBtn.style.background = '#e74c3c';
+                    } else if (title.includes('警告')) {
+                        titleEl.innerHTML = '⚠️ ' + title;
+                        titleEl.style.color = '#f39c12';
+                        okBtn.style.background = '#f39c12';
+                    } else {
+                        titleEl.innerHTML = '❓ ' + title;
+                        titleEl.style.color = '#3498db';
+                        okBtn.style.background = '#3498db';
+                    }
+
+                    messageEl.textContent = message;
+                    okBtn.textContent = okText;
+                    cancelBtn.textContent = cancelText;
+                    modal.style.display = 'block';
+
+                    const cleanup = () => {
+                        modal.style.display = 'none';
+                        okBtn.removeEventListener('click', okHandler);
+                        cancelBtn.removeEventListener('click', cancelHandler);
+                    };
+
+                    const okHandler = () => {
+                        cleanup();
+                        resolve(true);
+                    };
+
+                    const cancelHandler = () => {
+                        cleanup();
+                        resolve(false);
+                    };
+
+                    okBtn.addEventListener('click', okHandler);
+                    cancelBtn.addEventListener('click', cancelHandler);
+                    setTimeout(() => cancelBtn.focus(), 100);
+                });
             }
 
             createNewMap() {
@@ -1799,7 +1907,7 @@
 
                 const newTitle = titleInput.value.trim();
                 if (!newTitle) {
-                    alert('請輸入 Map 標題');
+                    this.showAlert('請輸入 Map 標題', '提示');
                     return;
                 }
 
@@ -1828,7 +1936,7 @@
 
             async loadMapFromFile() {
                 if (!this.projectPath) {
-                    alert('請先選擇專案資料夾');
+                    this.showAlert('請先選擇專案資料夾', '提示');
                     return;
                 }
 
@@ -1927,7 +2035,7 @@
                         // Check for duplicate in map list
                         const existingMap = this.maps.find(m => m.name === map.name);
                         if (existingMap) {
-                            alert(`Map "${map.name}" 已經在列表中。\n\n如果您想重新載入，請先移除現有的 map。`);
+                            this.showAlert(`Map "${map.name}" 已經在列表中。\n\n如果您想重新載入，請先移除現有的 map。`, '提示');
                             return;
                         }
 
@@ -1935,10 +2043,10 @@
                         this.switchToMap(map);
                         this.updateMapList();
                     } else {
-                        alert('這不是有效的 Concept Map 檔案');
+                        this.showAlert('這不是有效的 Concept Map 檔案', '錯誤');
                     }
                 } catch (err) {
-                    alert('載入檔案失敗: ' + err.message);
+                    this.showAlert('載入檔案失敗: ' + err.message, '錯誤');
                 }
             }
 
@@ -1995,7 +2103,7 @@
 
             async saveMap(map) {
                 if (!this.projectPath) {
-                    alert('請先選擇專案資料夾');
+                    this.showAlert('請先選擇專案資料夾', '提示');
                     return;
                 }
 
@@ -2027,12 +2135,12 @@
                         map.filePath = filePath;
                         map.modified = false;
                         this.updateMapList();
-                        alert('儲存成功');
+                        this.showAlert('儲存成功', '成功');
                     } else {
-                        alert('儲存失敗: ' + result.error);
+                        this.showAlert('儲存失敗: ' + result.error, '錯誤');
                     }
                 } catch (err) {
-                    alert('儲存失敗: ' + err.message);
+                    this.showAlert('儲存失敗: ' + err.message, '錯誤');
                 }
             }
 
@@ -2659,7 +2767,13 @@
             }
 
             async deleteMap(map) {
-                if (!confirm(`確定要刪除 "${map.name}" 嗎？這將會刪除檔案。`)) {
+                const confirmed = await this.showConfirm(
+                    `確定要刪除 "${map.name}" 嗎？這將會刪除檔案。`,
+                    '刪除確認',
+                    '刪除',
+                    '取消'
+                );
+                if (!confirmed) {
                     return;
                 }
 
@@ -2667,10 +2781,10 @@
                     try {
                         const result = await window.electronAPI.deleteFile(map.filePath);
                         if (!result.success) {
-                            alert('刪除檔案失敗: ' + result.error);
+                            await this.showAlert('刪除檔案失敗: ' + result.error, '錯誤');
                         }
                     } catch (err) {
-                        alert('刪除檔案失敗: ' + err.message);
+                        await this.showAlert('刪除檔案失敗: ' + err.message, '錯誤');
                     }
                 }
 
@@ -2850,7 +2964,7 @@
                     // Check if folder still exists
                     const exists = await window.electronAPI.fileExists(path);
                     if (!exists) {
-                        alert('專案資料夾不存在，可能已被移動或刪除。');
+                        this.showAlert('專案資料夾不存在，可能已被移動或刪除。', '錯誤');
                         this.removeRecentProject(path);
                         return;
                     }
@@ -2863,13 +2977,13 @@
                     this.loadProjectMaps();
                 } catch (err) {
                     console.error('開啟專案錯誤:', err);
-                    alert('無法開啟專案: ' + err.message);
+                    this.showAlert('無法開啟專案: ' + err.message, '錯誤');
                 }
             }
 
             addNode() {
                 if (!this.currentMap) {
-                    alert('請先建立或載入一個 Map');
+                    this.showAlert('請先建立或載入一個 Map', '提示');
                     return;
                 }
 
@@ -2896,7 +3010,7 @@
 
             addFrame() {
                 if (!this.currentMap) {
-                    alert('請先建立或載入一個 Map');
+                    this.showAlert('請先建立或載入一個 Map', '提示');
                     return;
                 }
 
@@ -2923,7 +3037,7 @@
 
             toggleConnectMode() {
                 if (!this.currentMap) {
-                    alert('請先建立或載入一個 Map');
+                    this.showAlert('請先建立或載入一個 Map', '提示');
                     return;
                 }
 
@@ -2944,7 +3058,7 @@
 
             toggleSelectMode() {
                 if (!this.currentMap) {
-                    alert('請先建立或載入一個 Map');
+                    this.showAlert('請先建立或載入一個 Map', '提示');
                     return;
                 }
 
@@ -3722,7 +3836,7 @@
                         this.render();
                     } catch (error) {
                         console.error('編輯 Frame 標籤時發生錯誤:', error);
-                        alert('編輯標籤失敗：' + error.message);
+                        this.showAlert('編輯標籤失敗：' + error.message, '錯誤');
                     }
                 }, 'plain');
             }
@@ -3829,7 +3943,7 @@
                         this.render();
                     } catch (error) {
                         console.error('編輯連接線標籤時發生錯誤:', error);
-                        alert('編輯標籤失敗：' + error.message);
+                        this.showAlert('編輯標籤失敗：' + error.message, '錯誤');
                     }
                 }, 'plain');
             }
@@ -4116,7 +4230,7 @@
                 const text = textInput.value.trim();
 
                 if (!url) {
-                    alert('請輸入連結網址');
+                    this.showAlert('請輸入連結網址', '提示');
                     urlInput.focus();
                     return;
                 }
