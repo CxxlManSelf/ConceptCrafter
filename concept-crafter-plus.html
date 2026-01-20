@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Concept-Crafter Plus v1.2.0</title>
+    <title>Concept-Crafter Plus v1.2.1</title>
     <link rel="icon" type="image/png" href="./concept-crafter_icon.png">
     <style>
         * {
@@ -1338,7 +1338,7 @@
             <div class="sidebar-header">
                 <div class="sidebar-title">
                     <h1>Concept-Crafter Plus</h1>
-                    <span class="version-badge">v1.2.0</span>
+                    <span class="version-badge">v1.2.1</span>
                 </div>
                 <button class="menu-toggle-sidebar" id="menu-toggle-sidebar">☰</button>
             </div>
@@ -6406,6 +6406,7 @@
             flex-direction: column;
             justify-content: center;
             /* align-items 由 JavaScript 動態設置 */
+            pointer-events: none;  /* ⚠️ 讓觸控事件穿透，確保平移/縮放不被阻擋 */
         }
 
         /* 緊湊型標籤節點 - 用於連接線拐點標籤 */
@@ -6417,7 +6418,9 @@
             font-size: 12px !important;
         }
 
+        /* 有連結的節點可點擊 */
         .node.has-link {
+            pointer-events: auto;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
         }
@@ -6447,6 +6450,7 @@
             background: rgba(149, 165, 166, 0.1);
             border-radius: 4px;
             overflow: hidden;
+            pointer-events: none;  /* ⚠️ 讓觸控事件穿透，確保平移/縮放不被阻擋 */
         }
 
         .frame-label {
