@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter v2.7.2</title>
+    <title>Concept Crafter v2.7.3</title>
     <style>
         * {
             margin: 0;
@@ -976,6 +976,12 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.7.3</strong>
+                    <ul>
+                        <li><strong>連接線右鍵選單修復</strong>：修復連接線與節點/框架重疊時無法點選右鍵選單的問題。</li>
+                        <li><strong>Map 觸控操作修復</strong>：修復生成的 Map 在觸控平移縮放時被節點/框架阻擋的問題。</li>
+                    </ul>
+                </li>
                 <li><strong>v2.7</strong>
                     <ul>
                         <li><strong>節點標籤樣式</strong>：節點右鍵選單新增「標籤樣式」開關，開啟後節點以緊湊的標籤形式呈現（內容更接近邊緣），適合作為連接線的註解標籤使用。</li>
@@ -2216,14 +2222,14 @@
                     #container.grabbing { cursor: grabbing; }
                     #canvas { width: 100%; height: 100%; transform-origin: 0 0; }
                     svg { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 50; }
-                    .node { position: absolute; background: #3498db; color: white; padding: 10px; border-radius: 8px; min-width: 100px; min-height: 60px; display: flex; align-items: center; justify-content: center; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); user-select: none; overflow: hidden; }
+                    .node { position: absolute; background: #3498db; color: white; padding: 10px; border-radius: 8px; min-width: 100px; min-height: 60px; display: flex; align-items: center; justify-content: center; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); user-select: none; overflow: hidden; pointer-events: none; }
                     .node-content { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; }
                     .node-content * { margin: 0; pointer-events: none; }
                     .node-content h1 { font-size: 1.5em; margin-bottom: 0.2em; }
                     .node-content h2 { font-size: 1.2em; margin-bottom: 0.2em; }
                     .node-content ul, .node-content ol { padding-left: 20px; text-align: left; }
                     .node-content a { color: navy; text-decoration: underline; pointer-events: auto; }
-                    .frame { position: absolute; border: 2px dashed #95a5a6; background: rgba(149, 165, 166, 0.1); min-width: 200px; min-height: 150px; }
+                    .frame { position: absolute; border: 2px dashed #95a5a6; background: rgba(149, 165, 166, 0.1); min-width: 200px; min-height: 150px; pointer-events: none; }
                     .frame-label { position: absolute; top: 5px; left: 5px; background: #95a5a6; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; }
                     .connection { fill: none; stroke: #2c3e50; stroke-width: 2; }
                     #map-title { position: absolute; top: 20px; left: 20px; z-index: 1000; font-size: 24px; font-weight: bold; color: #2c3e50; text-shadow: 2px 2px 4px rgba(255,255,255,0.8); pointer-events: none; }
@@ -4845,6 +4851,7 @@
                 // Draw the line using path (like reference file)
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 line.setAttribute('class', 'connection');
+                line.setAttribute('data-connection-id', connection.id);
                 const pathData = `M ${fromX} ${fromY} L ${toX} ${toY}`;
                 line.setAttribute('d', pathData);
 
@@ -4865,6 +4872,15 @@
                     // 虛線樣式，無箭頭，用於註解連接
                     line.setAttribute('stroke-dasharray', '8,4');
                 }
+
+                // 直接在連接線上綁定右鍵事件，確保即使與節點/框架重疊也能選到
+                line.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!this.selectMode) {
+                        this.showConnectionContextMenu(e.clientX, e.clientY, connection);
+                    }
+                });
 
                 this.svgLayer.appendChild(line);
 
