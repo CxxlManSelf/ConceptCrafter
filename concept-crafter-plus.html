@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Concept-Crafter Plus v1.2.1</title>
+    <title>Concept-Crafter Plus v1.2.4</title>
     <link rel="icon" type="image/png" href="./concept-crafter_icon.png">
     <style>
         * {
@@ -1338,7 +1338,7 @@
             <div class="sidebar-header">
                 <div class="sidebar-title">
                     <h1>Concept-Crafter Plus</h1>
-                    <span class="version-badge">v1.2.1</span>
+                    <span class="version-badge">v1.2.4</span>
                 </div>
                 <button class="menu-toggle-sidebar" id="menu-toggle-sidebar">☰</button>
             </div>
@@ -6347,6 +6347,7 @@
             overflow: hidden;
             position: relative;
             cursor: grab;
+            touch-action: none;  /* 防止瀏覽器預設觸控行為，確保自定義觸控處理 */
         }
 
         #container.grabbing {
@@ -6364,10 +6365,6 @@
             pointer-events: none;
         }
 
-        #frame-layer > * {
-            pointer-events: auto;
-        }
-
         #node-layer {
             position: absolute;
             top: 0;
@@ -6377,10 +6374,6 @@
             transform-origin: 0 0;
             z-index: 2;
             pointer-events: none;
-        }
-
-        #node-layer > * {
-            pointer-events: auto;
         }
 
         svg {
@@ -6406,7 +6399,8 @@
             flex-direction: column;
             justify-content: center;
             /* align-items 由 JavaScript 動態設置 */
-            pointer-events: none;  /* ⚠️ 讓觸控事件穿透，確保平移/縮放不被阻擋 */
+            pointer-events: none;  /* ⚠️ 讓觸控/滑鼠事件穿透，確保平移/縮放不被阻擋 */
+            touch-action: none;    /* 關鍵！防止瀏覽器攔截觸控事件，讓 JS 處理平移/縮放 */
         }
 
         /* 緊湊型標籤節點 - 用於連接線拐點標籤 */
@@ -6419,9 +6413,10 @@
         }
 
         /* 有連結的節點可點擊 */
+        /* 有連結的節點 (樣式均由 JS Hit Test 處理，此處確保穿透) */
         .node.has-link {
-            pointer-events: auto;
-            cursor: pointer;
+            pointer-events: none;  /* 關鍵修復：讓所有事件穿透，由 Container 統一處理 */
+            touch-action: none;
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
@@ -6430,18 +6425,11 @@
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
         }
 
-        .node-link-icon {
-            position: absolute;
-            bottom: 8px;
-            right: 8px;
-            font-size: 14px;
-            opacity: 0.8;
-        }
-
         .node a {
             color: inherit;
             text-decoration: underline;
-            pointer-events: auto;
+            pointer-events: auto;  /* 連結文字保持可點擊 (瀏覽器處理) */
+            touch-action: default; /* 恢復預設，讓原生連結行為生效 */
         }
 
         .frame {
@@ -6450,7 +6438,7 @@
             background: rgba(149, 165, 166, 0.1);
             border-radius: 4px;
             overflow: hidden;
-            pointer-events: none;  /* ⚠️ 讓觸控事件穿透，確保平移/縮放不被阻擋 */
+            pointer-events: none;  /* ⚠️ 讓觸控/滑鼠事件穿透，確保平移/縮放不被阻擋 */
         }
 
         .frame-label {
@@ -6516,6 +6504,8 @@
                 this.offsetX = 0;
                 this.offsetY = 0;
                 this.isPanning = false;
+                this.panStart = { x: 0, y: 0 };
+                this.isMoved = false; // Add isMoved tracking
 
                 this.init();
             }
@@ -6525,6 +6515,59 @@
                 this.setupEventListeners();
                 this.centerContent();
                 this.render();
+            }
+
+            updateCursor(e) {
+                // 簡單的 Hit Test 來決定是否顯示手型游標
+                const rect = this.container.getBoundingClientRect();
+                const wx = (e.clientX - rect.left - this.offsetX) / this.scale;
+                const wy = (e.clientY - rect.top - this.offsetY) / this.scale;
+
+                let hitLink = false;
+                // 反向遍歷 (Z-Index)
+                for (let i = this.nodes.length - 1; i >= 0; i--) {
+                    const node = this.nodes[i];
+                    if (wx >= node.x && wx <= node.x + node.width &&
+                        wy >= node.y && wy <= node.y + node.height) {
+                        if (node.link && node.link.trim()) {
+                            hitLink = true;
+                        }
+                        break;
+                    }
+                }
+                this.container.style.cursor = hitLink ? 'pointer' : (this.isPanning ? 'grabbing' : 'grab');
+            }
+
+            handleNodeClick(e) {
+               if (this.isMoved) return;
+               if (e.target.closest('a')) return; // Allow internal links to work naturally
+
+               const rect = this.container.getBoundingClientRect();
+               const wx = (e.clientX - rect.left - this.offsetX) / this.scale;
+               const wy = (e.clientY - rect.top - this.offsetY) / this.scale;
+
+               for (let i = this.nodes.length - 1; i >= 0; i--) {
+                   const node = this.nodes[i];
+                   if (wx >= node.x && wx <= node.x + node.width &&
+                       wy >= node.y && wy <= node.y + node.height) {
+                       
+                       if (node.link && node.link.trim()) {
+                           const link = node.link.trim();
+                           const isProjectHtml = !link.match(/^[a-zA-Z]+:\\/\\//) &&
+                                                 !link.match(/^\\//) &&
+                                                 !link.match(/^[a-zA-Z]:[\\//\\\\]/) &&
+                                                 link.match(/\\.html?$/i);
+
+                           if (isProjectHtml) {
+                               window.location.href = link;
+                           } else {
+                               window.open(link, '_blank', 'noopener,noreferrer');
+                           }
+                       }
+                       // 無論有無連結，點到節點就不再向下穿透
+                       break;
+                   }
+               }
             }
 
             centerContent() {
@@ -6556,16 +6599,24 @@
                 // 滑鼠事件
                 this.container.addEventListener('mousedown', (e) => {
                     this.isPanning = true;
+                    this.isMoved = false; // Reset move flag
                     this.panStart = { x: e.clientX, y: e.clientY };
                     this.container.classList.add('grabbing');
                 });
+
+                // 處理節點點擊 (Global Hit Test)
+                this.container.addEventListener('click', (e) => this.handleNodeClick(e));
 
                 window.addEventListener('mousemove', (e) => {
                     if (this.isPanning) {
                         this.offsetX += e.clientX - this.panStart.x;
                         this.offsetY += e.clientY - this.panStart.y;
                         this.panStart = { x: e.clientX, y: e.clientY };
+                        this.isMoved = true; // Mark as moved
                         this.render();
+                    } else {
+                        // 實作 Hover Cursor 效果
+                        this.updateCursor(e);
                     }
                 });
 
@@ -6597,6 +6648,7 @@
                     if (e.touches.length === 1) {
                         // 單指：平移
                         this.isPanning = true;
+                        this.isMoved = false;
                         this.panStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
                     } else if (e.touches.length === 2) {
                         // 雙指：縮放
@@ -6625,10 +6677,10 @@
                         this.offsetX += touch.clientX - this.panStart.x;
                         this.offsetY += touch.clientY - this.panStart.y;
                         this.panStart = { x: touch.clientX, y: touch.clientY };
+                        this.isMoved = true;
                         this.render();
                     } else if (e.touches.length === 2) {
                         // 雙指：縮放
-                        e.preventDefault();
                         const touch1 = e.touches[0];
                         const touch2 = e.touches[1];
 
@@ -6675,6 +6727,7 @@
                 });
 
                 window.addEventListener('resize', () => this.updateSVGSize());
+
             }
 
             render() {
@@ -6731,26 +6784,14 @@
                     const isProjectHtml = !node.link.match(/^[a-zA-Z]+:\\/\\/|^\\/|^[a-zA-Z]:[\\/\\\\]/) &&
                                          node.link.match(/\\.html?$/i);
 
+                    // [Modified] Removed individual click listener to allow global hit testing
+                    /*
                     nodeEl.addEventListener('click', (e) => {
-                        // 如果點擊的是文字內容中的 <a> 標籤，不觸發節點連結
-                        if (e.target.tagName === 'A') {
-                            return;
-                        }
-
-                        if (isProjectHtml) {
-                            // 專案 HTML 檔案：同一視窗打開
-                            window.location.href = node.link;
-                        } else {
-                            // 外部連結：新視窗打開
-                            window.open(node.link, '_blank', 'noopener,noreferrer');
-                        }
+                        // ...
                     });
+                    */
 
-                    // 添加連結圖標
-                    const linkIcon = document.createElement('div');
-                    linkIcon.className = 'node-link-icon';
-                    linkIcon.textContent = '🔗';
-                    nodeEl.appendChild(linkIcon);
+
                 }
 
                 // 處理文字內容中的 <a> 標籤
