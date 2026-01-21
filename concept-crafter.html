@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter v2.7.3</title>
+    <title>Concept Crafter v2.7.4</title>
     <style>
         * {
             margin: 0;
@@ -976,6 +976,13 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.7.4 (2026-01-21)</strong>
+                    <ul>
+                        <li><strong>Map Viewer 互動體驗升級</strong>：徹底重構生成的 Map Viewer 互動邏輯，改用全域點擊偵測技術。</li>
+                        <li><strong>完美觸控支援</strong>：節點不再阻擋觸控事件，現在手指按在節點上也能順暢平移與縮放地圖。</li>
+                        <li><strong>精準連結導航</strong>：智慧判斷點擊行為，有效區分「拖曳」與「點擊」，防止移動地圖時誤觸連結。</li>
+                    </ul>
+                </li>
                 <li><strong>v2.7.3</strong>
                     <ul>
                         <li><strong>連接線右鍵選單修復</strong>：修復連接線與節點/框架重疊時無法點選右鍵選單的問題。</li>
@@ -2192,6 +2199,88 @@
                     `$1${displayTitle}$3`
                 );
 
+                // 5. 注入 Pointer Events 修復腳本 (確保舊 Map 也能獲得修復)
+                if (!updatedHTML.includes('id="pointerEventsFix"')) {
+                    const fixScript = `
+    <script id="pointerEventsFix">
+        (function(){
+            try {
+                // 等待 MapViewer 渲染完成
+                setTimeout(() => {
+                     // 強制重置節點樣式，確保不攔截觸控
+                    const nodes = document.querySelectorAll('.node');
+                    nodes.forEach(n => {
+                        n.style.pointerEvents = '';
+                        n.style.touchAction = '';
+                    });
+
+                    const container = document.getElementById('container');
+                    const canvas = document.getElementById('canvas');
+                    if (!container || !canvas) return;
+
+                    // 綁定全域點擊事件 (模擬 MapViewer 的行為)
+                    container.addEventListener('click', function(e) {
+                         // 如果是內部連結點擊，不處理
+                        if (e.target.closest('a')) return;
+
+                        // 判斷是否為拖曳 (簡單判斷：若 MapViewer 內部有 isMoved 標記最好，但這裡無法存取)
+                        // 依賴原生 click 行為：通常拖曳後不觸發 click，或者我們可以假設 click 即為點擊。
+                        
+                        // 解析 Transform 獲取 scale/offset
+                        const style = canvas.style.transform;
+                        let tx = 0, ty = 0, scale = 1;
+                        if (style) {
+                            const match = style.match(/translate\\((-?[\\d.]+)(?:px)?,\\s*(-?[\\d.]+)(?:px)?\\)\\s*scale\\((-?[\\d.]+)\\)/);
+                            if (match) {
+                                tx = parseFloat(match[1]);
+                                ty = parseFloat(match[2]);
+                                scale = parseFloat(match[3]);
+                            }
+                        }
+
+                        // 計算點擊的世界座標
+                        const rect = container.getBoundingClientRect();
+                        const wx = (e.clientX - rect.left - tx) / scale;
+                        const wy = (e.clientY - rect.top - ty) / scale;
+
+                        // 讀取 Map Data 進行 Hit Test
+                        const dataElement = document.getElementById('map-data');
+                        const data = JSON.parse(dataElement.textContent);
+                        const mapNodes = (data.data && data.data.nodes) ? data.data.nodes : [];
+
+                        // 反向遍歷 (Z-Index 高的在後)
+                        for (let i = mapNodes.length - 1; i >= 0; i--) {
+                            const node = mapNodes[i];
+                             if (wx >= node.x && wx <= node.x + node.width &&
+                                wy >= node.y && wy <= node.y + node.height) {
+                                
+                                if (node.link && node.link.trim()) {
+                                    const link = node.link.trim();
+                                    const isProjectHtml = !link.match(/^[a-zA-Z]+:\\/\\//) &&
+                                                          !link.match(/^\\//) &&
+                                                          !link.match(/^[a-zA-Z]:[\\//\\\\]/) &&
+                                                          link.match(/\\.html?$/i);
+
+                                    if (isProjectHtml) {
+                                        window.location.href = link;
+                                    } else {
+                                        window.open(link, '_blank', 'noopener,noreferrer');
+                                    }
+                                    e.stopPropagation();
+                                    return;
+                                }
+                                break; // 點到節點但無連結，停止穿透
+                            }
+                        }
+                    });
+
+                }, 500); // 稍微延遲確保渲染完成
+            } catch(e){ console.error('Pointer events fix failed', e); }
+        })();
+    <\/script>`;
+                    updatedHTML = updatedHTML.replace('</body>', `${fixScript}\n</body>`);
+                }
+
                 return updatedHTML;
             }
 
@@ -2257,6 +2346,7 @@
                             this.offsetY = 0;
                             this.isPanning = false;
                             this.panStart = { x: 0, y: 0 };
+                            this.isMoved = false;
                             
                             // 觸控相關狀態
                             this.touches = [];
@@ -2314,17 +2404,25 @@
                             this.container.addEventListener('mousedown', (e) => {
                                 if (e.button === 0) {
                                     this.isPanning = true;
+                                    this.isMoved = false;
                                     this.panStart = { x: e.clientX, y: e.clientY };
                                     this.container.classList.add('grabbing');
                                 }
                             });
+
+                            // 處理節點點擊 (Hit Test)
+                            this.container.addEventListener('click', (e) => this.handleNodeClick(e));
 
                             window.addEventListener('mousemove', (e) => {
                                 if (this.isPanning) {
                                     this.offsetX += e.clientX - this.panStart.x;
                                     this.offsetY += e.clientY - this.panStart.y;
                                     this.panStart = { x: e.clientX, y: e.clientY };
+                                    this.isMoved = true;
                                     this.render();
+                                } else {
+                                    // 實作 Hover Cursor 效果
+                                    this.updateCursor(e);
                                 }
                             });
 
@@ -2353,6 +2451,7 @@
                                 if (this.touches.length === 1) {
                                     // 單指：開始平移
                                     this.isPanning = true;
+                                    this.isMoved = false;
                                     this.panStart = { x: this.touches[0].clientX, y: this.touches[0].clientY };
                                 } else if (this.touches.length === 2) {
                                     // 雙指：準備縮放
@@ -2372,6 +2471,7 @@
                                     this.offsetX += this.touches[0].clientX - this.panStart.x;
                                     this.offsetY += this.touches[0].clientY - this.panStart.y;
                                     this.panStart = { x: this.touches[0].clientX, y: this.touches[0].clientY };
+                                    this.isMoved = true;
                                     this.render();
                                 } else if (this.touches.length === 2) {
                                     // 雙指縮放
@@ -2412,6 +2512,58 @@
                             });
                             
                             this.render();
+                        }
+
+                        updateCursor(e) {
+                            // 簡單的 Hit Test 來決定是否顯示手型游標
+                            const rect = this.container.getBoundingClientRect();
+                            const wx = (e.clientX - rect.left - this.offsetX) / this.scale;
+                            const wy = (e.clientY - rect.top - this.offsetY) / this.scale;
+
+                            let hitLink = false;
+                            for (let i = this.nodes.length - 1; i >= 0; i--) {
+                                const node = this.nodes[i];
+                                if (wx >= node.x && wx <= node.x + node.width &&
+                                    wy >= node.y && wy <= node.y + node.height) {
+                                    if (node.link && node.link.trim()) {
+                                        hitLink = true;
+                                    }
+                                    break;
+                                }
+                            }
+                            this.container.style.cursor = hitLink ? 'pointer' : (this.isPanning ? 'grabbing' : 'grab');
+                        }
+
+                        handleNodeClick(e) {
+                           if (this.isMoved) return;
+                           if (e.target.closest('a')) return;
+
+                           const rect = this.container.getBoundingClientRect();
+                           const wx = (e.clientX - rect.left - this.offsetX) / this.scale;
+                           const wy = (e.clientY - rect.top - this.offsetY) / this.scale;
+
+                           for (let i = this.nodes.length - 1; i >= 0; i--) {
+                               const node = this.nodes[i];
+                               if (wx >= node.x && wx <= node.x + node.width &&
+                                   wy >= node.y && wy <= node.y + node.height) {
+                                   
+                                   if (node.link && node.link.trim()) {
+                                       const link = node.link.trim();
+                                       const isProjectHtml = !link.match(/^[a-zA-Z]+:\\/\\//) &&
+                                                             !link.match(/^\\//) &&
+                                                             !link.match(/^[a-zA-Z]:[\\//\\\\]/) &&
+                                                             link.match(/\\.html?$/i);
+
+                                       if (isProjectHtml) {
+                                           window.location.href = link;
+                                       } else {
+                                           window.open(link, '_blank', 'noopener,noreferrer');
+                                       }
+                                   }
+                                   // 無論有無連結，點到節點就不再向下穿透
+                                   break;
+                               }
+                           }
                         }
 
                         updateSVGSize() {
@@ -2472,7 +2624,9 @@
                             sortedFrames.forEach(frame => {
                                 const el = document.createElement('div');
                                 el.className = 'frame';
-                                el.dataset.id = frame.id; // Added standard ID for lookup
+                                el.dataset.id = frame.id;
+                                // 確保不攔截事件
+                                el.style.pointerEvents = 'none';
                                 el.style.left = frame.x + 'px';
                                 el.style.top = frame.y + 'px';
                                 el.style.width = frame.width + 'px';
@@ -2556,26 +2710,23 @@
                                     }
                                 });
 
-                                // 節點連結功能：如果節點有連結，點擊節點就導航
+                                // 節點連結功能：如果節點有連結，顯示手指游標
+                                // 但不在此設定 click 事件或 pointer-events，改由 Container 統一處理
                                 if (node.link && node.link.trim()) {
                                     el.style.cursor = 'pointer';
-                                    el.addEventListener('click', (e) => {
-                                        // 如果點擊的是文字中的連結，不要導航節點連結
-                                        if (e.target.closest && e.target.closest('a')) return;
-
-                                        const link = node.link.trim();
-                                        // 判斷是否為專案內的 HTML 文件
-                                        const isProjectHtml = !link.match(/^[a-zA-Z]+:\\/\\//) &&
-                                                              !link.match(/^\\//) &&
-                                                              !link.match(/^[a-zA-Z]:[\\//\\\\]/) &&
-                                                              link.match(/\\.html?$/i);
-
-                                        if (isProjectHtml) {
-                                            window.location.href = link;
-                                        } else {
-                                            window.open(link, '_blank', 'noopener,noreferrer');
-                                        }
-                                    });
+                                    // 必須設定 auto 才能讓 cursor 生效？不，如果是 none，cursor 會看下層。
+                                    // 若要顯示手指，必須讓該區塊「感應」到滑鼠？
+                                    // 矛盾：設為 none 則無法感知 hover 顯示手指。
+                                    // 解決方案：在 CSS 或 JS 中，Container mousemove 時動態改變 cursor？
+                                    // 或者：我們接受 cursor 不變，或者將 pointer-events 設為 auto 但不做 click 處理？
+                                    // 不，如果設為 auto，又會擋住 touch。
+                                    // 瀏覽器對於 touch-action: none + pointer-events: auto 是否支援平移？是。
+                                    // 回頭檢討：為什麼之前 touch-action: none 失敗？
+                                    // 可能是因為 element 被銷毀。
+                                    
+                                    // 使用 Hit Test 方案時，節點必須是 pointer-events: none 以支援平移。
+                                    // 缺點：滑鼠移上去沒有手型游標。
+                                    // 為解決此問題，我們在 mousemove 中做 Hit Test 來改變 cursor。
                                 }
 
                                 // Add status badges

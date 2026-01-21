@@ -4,7 +4,20 @@
       "Bash(copy:*)",
       "Bash(node generate-test-map.js:*)",
       "Bash(git restore:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(git -C \"c:\\\\MySrc\\\\ConceptCrafter\" status)",
+      "Bash(git -C \"c:\\\\MySrc\\\\ConceptCrafter\" diff --stat)",
+      "Bash(git -C \"c:\\\\MySrc\\\\ConceptCrafter\" log -3 --oneline)",
+      "Bash(git -C \"c:\\\\MySrc\\\\ConceptCrafter\" add README.md concept-crafter.html main.js package.json preload.js)",
+      "Bash(git -C \"c:\\\\MySrc\\\\ConceptCrafter\" commit -m \"$\\(cat <<''EOF''\nv2.6.13: 新增未儲存提醒功能\n\n- 切換專案資料夾時檢查未儲存的 Map，顯示確認對話框\n- 關閉應用程式時檢查未儲存的 Map，防止意外遺失資料\n- 新增 hasUnsavedMaps\\(\\)、getUnsavedMapNames\\(\\)、showUnsavedConfirm\\(\\) 方法\n- main.js 攔截視窗關閉事件，透過 IPC 與 renderer 通訊\n- preload.js 新增 onCheckUnsavedBeforeClose 和 confirmClose API\n- 更新版本號至 v2.6.13\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C \"c:\\\\MySrc\\\\ConceptCrafter\" log -1 --oneline)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Read(//c/**)",
+      "Bash(cd:*)",
+      "Bash(git -C \"c:\\\\MySrc\\\\ConceptCrafter\" log --oneline -5)",
+      "Bash(git -C \"c:\\\\MySrc\\\\ConceptCrafter\" add README.md concept-crafter.html package.json)",
+      "Bash(git -C \"c:\\\\MySrc\\\\ConceptCrafter\" commit -m \"$\\(cat <<''EOF''\nv2.7.3: 修復連接線右鍵選單與 Map 觸控操作問題\n\n- 修復連接線與節點/框架重疊時無法點選右鍵選單的問題\n- 修復生成的 Map 在觸控平移縮放時被節點/框架阻擋的問題\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
