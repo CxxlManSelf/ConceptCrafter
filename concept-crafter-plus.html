@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Concept-Crafter Plus v1.2.4</title>
+    <title>Concept-Crafter Plus v1.2.5</title>
     <link rel="icon" type="image/png" href="./concept-crafter_icon.png">
     <style>
         * {
@@ -1338,7 +1338,7 @@
             <div class="sidebar-header">
                 <div class="sidebar-title">
                     <h1>Concept-Crafter Plus</h1>
-                    <span class="version-badge">v1.2.4</span>
+                    <span class="version-badge">v1.2.5</span>
                 </div>
                 <button class="menu-toggle-sidebar" id="menu-toggle-sidebar">☰</button>
             </div>
@@ -2277,7 +2277,7 @@
                 mapList.innerHTML = '';
             }
             // 創建並添加新的列表項（會顯示儲存按鈕，因為已標記為已修改）
-            const newItem = createMapListItem(fileName);
+            const newItem = createMapListItem(fileName, title);
             mapList.appendChild(newItem);
 
             // 更新所有項目的 active 狀態，確保只有當前新建的 map 為 active
@@ -2297,7 +2297,38 @@
             try {
                 for await (const entry of currentProjectHandle.values()) {
                     if (entry.kind === 'file' && entry.name.endsWith('.html')) {
-                        mapFiles.push(entry.name);
+                        // 讀取檔案以獲取標題
+                        try {
+                            const fileHandle = await currentProjectHandle.getFileHandle(entry.name);
+                            const file = await fileHandle.getFile();
+                            const content = await file.text();
+
+                            // 解析 HTML 中的 JSON 數據
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(content, 'text/html');
+                            const dataScript = doc.getElementById('map-data');
+
+                            let title = entry.name.replace('.html', '');
+                            if (dataScript) {
+                                try {
+                                    const mapData = JSON.parse(dataScript.textContent);
+                                    title = mapData.title || title;
+                                } catch (e) {
+                                    // 如果無法解析,使用檔案名稱
+                                }
+                            }
+
+                            mapFiles.push({
+                                fileName: entry.name,
+                                title: title
+                            });
+                        } catch (err) {
+                            // 讀取失敗時使用檔案名稱作為標題
+                            mapFiles.push({
+                                fileName: entry.name,
+                                title: entry.name.replace('.html', '')
+                            });
+                        }
                     }
                 }
 
@@ -2309,8 +2340,8 @@
                         </div>
                     `;
                 } else {
-                    mapFiles.forEach(fileName => {
-                        const mapItem = createMapListItem(fileName);
+                    mapFiles.forEach(mapFile => {
+                        const mapItem = createMapListItem(mapFile.fileName, mapFile.title);
                         mapList.appendChild(mapItem);
                     });
                 }
@@ -2331,20 +2362,21 @@
             });
         }
 
-        function createMapListItem(fileName) {
+        function createMapListItem(fileName, title) {
             const div = document.createElement('div');
             div.className = 'map-item';
             if (fileName === currentFileName) {
                 div.classList.add('active');
             }
 
-            const title = fileName.replace('.html', '');
+            // 如果沒有傳入 title，使用檔名作為 fallback
+            const displayTitle = title || fileName.replace('.html', '');
             const isModified = mapModifiedStatus[fileName] || false;
 
             div.innerHTML = `
                 <div class="map-item-header" data-filename="${fileName}">
                     <div class="map-item-info">
-                        <div class="map-item-title">${title}</div>
+                        <div class="map-item-title">${displayTitle}</div>
                         <div class="map-item-meta">
                             <span>${fileName}</span>
                             ${isModified ? '<span class="map-item-status modified">● 已修改</span>' : ''}
@@ -2511,7 +2543,7 @@
                     }
 
                     // 添加到列表中
-                    const newItem = createMapListItem(fileName);
+                    const newItem = createMapListItem(fileName, currentMapData.title);
                     mapList.appendChild(newItem);
                 }
 
@@ -2585,7 +2617,7 @@
                     const parentItem = mapItem.closest('.map-item');
                     if (parentItem) {
                         // 重新創建列表項以移除「儲存」按鈕和「已修改」標籤
-                        const newItem = createMapListItem(fileName);
+                        const newItem = createMapListItem(fileName, mapData.title);
                         parentItem.replaceWith(newItem);
 
                         // 確保 active 狀態正確（如果儲存的是當前 map）
@@ -5662,8 +5694,11 @@
                     return;
                 }
 
-                // 收集所有選中的節點和框架（不包括連接線）
+                // 收集所有選中的節點和框架
                 const elementsToCopy = [];
+                const connectionsToCopy = [];
+                const selectedNodeFrameIds = new Set();
+
                 multiSelectedElements.forEach(el => {
                     if (el.type === 'node') {
                         const node = currentMapData.data.nodes.find(n => n.id === el.id);
@@ -5672,6 +5707,7 @@
                                 type: 'node',
                                 data: JSON.parse(JSON.stringify(node))
                             });
+                            selectedNodeFrameIds.add(el.id);
                         }
                     } else if (el.type === 'frame') {
                         const frame = currentMapData.data.frames.find(f => f.id === el.id);
@@ -5680,12 +5716,35 @@
                                 type: 'frame',
                                 data: JSON.parse(JSON.stringify(frame))
                             });
+                            selectedNodeFrameIds.add(el.id);
+                        }
+                    } else if (el.type === 'connection') {
+                        const conn = currentMapData.data.connections.find(c => c.id === el.id);
+                        if (conn) {
+                            connectionsToCopy.push({
+                                type: 'connection',
+                                data: JSON.parse(JSON.stringify(conn))
+                            });
                         }
                     }
                 });
 
+                // 過濾連接線：只保留兩端都在選中元素中的連接線
+                const validConnections = connectionsToCopy.filter(conn => {
+                    return selectedNodeFrameIds.has(conn.data.from) && selectedNodeFrameIds.has(conn.data.to);
+                });
+
+                // 將有效的連接線加入複製列表
+                elementsToCopy.push(...validConnections);
+
                 if (elementsToCopy.length === 0) {
-                    alert('沒有可複製的元素（連接線不能複製）');
+                    // 檢查是否只選了連接線
+                    const onlyConnections = multiSelectedElements.every(el => el.type === 'connection');
+                    if (onlyConnections) {
+                        alert('連接線需要同時選取兩端的節點或框架才能複製');
+                    } else {
+                        alert('沒有可複製的元素');
+                    }
                     return;
                 }
 
@@ -5699,7 +5758,13 @@
                 try {
                     localStorage.setItem('conceptCrafterClipboard', JSON.stringify(clipboardData));
                     updatePasteButtonState();
-                    showToast(`✓ 已複製 ${elementsToCopy.length} 個元素`);
+                    const nodeFrameCount = elementsToCopy.filter(e => e.type !== 'connection').length;
+                    const connCount = validConnections.length;
+                    if (connCount > 0) {
+                        showToast(`✓ 已複製 ${nodeFrameCount} 個元素和 ${connCount} 條連接線`);
+                    } else {
+                        showToast(`✓ 已複製 ${nodeFrameCount} 個元素`);
+                    }
                 } catch (error) {
                     alert('複製失敗：' + error.message);
                 }
@@ -5780,24 +5845,61 @@
             // 處理多元素貼上
             if (clipboardData.type === 'multi' && clipboardData.elements) {
                 const pastedElements = [];
+                const idMapping = {}; // 舊 ID -> 新 ID 的映射
+
+                // 第一步：先貼上節點和框架，建立 ID 映射
                 clipboardData.elements.forEach(item => {
                     const { type, data } = item;
-                    const newElement = JSON.parse(JSON.stringify(data));
-                    newElement.id = type + '-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-
-                    // 調整位置（偏移一點避免完全重疊）
                     if (type === 'node' || type === 'frame') {
+                        const newElement = JSON.parse(JSON.stringify(data));
+                        const oldId = newElement.id;
+                        newElement.id = type + '-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                        idMapping[oldId] = newElement.id;
+
+                        // 調整位置（偏移一點避免完全重疊）
                         newElement.x += 30;
                         newElement.y += 30;
-                    }
 
-                    // 將新元素加入當前 map
-                    if (type === 'node') {
-                        currentMapData.data.nodes.push(newElement);
-                        pastedElements.push({ id: newElement.id, type: 'node' });
-                    } else if (type === 'frame') {
-                        currentMapData.data.frames.push(newElement);
-                        pastedElements.push({ id: newElement.id, type: 'frame' });
+                        // 將新元素加入當前 map
+                        if (type === 'node') {
+                            currentMapData.data.nodes.push(newElement);
+                            pastedElements.push({ id: newElement.id, type: 'node' });
+                        } else if (type === 'frame') {
+                            currentMapData.data.frames.push(newElement);
+                            pastedElements.push({ id: newElement.id, type: 'frame' });
+                        }
+                    }
+                });
+
+                // 第二步：貼上連接線，使用 ID 映射更新 from/to
+                let connectionCount = 0;
+                clipboardData.elements.forEach(item => {
+                    const { type, data } = item;
+                    if (type === 'connection') {
+                        const newConnection = JSON.parse(JSON.stringify(data));
+                        newConnection.id = 'connection-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+
+                        // 使用 ID 映射更新 from 和 to
+                        if (idMapping[newConnection.from]) {
+                            newConnection.from = idMapping[newConnection.from];
+                        }
+                        if (idMapping[newConnection.to]) {
+                            newConnection.to = idMapping[newConnection.to];
+                        }
+
+                        // 檢查連接線兩端是否都存在
+                        const fromExists =
+                            currentMapData.data.nodes.some(n => n.id === newConnection.from) ||
+                            currentMapData.data.frames.some(f => f.id === newConnection.from);
+                        const toExists =
+                            currentMapData.data.nodes.some(n => n.id === newConnection.to) ||
+                            currentMapData.data.frames.some(f => f.id === newConnection.to);
+
+                        if (fromExists && toExists) {
+                            currentMapData.data.connections.push(newConnection);
+                            pastedElements.push({ id: newConnection.id, type: 'connection' });
+                            connectionCount++;
+                        }
                     }
                 });
 
@@ -5806,7 +5908,12 @@
                 markMapAsModified();
                 updatePropertyEditor();
 
-                showToast(`✓ 已貼上 ${pastedElements.length} 個元素`);
+                const nodeFrameCount = pastedElements.filter(e => e.type !== 'connection').length;
+                if (connectionCount > 0) {
+                    showToast(`✓ 已貼上 ${nodeFrameCount} 個元素和 ${connectionCount} 條連接線`);
+                } else {
+                    showToast(`✓ 已貼上 ${nodeFrameCount} 個元素`);
+                }
                 autoHideSidebarOnSmallScreen();
                 return;
             }
@@ -6008,9 +6115,9 @@
 
             // 在多選模式下的特殊處理
             if (isMultiSelectMode) {
-                // 複製按鈕：有選中元素時啟用（連接線除外）
-                const hasNonConnectionElements = multiSelectedElements.some(el => el.type !== 'connection');
-                if (multiSelectedElements.length > 0 && hasNonConnectionElements) {
+                // 複製按鈕：有選中元素時啟用
+                // 連接線需要兩端節點/框架也被選中才能複製，複製函數會處理驗證
+                if (multiSelectedElements.length > 0) {
                     btnCopy.classList.remove('disabled');
                 } else {
                     btnCopy.classList.add('disabled');
@@ -6247,7 +6354,7 @@
                     const parentItem = mapItem.closest('.map-item');
                     if (parentItem) {
                         // 重新創建列表項以顯示「儲存」按鈕和「已修改」標籤
-                        const newItem = createMapListItem(currentFileName);
+                        const newItem = createMapListItem(currentFileName, currentMapData?.title);
                         parentItem.replaceWith(newItem);
 
                         // 確保 active 狀態正確
