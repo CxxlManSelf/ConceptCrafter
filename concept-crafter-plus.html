@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Concept-Crafter Plus v1.2.5</title>
+    <title>Concept-Crafter Plus v1.2.6</title>
     <link rel="icon" type="image/png" href="./concept-crafter_icon.png">
     <style>
         * {
@@ -1338,7 +1338,7 @@
             <div class="sidebar-header">
                 <div class="sidebar-title">
                     <h1>Concept-Crafter Plus</h1>
-                    <span class="version-badge">v1.2.5</span>
+                    <span class="version-badge">v1.2.6</span>
                 </div>
                 <button class="menu-toggle-sidebar" id="menu-toggle-sidebar">☰</button>
             </div>
@@ -4448,8 +4448,8 @@
         // targetX, targetY: 目標點（確定射線方向）
         function getEdgePoint(rect, targetX, targetY, refX = null, refY = null) {
             const left = rect.x;
-            const width = Math.max(50, rect.width || 0);
-            const height = Math.max(30, rect.height || 0);
+            const width = rect.width || 0;
+            const height = rect.height || 0;
             const right = rect.x + width;
             const top = rect.y;
             const bottom = rect.y + height;
@@ -7097,8 +7097,8 @@
 
             getEdgePoint(rect, targetX, targetY, refX = null, refY = null) {
                 const left = rect.x;
-                const width = Math.max(50, rect.width || 0);
-                const height = Math.max(30, rect.height || 0);
+                const width = rect.width || 0;
+                const height = rect.height || 0;
                 const right = rect.x + width;
                 const top = rect.y;
                 const bottom = rect.y + height;
