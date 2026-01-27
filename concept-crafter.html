@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concept Crafter v2.7.4</title>
+    <title>Concept Crafter v2.7.5</title>
     <style>
         * {
             margin: 0;
@@ -976,6 +976,12 @@
 
             <h3>版本更新記錄</h3>
             <ul>
+                <li><strong>v2.7.5 (2026-01-27)</strong>
+                    <ul>
+                        <li><strong>小型節點連接線修復</strong>：修復標籤節點（isLabel）等小於 50x30 的節點，連接線無法正確連接到節點邊緣的問題。</li>
+                        <li><strong>支援第三方 Map</strong>：現在可正確顯示由第三方工具建立的小型標籤節點連接線。</li>
+                    </ul>
+                </li>
                 <li><strong>v2.7.4 (2026-01-21)</strong>
                     <ul>
                         <li><strong>Map Viewer 互動體驗升級</strong>：徹底重構生成的 Map Viewer 互動邏輯，改用全域點擊偵測技術。</li>
@@ -2764,8 +2770,8 @@
 
                         getEdgePoint(rect, targetX, targetY, refX = null, refY = null) {
                             const left = rect.x;
-                            const width = Math.max(50, rect.width || 0);
-                            const height = Math.max(30, rect.height || 0);
+                            const width = rect.width || 0;
+                            const height = rect.height || 0;
                             const right = rect.x + width;
                             const top = rect.y;
                             const bottom = rect.y + height;
@@ -4832,8 +4838,8 @@
             // Helper: Get robust edge point using DOM dimensions if available
             getEdgePoint(rect, targetX, targetY, refX = null, refY = null) {
                 const left = rect.x;
-                const width = Math.max(50, rect.width || 0);
-                const height = Math.max(30, rect.height || 0);
+                const width = rect.width || 0;
+                const height = rect.height || 0;
                 const right = rect.x + width;
                 const top = rect.y;
                 const bottom = rect.y + height;
